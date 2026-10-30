@@ -93,3 +93,5 @@ Bilinen riskler:
 - **Error ile marka kızılı birbirine yakın** (koyu: `errorContainer #93000A` ↔ `primaryContainer #BF002C`). Hata durumu yalnızca renkle değil, simge ve metinle de gösterilmeli.
 - **Secondary, primary ile aynı ailede** (ton farkı dışında ayırt edilmiyor); gerçek bir ikinci renk ailesi gerekiyorsa tohum değişmeli.
 - Nötr tohum (`#0F1126`) mor-lacivert eğilimli (H282); metin tonları hafif lavanta görünür.
+
+> **Güncelleme (M3E belirteçleri):** Bu belgedeki düz paletin *nötr* renkleri (zemin ve metin kademeleri) tonal rollerle değiştirildi: kart `#1C1E33`, metin `#E0E0FE`, ikincil metin `#C1C3EE`, çerçeve `#8B8EB6` (`design/tonal-palette.json`, §8). Marka renkleri (kızıl, altın) değişmedi. Yazı tipi, şekil, hareket ve bileşenler: `design/M3E-UX-UI.md`. Stitch projesi ve tasarım sistemi kimlikleri `design/tokens.json` içindedir.
