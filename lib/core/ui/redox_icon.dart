@@ -1,0 +1,69 @@
+import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+/// Uygulama ikonları: Material Symbols Outlined (Apache-2.0), 24 px SVG.
+/// Dosyalar assets/icons/ altında; `<ad>_24px.svg` ve dolu `<ad>_fill1_24px.svg`.
+enum RedoxIcons {
+  home('home', 'Anasayfa'),
+  television('live_tv', 'Televizyon'),
+  radio('radio', 'Radyo'),
+  film('movie', 'Film'),
+  series('video_library', 'Dizi'),
+  favorites('favorite', 'Favoriler'),
+  splitScreen('grid_view', 'Bölünmüş Ekran'),
+  sources('dns', 'Kaynaklar'),
+  settings('settings', 'Ayarlar'),
+  remote('settings_remote', 'Kumanda'),
+  search('search', 'Arama'),
+  play('play_arrow', 'Oynat'),
+  pause('pause', 'Duraklat'),
+  previous('skip_previous', 'Önceki'),
+  next('skip_next', 'Sonraki'),
+  volume('volume_up', 'Ses'),
+  star('star', 'Yıldız'),
+  folder('folder', 'Klasör'),
+  qrCode('qr_code_2', 'QR kod'),
+  wifi('wifi', 'Wi-Fi'),
+  clock('schedule', 'Saat'),
+  notifications('notifications', 'Bildirim'),
+  profile('account_circle', 'Profil'),
+  lock('lock', 'Kilit');
+
+  const RedoxIcons(this.symbol, this.label);
+
+  /// Material Symbols adı (dosya adının başı).
+  final String symbol;
+
+  /// Türkçe görünen ad (erişilebilirlik etiketi olarak da kullanılır).
+  final String label;
+
+  String assetPath({required bool filled}) =>
+      'assets/icons/$symbol${filled ? '_fill1' : ''}_24px.svg';
+}
+
+/// Tek renkli SVG ikon. Seçili durumda dolu biçim kullanılır.
+class RedoxIcon extends StatelessWidget {
+  const RedoxIcon(
+    this.icon, {
+    super.key,
+    this.filled = false,
+    this.size = 24,
+    required this.color,
+  });
+
+  final RedoxIcons icon;
+  final bool filled;
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      icon.assetPath(filled: filled),
+      width: size,
+      height: size,
+      semanticsLabel: icon.label,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
+  }
+}

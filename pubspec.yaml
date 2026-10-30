@@ -1,5 +1,5 @@
 name: redox_tv
-description: "A new Flutter project."
+description: "RedoX TV 3.0: Android TV, tablet, telefon, Windows ve Linux için IPTV istemcisi."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_svg: 2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +19,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/brand/redox-logo.svg
+    - assets/icons/
+
+  fonts:
+    # Değişken yazı tipi (OFL): FontWeight -> wght ekseni; slnt/opsz FontVariation ile.
+    - family: GoogleSansFlex
+      fonts:
+        - asset: assets/fonts/GoogleSansFlex.ttf

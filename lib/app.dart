@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/redox_theme.dart';
+import 'features/style_guide/style_guide_page.dart';
 
 class RedoxApp extends StatelessWidget {
   const RedoxApp({super.key});
@@ -12,7 +13,8 @@ class RedoxApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: RedoxTheme.dark(),
       themeMode: ThemeMode.dark,
-      home: const Scaffold(body: Center(child: Text('RedoX TV 3.0'))),
+      // Ekranlar tasarlanana kadar açılışta stil rehberi gösterilir.
+      home: const StyleGuidePage(),
     );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'm3e_tokens.dart';
+import 'redox_palette.dart';
 import 'redox_tonal.dart';
+import 'redox_type.dart';
 
 /// Şekil ölçüleri (design/tokens.json -> m3e.shape).
 abstract final class RedoxShapes {
@@ -54,7 +56,8 @@ abstract final class RedoxTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: _scheme,
-      textTheme: M3EType.baseline,
+      fontFamily: RedoxType.family,
+      textTheme: M3EType.baseline.apply(fontFamily: RedoxType.family),
       scaffoldBackgroundColor: _scheme.surface,
       cardTheme: CardThemeData(
         color: _scheme.surfaceContainer,
@@ -65,6 +68,20 @@ abstract final class RedoxTheme {
       // Beyaz yazı / ana kızıl 4,73:1 (küçük metin için yeterli).
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
+      ),
+      // M3 varsayılanı bu düğmelerin yazısını primary (kızıl) yapar; kızıl küçük
+      // yazıda yetmez (kartta 3,44:1). Kural: küçük kırmızı yazı = mercan.
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: RedoxPalette.coral,
+          minimumSize: const Size(64, 48),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: RedoxPalette.coral,
+          minimumSize: const Size(64, 48),
+        ),
       ),
     );
   }

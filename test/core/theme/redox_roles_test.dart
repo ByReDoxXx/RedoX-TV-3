@@ -52,6 +52,16 @@ void main() {
       });
     });
 
+    test('çerçeveli ve metin düğmesi yazısı zeminde ve kartta >= 4.5:1', () {
+      final theme = RedoxTheme.dark();
+      final outlined = theme.outlinedButtonTheme.style!.foregroundColor!.resolve({})!;
+      final text = theme.textButtonTheme.style!.foregroundColor!.resolve({})!;
+      for (final fg in [outlined, text]) {
+        expect(_contrast(fg, s.surface), greaterThanOrEqualTo(4.5));
+        expect(_contrast(fg, s.surfaceContainerHigh), greaterThanOrEqualTo(4.5));
+      }
+    });
+
     test('çerçeve (outline) zeminde >= 3:1 (metin dışı bileşen)', () {
       expect(_contrast(s.outline, s.surface), greaterThanOrEqualTo(3.0));
     });
