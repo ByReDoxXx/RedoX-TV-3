@@ -80,3 +80,16 @@ Yüklenen JPEG, beyaz köşeler **saydam** yapıldıktan sonra `vtracer` 0.6.15 
 - **A2.** Yazı tipi: Stitch'te Google Sans Flex seçildi; Flutter'a gömmek için lisansı doğrulanmadı, yedek Roboto Flex.
 - **A3.** Türetilmiş yüzey kademelerinden yalnızca `surface` (kart) kontrast hesabına girdi.
 - **A4.** Stitch Anasayfa taslağında "KIRMIZI TUŞ" ipucu var: Chromecast kumandasında renkli tuş yok, kaldırılmalı. Taslaktaki kanal adları, puanlar, süreler ve kapaklar örnek içeriktir, gerçek veri değildir.
+
+## 8. Tonal palet (M3 / HCT)
+
+`dart run tool/generate_tonal_palette.dart` ölçülmüş tohumlardan (kızıl `#E11D3C`, şarap `#820E26`, altın `#E5AF53`, zemin `#0F1126`) altı tonal palet (primary, secondary, tertiary, neutral, neutralVariant, error; 24 ton) ve koyu/açık rol eşlemesi üretir. Çıktılar: `design/tonal-palette.json`, `lib/core/theme/redox_tonal.dart` (elle düzenlenmez). Pano: `design/tonal-panosu.png`.
+
+- Marka çıpası: `primary` (kızıl), `tertiary` (altın, koyu temada) ve koyu `surface` ölçülen renkle **birebir**; M3'ün varsayılan koyu `primary`si (ton 80, pastel) yerine canlı marka kızılı kullanılır.
+- Araç, rol çiftlerinde kontrast eşiğini (metin ≥ 4,5:1, çerçeve ≥ 3:1) sağlayamazsa **çıktı yazmadan hata verir**; aynı kapılar `test/core/theme/redox_roles_test.dart` içinde Dart tarafında da doğrulanır.
+- Tema yalnızca **koyu** rolleri kullanır; açık rol eşlemesi üretilir ama uygulamaya bağlı değildir.
+
+Bilinen riskler:
+- **Error ile marka kızılı birbirine yakın** (koyu: `errorContainer #93000A` ↔ `primaryContainer #BF002C`). Hata durumu yalnızca renkle değil, simge ve metinle de gösterilmeli.
+- **Secondary, primary ile aynı ailede** (ton farkı dışında ayırt edilmiyor); gerçek bir ikinci renk ailesi gerekiyorsa tohum değişmeli.
+- Nötr tohum (`#0F1126`) mor-lacivert eğilimli (H282); metin tonları hafif lavanta görünür.

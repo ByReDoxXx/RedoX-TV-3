@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'redox_palette.dart';
+import 'redox_tonal.dart';
 
 /// Şekil ölçüleri (design/tokens.json -> m3e.shape).
 abstract final class RedoxShapes {
@@ -11,37 +11,51 @@ abstract final class RedoxShapes {
 
 /// Koyu "Kızıl Halka" teması. Rol kuralları: design/PALET-VE-TASARIM.md
 abstract final class RedoxTheme {
+  /// Roller tool/generate_tonal_palette.dart tarafından üretilir (HCT tonal palet).
   static const ColorScheme _scheme = ColorScheme(
     brightness: Brightness.dark,
-    primary: RedoxPalette.red,
-    onPrimary: RedoxPalette.white,
-    primaryContainer: RedoxPalette.redDeep,
-    onPrimaryContainer: RedoxPalette.white,
-    secondary: RedoxPalette.redWine,
-    onSecondary: RedoxPalette.white,
-    tertiary: RedoxPalette.gold,
-    onTertiary: RedoxPalette.background,
-    error: RedoxPalette.coral,
-    onError: RedoxPalette.background,
-    surface: RedoxPalette.background,
-    onSurface: RedoxPalette.textPrimary,
-    onSurfaceVariant: RedoxPalette.textSecondary,
-    surfaceContainerLowest: RedoxPalette.backgroundDeep,
-    surfaceContainerLow: RedoxPalette.surfaceLow,
-    surfaceContainer: RedoxPalette.surface,
-    surfaceContainerHigh: RedoxPalette.surfaceHigh,
-    surfaceContainerHighest: RedoxPalette.surfaceHighest,
-    outline: RedoxPalette.textTertiary,
-    outlineVariant: RedoxPalette.outline,
+    primary: RedoxDarkRoles.primary,
+    onPrimary: RedoxDarkRoles.onPrimary,
+    primaryContainer: RedoxDarkRoles.primaryContainer,
+    onPrimaryContainer: RedoxDarkRoles.onPrimaryContainer,
+    secondary: RedoxDarkRoles.secondary,
+    onSecondary: RedoxDarkRoles.onSecondary,
+    secondaryContainer: RedoxDarkRoles.secondaryContainer,
+    onSecondaryContainer: RedoxDarkRoles.onSecondaryContainer,
+    tertiary: RedoxDarkRoles.tertiary,
+    onTertiary: RedoxDarkRoles.onTertiary,
+    tertiaryContainer: RedoxDarkRoles.tertiaryContainer,
+    onTertiaryContainer: RedoxDarkRoles.onTertiaryContainer,
+    error: RedoxDarkRoles.error,
+    onError: RedoxDarkRoles.onError,
+    errorContainer: RedoxDarkRoles.errorContainer,
+    onErrorContainer: RedoxDarkRoles.onErrorContainer,
+    surface: RedoxDarkRoles.surface,
+    onSurface: RedoxDarkRoles.onSurface,
+    onSurfaceVariant: RedoxDarkRoles.onSurfaceVariant,
+    outline: RedoxDarkRoles.outline,
+    outlineVariant: RedoxDarkRoles.outlineVariant,
+    shadow: RedoxDarkRoles.shadow,
+    scrim: RedoxDarkRoles.scrim,
+    inverseSurface: RedoxDarkRoles.inverseSurface,
+    onInverseSurface: RedoxDarkRoles.onInverseSurface,
+    inversePrimary: RedoxDarkRoles.inversePrimary,
+    surfaceDim: RedoxDarkRoles.surfaceDim,
+    surfaceBright: RedoxDarkRoles.surfaceBright,
+    surfaceContainerLowest: RedoxDarkRoles.surfaceContainerLowest,
+    surfaceContainerLow: RedoxDarkRoles.surfaceContainerLow,
+    surfaceContainer: RedoxDarkRoles.surfaceContainer,
+    surfaceContainerHigh: RedoxDarkRoles.surfaceContainerHigh,
+    surfaceContainerHighest: RedoxDarkRoles.surfaceContainerHighest,
   );
 
   static ThemeData dark() {
     return ThemeData(
       useMaterial3: true,
       colorScheme: _scheme,
-      scaffoldBackgroundColor: RedoxPalette.background,
+      scaffoldBackgroundColor: _scheme.surface,
       cardTheme: CardThemeData(
-        color: RedoxPalette.surface,
+        color: _scheme.surfaceContainer,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(RedoxShapes.card),
         ),
