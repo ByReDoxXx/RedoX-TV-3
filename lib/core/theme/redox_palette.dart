@@ -1,30 +1,30 @@
 import 'dart:ui' show Color;
 
-/// Logodan ölçülen marka renkleri. Kaynak: design/tokens.json
+/// Yeni logodan ölçülen marka renkleri. Kaynak: design/tokens.json
 /// ("measured" = piksel ölçümü, "derived" = ölçülen zeminden türetildi).
 abstract final class RedoxPalette {
   // Marka (measured)
-  static const red = Color(0xFFF22144);
-  static const redDeep = Color(0xFFC41536);
-  static const redWine = Color(0xFF95122B);
-  static const redDark = Color(0xFF440A21);
-  static const coral = Color(0xFFF25F61);
-  static const gold = Color(0xFFF0BE5E);
-  static const goldBright = Color(0xFFF7D574);
-  static const goldDeep = Color(0xFFDFA747);
-  static const bronze = Color(0xFFCF9038);
+  static const red = Color(0xFFE11D3C);
+  static const redDeep = Color(0xFFB11229);
+  static const redWine = Color(0xFF820E26);
+  static const redDark = Color(0xFF6B0F26);
+  static const coral = Color(0xFFF96D54);
+  static const gold = Color(0xFFE5AF53);
+  static const goldBright = Color(0xFFF8E286);
+  static const goldMid = Color(0xFFE2B156);
+  static const bronze = Color(0xFFC98234);
 
   // Zemin (measured)
-  static const backgroundGlow = Color(0xFF293143);
-  static const background = Color(0xFF0A0D1C);
-  static const backgroundDeep = Color(0xFF010413);
+  static const backgroundGlow = Color(0xFF1E3755);
+  static const background = Color(0xFF0F1126);
+  static const backgroundDeep = Color(0xFF060B1F);
 
   // Yüzey kademeleri (derived)
-  static const surfaceLow = Color(0xFF0F1325);
-  static const surface = Color(0xFF141829);
-  static const surfaceHigh = Color(0xFF1C2136);
-  static const surfaceHighest = Color(0xFF262C44);
-  static const outline = Color(0xFF2E3550);
+  static const surfaceLow = Color(0xFF151A2E);
+  static const surface = Color(0xFF1A1F36);
+  static const surfaceHigh = Color(0xFF232943);
+  static const surfaceHighest = Color(0xFF2E3550);
+  static const outline = Color(0xFF3A4262);
 
   // Metin (derived)
   static const textPrimary = Color(0xFFF5F4F2);

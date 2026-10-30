@@ -30,7 +30,9 @@ void main() {
       }
     });
 
-    test('beyaz yazı koyu kızıl düğme dolgusunda', () {
+    test('beyaz yazı ana kızıl ve koyu kızıl dolguda', () {
+      expect(contrast(RedoxPalette.white, RedoxPalette.red),
+          greaterThanOrEqualTo(4.5));
       expect(contrast(RedoxPalette.white, RedoxPalette.redDeep),
           greaterThanOrEqualTo(4.5));
     });
@@ -40,22 +42,31 @@ void main() {
           greaterThanOrEqualTo(4.5));
     });
 
-    test('altın zeminde', () {
+    test('altın zeminde ve kartta', () {
       expect(contrast(RedoxPalette.gold, RedoxPalette.background),
+          greaterThanOrEqualTo(4.5));
+      expect(contrast(RedoxPalette.gold, RedoxPalette.surface),
           greaterThanOrEqualTo(4.5));
     });
   });
 
   group('Bilinen sınırlar korunur (regresyon)', () {
-    test('beyaz / ana kızıl küçük metin için yetmez: dolguda kullanılmaz', () {
-      expect(contrast(RedoxPalette.white, RedoxPalette.red), lessThan(4.5));
-      final style = RedoxTheme.dark().filledButtonTheme.style!;
-      expect(style.backgroundColor!.resolve({}), RedoxPalette.redDeep);
+    test('ana kızıl küçük metin olarak yetmez: yalnızca simge/büyük metin', () {
+      expect(contrast(RedoxPalette.red, RedoxPalette.surface), lessThan(4.5));
+      expect(contrast(RedoxPalette.red, RedoxPalette.background),
+          greaterThanOrEqualTo(3.0)); // metin dışı bileşen eşiği
     });
 
     test('odak halkası kartta 3:1 üstü (metin dışı kural)', () {
       expect(contrast(RedoxPalette.goldBright, RedoxPalette.surface),
           greaterThanOrEqualTo(3.0));
+    });
+
+    test('tema ana rengi marka kızılı, düğme boyutu >= 48dp', () {
+      final t = RedoxTheme.dark();
+      expect(t.colorScheme.primary, RedoxPalette.red);
+      expect(t.filledButtonTheme.style!.minimumSize!.resolve({})!.height,
+          greaterThanOrEqualTo(48));
     });
   });
 }

@@ -46,14 +46,9 @@ abstract final class RedoxTheme {
           borderRadius: BorderRadius.circular(RedoxShapes.card),
         ),
       ),
-      // Küçük beyaz yazı kızıl (#F22144) üzerinde 4,14:1 verir; yetmez.
-      // Düğme dolgusu bu yüzden primaryContainer (#C41536, 5,99:1).
+      // Beyaz yazı / ana kızıl 4,73:1 (küçük metin için yeterli).
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: _scheme.primaryContainer,
-          foregroundColor: _scheme.onPrimaryContainer,
-          minimumSize: const Size(64, 48),
-        ),
+        style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
       ),
     );
   }
