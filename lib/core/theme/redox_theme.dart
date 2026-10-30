@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'm3e_tokens.dart';
 import 'redox_tonal.dart';
 
 /// Şekil ölçüleri (design/tokens.json -> m3e.shape).
 abstract final class RedoxShapes {
-  static const double card = 28;
-  static const double item = 16;
+  static const double card = M3EShape.extraLarge;
+  static const double item = M3EShape.large;
   static const double focusRingWidth = 3;
 }
 
@@ -53,6 +54,7 @@ abstract final class RedoxTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: _scheme,
+      textTheme: M3EType.baseline,
       scaffoldBackgroundColor: _scheme.surface,
       cardTheme: CardThemeData(
         color: _scheme.surfaceContainer,
