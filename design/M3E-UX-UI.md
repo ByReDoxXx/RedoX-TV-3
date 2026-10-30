@@ -69,3 +69,10 @@ Flutter 3.47.9 `material` kütüphanesinde **var**: `NavigationRail`, `Segmented
 - Yazı tipi: `google/fonts` → `ofl/googlesansflex/METADATA.pb`, `OFL.txt`.
 - Android Wear Material 3 Expressive dil belgesi (Roboto Flex).
 - m3.material.io sayfaları JavaScript ile çizildiği için okunamadı; **resmi sitedeki yazılı şartnameye karşı** ayrıca doğrulanmadı.
+
+## 6. Ekran: TV 4K
+Hedef TV paneli **4K UHD, 3840×2160 piksel**. Android TV 4K cihazlarda arayüz genellikle 2× yoğunlukla **1920×1080 dp** mantıksal boyutta çizilir (bu yoğunluk varsayımdır, gerçek cihazda doğrulanmadı). Sonuçlar:
+- Tüm ölçüler dp/sp cinsindendir; piksel karşılığı iki kattır (14 sp yazı = 28 px, 28 dp köşe = 56 px, 3 dp odak halkası = 6 px).
+- Flutter'da yerleşim mantıksal piksel üzerinden kurulur; sabit piksel kullanılmaz.
+- Rasterleşmiş görseller (kapaklar, kanal logoları) en az 2× keskinlikte olmalı; logo ve simgeler SVG olduğu için ölçekten etkilenmez.
+- Stitch taslakları 3840×2160 tuvalde, "2× yoğunluk" notuyla üretilir.
