@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/watch_history.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
+import 'package:redox_tv/core/playback/frame_grabber.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/story_avatar.dart';
 import 'package:redox_tv/features/home/home_content.dart';
+import 'package:redox_tv/features/home/widgets/hero_banner.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/shell/section_placeholder.dart';
@@ -15,6 +18,84 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fake_engine.dart';
 import '../../support/render.dart';
+
+final _png = Uint8List.fromList(const [
+  137,
+  80,
+  78,
+  71,
+  13,
+  10,
+  26,
+  10,
+  0,
+  0,
+  0,
+  13,
+  73,
+  72,
+  68,
+  82,
+  0,
+  0,
+  0,
+  2,
+  0,
+  0,
+  0,
+  2,
+  8,
+  2,
+  0,
+  0,
+  0,
+  253,
+  212,
+  154,
+  115,
+  0,
+  0,
+  0,
+  18,
+  73,
+  68,
+  65,
+  84,
+  120,
+  156,
+  99,
+  60,
+  33,
+  167,
+  193,
+  192,
+  192,
+  192,
+  196,
+  0,
+  6,
+  0,
+  13,
+  114,
+  1,
+  18,
+  65,
+  90,
+  35,
+  53,
+  0,
+  0,
+  0,
+  0,
+  73,
+  69,
+  78,
+  68,
+  174,
+  66,
+  96,
+  130,
+]);
 
 const _channels = [
   LiveChannel(name: 'TRT 1', number: 6, category: 'Ulusal', streams: ['a', 'b']),
@@ -132,6 +213,47 @@ void main() {
       engines.single.showVideo();
       await tester.pump();
       expect(history.value, [6]);
+    });
+
+    testWidgets('vitrin yayından alınan kareyi gösterir; kanal izlenirken kare alınmaz', (tester) async {
+      await loadSora(tester);
+      tester.view.physicalSize = const Size(960, 540);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final grabbed = <String>[];
+      final frames = FrameStore(
+        grabber: (url) async {
+          grabbed.add(url);
+          return _png;
+        },
+      );
+      final history = WatchHistory();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RedoxTheme.dark(),
+          home: RootShell(
+            tv: const TvContent(channels: _channels),
+            history: history,
+            frames: frames,
+            engineFactory: FakeEngine.new,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      // Geçmiş boş: raf ulusal kanallar (TRT 1, Show TV); Show TV'nin akışı yok.
+      expect(grabbed, ['a']);
+      final heroImage = find.descendant(of: find.byType(HeroBanner), matching: find.byType(Image));
+      expect(heroImage, findsOneWidget);
+      expect((tester.widget<Image>(heroImage).image as MemoryImage).bytes, _png);
+
+      // İzlerken geçmiş değişir (raf yenilenir) ama kare alınmaz: oynatmayla yarışmasın.
+      await tester.tap(find.text('Canlı yayına gir'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(PlayerPage), findsOneWidget);
+      expect(history.value, [6]);
+      expect(grabbed, ['a']);
+      frames.dispose();
     });
 
     testWidgets('"Yayın akışı" Televizyon sayfasının EPG çizelgesini açar', (tester) async {

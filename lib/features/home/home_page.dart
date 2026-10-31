@@ -4,6 +4,7 @@ import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/navigation/destinations.dart';
+import '../../core/playback/frame_grabber.dart';
 import '../../core/navigation/more_sheet.dart';
 import '../../core/theme/m3e_motion.dart';
 import '../../core/theme/redox_colors.dart';
@@ -21,7 +22,8 @@ import 'home_content.dart';
 import 'widgets/hero_banner.dart';
 
 /// Anasayfa: bölüm kısayolları, vitrin (şu an yayında olan kanal) ve son
-/// izlenen kanallar (geçmiş boşsa ulusal kanallar). Dizi, film ve radyo rafları
+/// izlenen kanallar (geçmiş boşsa ulusal kanallar); kart ve vitrin görseli
+/// yayından alınan gerçek karedir (FrameStore). Dizi, film ve radyo rafları
 /// o bölümler yazılınca gelecek; uydurma içerik gösterilmez.
 /// TV tuvali 960×540 dp (Android TV tasarım ölçüsü); içerik dikey kayar.
 /// Ray, alt menü ve Geri kök kabuktadır (RootShell).
@@ -33,9 +35,13 @@ class HomePage extends StatelessWidget {
     this.onNavigate,
     this.onWatch,
     this.onGuide,
+    this.frames,
   });
 
   final HomeContent content;
+
+  /// Kanalların yayından alınmış kareleri (kart ve vitrin görseli); yoksa logo.
+  final FrameStore? frames;
 
   /// Önizleme: vitrin düğmesini odakta çiz (gerçek odak yerine).
   final bool previewFocus;
@@ -56,7 +62,26 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final frames = this.frames;
+    if (frames == null) return _build(context);
+    return ListenableBuilder(listenable: frames, builder: (context, _) => _build(context));
+  }
+
+  /// Kartın görseli: yayın karesi; yoksa kanal logosu.
+  Widget _artwork(LiveChannel c, double width, double dpr) => switch (frames?.frameOf(c)) {
+    final jpeg? => Image.memory(
+      jpeg,
+      fit: BoxFit.cover,
+      // Tam boy kare (1080p) zayıf TV belleğinde kart boyuna küçültülerek çözülür.
+      cacheWidth: (width * dpr).round(),
+      gaplessPlayback: true,
+    ),
+    null => ChannelLogo(name: c.name, logoUrl: c.logoUrl),
+  };
+
+  Widget _build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     final gutter = metrics.gutter;
     // Telefonda raf başına görünen kart: dört kart sığmaz, yazılar kesilir.
     final phone = metrics.formFactor == FormFactor.phone;
@@ -112,6 +137,7 @@ class HomePage extends StatelessWidget {
               if (hero != null)
                 HeroBanner(
                   hero: hero,
+                  frame: frames?.frameOf(hero.channel),
                   primaryFocused: previewFocus ? true : null,
                   onWatch: () => onWatch?.call(hero.channel),
                   onGuide: onGuide,
@@ -140,7 +166,7 @@ class HomePage extends StatelessWidget {
                           genre: c.genre,
                           progress: c.progress ?? 0,
                           accent: c.accent,
-                          artwork: ChannelLogo(name: c.name, logoUrl: c.logoUrl),
+                          artwork: _artwork(c, card, dpr),
                           onPressed: () => onWatch?.call(c),
                         ),
                       ),

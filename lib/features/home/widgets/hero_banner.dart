@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/form_factor.dart';
@@ -18,9 +19,12 @@ import '../home_content.dart';
 /// ışık (DESIGN.md "Chromatic Backlight Flares"; zip'teki tasarımın hero hâlesi).
 /// "Çoklu ekrana ekle" 2x2 ekran yazılana kadar gösterilmez.
 class HeroBanner extends StatelessWidget {
-  const HeroBanner({super.key, required this.hero, this.primaryFocused, this.onWatch, this.onGuide});
+  const HeroBanner({super.key, required this.hero, this.primaryFocused, this.onWatch, this.onGuide, this.frame});
 
   final HomeHero hero;
+
+  /// Yayından alınmış kare (JPEG): arka plan; yoksa düz renk geçişi.
+  final Uint8List? frame;
 
   /// "Canlı yayına gir": kanalı tam ekran açar.
   final VoidCallback? onWatch;
@@ -67,7 +71,12 @@ class HeroBanner extends StatelessWidget {
         borderRadius: radius,
         child: Stack(
           children: [
-            Positioned.fill(child: ArtworkFallback(name: hero.channelName, showInitials: false)),
+            Positioned.fill(
+              child: switch (frame) {
+                final jpeg? => Image.memory(jpeg, fit: BoxFit.cover, gaplessPlayback: true),
+                null => ArtworkFallback(name: hero.channelName, showInitials: false),
+              },
+            ),
             // Okunurluk: alttan ve soldan obsidyen perde.
             const Positioned.fill(
               child: DecoratedBox(

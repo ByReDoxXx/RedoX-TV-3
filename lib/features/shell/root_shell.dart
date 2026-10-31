@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/watch_history.dart';
+import '../../core/playback/frame_grabber.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/navigation/destinations.dart';
 import '../../core/navigation/double_back_to_exit.dart';
@@ -28,6 +29,7 @@ class RootShell extends StatefulWidget {
     required this.tv,
     this.home,
     this.history,
+    this.frames,
     this.initial = AppSection.home,
     this.previewFocus = false,
     this.engineFactory,
@@ -41,6 +43,9 @@ class RootShell extends StatefulWidget {
 
   /// İzleme geçmişi (Anasayfa "Son izlenen kanallar"); null ise geçmiş yok.
   final WatchHistory? history;
+
+  /// Kanalların yayından alınan kareleri (Anasayfa kartları); null ise logo.
+  final FrameStore? frames;
 
   /// Yayın akışı olmadığında (tasarım önizlemesi) başlıkta gösterilen saat.
   static const previewClock = '20:45';
@@ -72,8 +77,36 @@ class _RootShellState extends State<RootShell> {
         _section = section;
         _tvView = tvView;
       });
+      _syncFrames();
     }
   }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.history?.addListener(_syncFrames);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncFrames());
+  }
+
+  @override
+  void dispose() {
+    widget.history?.removeListener(_syncFrames);
+    super.dispose();
+  }
+
+  /// Kareler yalnız Anasayfa görünürken alınır (vitrin önce); başka bölümde
+  /// ve kanal izlenirken durur.
+  void _syncFrames() {
+    final frames = widget.frames;
+    if (frames == null || !mounted) return;
+    if (_section == AppSection.home && !_watching) {
+      frames.request(_home.channels);
+    } else {
+      frames.pause();
+    }
+  }
+
+  bool _watching = false;
 
   bool _onBack() {
     if (_section == AppSection.home) return false;
@@ -104,16 +137,25 @@ class _RootShellState extends State<RootShell> {
 
   /// Kanalı tam ekran açar; görüntü gelince geçmişe yazılır. Oynatıcıda ▲▼
   /// bütün kanallarda gezer (kategori süzgecinden bağımsız).
-  Future<void> _watch(BuildContext context, LiveChannel c) => Navigator.of(context).push(
-    PlayerPage.route(
-      channels: widget.tv.channels,
-      initialIndex: widget.tv.channels.indexOf(c),
-      clock: _clock,
-      engineFactory: widget.engineFactory,
-      rank: widget.rank,
-      onWatched: (watched) => widget.history?.record(watched.number),
-    ),
-  );
+  Future<void> _watch(BuildContext context, LiveChannel c) async {
+    _watching = true;
+    _syncFrames();
+    try {
+      await Navigator.of(context).push(
+        PlayerPage.route(
+          channels: widget.tv.channels,
+          initialIndex: widget.tv.channels.indexOf(c),
+          clock: _clock,
+          engineFactory: widget.engineFactory,
+          rank: widget.rank,
+          onWatched: (watched) => widget.history?.record(watched.number),
+        ),
+      );
+    } finally {
+      _watching = false;
+      _syncFrames();
+    }
+  }
 
   Widget _page(BuildContext context) => switch (_section) {
     AppSection.home => ListenableBuilder(
@@ -125,6 +167,7 @@ class _RootShellState extends State<RootShell> {
         onNavigate: _go,
         onWatch: (c) => _watch(context, c),
         onGuide: () => _go(AppSection.tv, tvView: TvView.epg),
+        frames: widget.frames,
       ),
     ),
     AppSection.tv => TvPage(

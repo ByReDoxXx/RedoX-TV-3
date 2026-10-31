@@ -182,6 +182,13 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
   - **Kısayol halkaları:** uygulamanın bölümleri (TV, Radyo, Film, Dizi, Favori, 2x2 Ekran, Kaynaklar), ortada büyük ikon; kısa adlar ("Televizyon" halkanın altına sığmıyordu).
   - **"Son izlenen kanallar":** izleme geçmişi (`WatchHistory`, en çok 12 kanal, cihazda `shared_preferences` 2.5.6 ile saklanır). Kanal oynatıcıda görüntü verince yazılır (`PlayerPage.onWatched`), açılmayan kanal yazılmaz. Geçmiş boşsa raf "Ulusal kanallar". Odaktaki kart ortalanır (`CenterOnFocus`).
   - Dizi, film ve radyo rafları o bölümler yazılınca gelecek; veri kaynağı olmadan uydurma içerik gösterilmez.
+  - **Yayından gerçek kare (kullanıcı isteği: "yayının oynamasına gerek yok, bir kare alsa yeter").** Raftaki kartların ve vitrinin görseli kanalın yayınından alınan karedir (`FrameStore`, `grabFrame`); alınamazsa logo.
+    - Ayrı ve sessiz bir mpv kareyi dosyaya yazar (`vo=image`, JPEG %80) ve ilk kareden sonra durur (`frames=1`); çözücü yazılımsaldır (`hwdec=no`). Dosya geçici klasörden okunup silinir.
+    - Denenip bırakılanlar: `vo=null` + `screenshot-raw` (kare saklanmadığı için boş döndü, Chromecast'te görüldü); oynatıcının kendi ekran görüntüsü (kopyasız çizimde kare belleğe inmez); TV+ program görselleri (gerçek kare değil, kullanıcı istemedi).
+    - Kareler sırayla, tek tek alınır; yalnız Anasayfa görünürken (vitrin önce), bir kanal izlenirken ve başka bölümde durur (zayıf TV'de oynatmayla yarışmasın). Kare 10 dk tazedir; bellekte tutulur, cihaza yazılmaz (uygulama açılınca yeniden alınır).
+    - Kart, kareyi kart boyunda çözer (`cacheWidth`): 1080p JPEG zayıf TV belleğinde tam boy açılmaz.
+    - Chromecast'te: TRT 1'in karesi açılıştan ~10 sn sonra geldi (~115 KB); vitrin arka planında ve kartta göründü.
+    - Kanıt: `test/core/playback/frame_store_test.dart` (sıra, ikinci akış, tazelik, durdurma), `home_content_test.dart` (vitrinde kare, izlerken kare alınmaz).
   - Anasayfa verisi kök kabukta kanal listesinden türer (`HomeContent.from`): Anasayfa, Televizyon modülüne bağımlı değil.
   - Kanıt: `test/features/home/home_content_test.dart` (türetme, kalan süre, geçmişin saklanması, düğmeler), `home_page_test.dart`. Gerçek TV'de doğrulandı (Chromecast with Google TV, 2026-11-01): açılışta gerçek saat ve TRT 1'in şimdiki programı, "Canlı yayına gir" ile o program açıldı, dönüşte "Son izlenen kanallar" rafında TRT 1, "Yayın akışı" gerçek verili çizelgeyi açtı.
 - **Televizyon sayfası (kullanıcı isteği, 2026-10-31).** Üstte sayılı kategori çipleri ve görünüm anahtarı, altta seçili görünüm. Kullanıcının Stitch referansından esinlenildi, aynısı değil. Teknik panel, numara tuş takımı ve ipucu şeridi alınmadı.
