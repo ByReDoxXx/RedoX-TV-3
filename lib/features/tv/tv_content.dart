@@ -29,6 +29,16 @@ class TvContent {
   /// şifreli paketten gelir (ChannelSource).
   factory TvContent.fromM3u(String text) => TvContent(channels: M3uParser.parse(text));
 
+  /// Yalnız bu kategorinin kanalları (çocuk profili); akış ve saat korunur.
+  TvContent only(String category) => TvContent(
+    channels: [
+      for (final c in channels)
+        if (c.category == category) c,
+    ],
+    guide: guide,
+    now: now,
+  );
+
   /// Çip sırası (eski sürümdeki gibi sabit); listede olmayan kategoriler
   /// sonda, ilk görülme sırasıyla.
   static const categoryOrder = [

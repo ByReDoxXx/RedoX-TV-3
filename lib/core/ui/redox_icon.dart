@@ -44,7 +44,11 @@ enum RedoxIcons {
   aspectRatio('aspect_ratio', 'Ölçek'),
   quality('hd', 'Kalite'),
   close('close', 'Kapat'),
-  check('check', 'Seçili');
+  check('check', 'Seçili'),
+  add('add', 'Ekle'),
+  edit('edit', 'Düzenle'),
+  backspace('backspace', 'Sil'),
+  kids('child_care', 'Çocuk');
 
   const RedoxIcons(this.symbol, this.label);
 
@@ -54,19 +58,12 @@ enum RedoxIcons {
   /// Türkçe görünen ad (erişilebilirlik etiketi olarak da kullanılır).
   final String label;
 
-  String assetPath({required bool filled}) =>
-      'assets/icons/$symbol${filled ? '_fill1' : ''}_24px.svg';
+  String assetPath({required bool filled}) => 'assets/icons/$symbol${filled ? '_fill1' : ''}_24px.svg';
 }
 
 /// Tek renkli SVG ikon. Seçili durumda dolu biçim kullanılır.
 class RedoxIcon extends StatelessWidget {
-  const RedoxIcon(
-    this.icon, {
-    super.key,
-    this.filled = false,
-    this.size = 24,
-    required this.color,
-  });
+  const RedoxIcon(this.icon, {super.key, this.filled = false, this.size = 24, required this.color});
 
   final RedoxIcons icon;
   final bool filled;

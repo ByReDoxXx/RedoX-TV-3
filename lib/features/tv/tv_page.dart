@@ -42,6 +42,8 @@ class TvPage extends StatefulWidget {
     required this.profileName,
     this.onHome,
     this.onMore,
+    this.onProfile,
+    this.kids = false,
     this.onChannel,
     this.engineFactory,
     this.rank,
@@ -57,6 +59,12 @@ class TvPage extends StatefulWidget {
 
   /// Telefonda "Diğer" düğmesine basılınca.
   final VoidCallback? onMore;
+
+  /// Başlıktaki profil hapı (profil değiştir).
+  final VoidCallback? onProfile;
+
+  /// Çocuk profili (başlıkta çocuk ikonu).
+  final bool kids;
 
   /// Kanal tam ekranda izlenmek istenince; tam ekran kapanınca tamamlanır
   /// (önizleme o zaman sürer).
@@ -167,6 +175,8 @@ class _TvPageState extends State<TvPage> {
       profileName: widget.profileName,
       onHome: widget.onHome,
       onMore: widget.onMore,
+      onProfile: widget.onProfile,
+      kids: widget.kids,
     );
     final phone = !TvPage.hasPreview(metrics.formFactor);
     if (phone && _view == TvView.cards) {

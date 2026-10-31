@@ -44,6 +44,9 @@ abstract final class AppDestinations {
   ];
   static const railFooterSections = [AppSection.settings];
 
+  /// Çocuk profili: Anasayfa ve Televizyon; Ayarlar yok.
+  static const kidsRailSections = [AppSection.home, AppSection.tv];
+
   /// Telefon alt menüsü (kullanıcı isteği): Anasayfa yok (başlıktaki logo
   /// Anasayfa'ya götürür), Kumanda "Diğer" sayfasında. Beş öğe (M3 sınırı).
   static const phoneBarSections = [
@@ -58,18 +61,33 @@ abstract final class AppDestinations {
   /// Kumanda burada (kullanıcı isteği: başlıkta göze batıyordu).
   static const phoneMoreSections = [AppSection.splitScreen, AppSection.sources, AppSection.remote, AppSection.settings];
 
+  /// Çocuk profilinde telefonda alt menü yoktur; "Diğer" sayfasında
+  /// Televizyon durur.
+  static const kidsPhoneMoreSections = [AppSection.tv];
+
   static final main = [for (final s in railSections) NavRailItem(s.icon, s.label)];
   static final footer = [for (final s in railFooterSections) NavRailItem(s.icon, s.label)];
   static final phoneBar = [for (final s in phoneBarSections) NavRailItem(s.icon, s.shortLabel)];
   static final phoneMore = [for (final s in phoneMoreSections) NavRailItem(s.icon, s.label)];
 
+  static List<NavRailItem> items(List<AppSection> sections) => [for (final s in sections) NavRailItem(s.icon, s.label)];
+
   /// Bölümün raydaki dizini (ana bölümler, sonra alt bölüm).
-  static int railIndexOf(AppSection section) {
-    final i = railSections.indexOf(section);
-    return i >= 0 ? i : railSections.length + railFooterSections.indexOf(section);
+  static int railIndexOf(
+    AppSection section, {
+    List<AppSection> main = railSections,
+    List<AppSection> footer = railFooterSections,
+  }) {
+    final i = main.indexOf(section);
+    if (i >= 0) return i;
+    final j = footer.indexOf(section);
+    return j >= 0 ? main.length + j : -1;
   }
 
   /// Raydaki dizinin bölümü.
-  static AppSection railSectionAt(int index) =>
-      index < railSections.length ? railSections[index] : railFooterSections[index - railSections.length];
+  static AppSection railSectionAt(
+    int index, {
+    List<AppSection> main = railSections,
+    List<AppSection> footer = railFooterSections,
+  }) => index < main.length ? main[index] : footer[index - main.length];
 }

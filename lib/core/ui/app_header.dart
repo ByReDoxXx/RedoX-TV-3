@@ -7,6 +7,7 @@ import '../theme/redox_colors.dart';
 import '../theme/redox_metrics.dart';
 import '../theme/redox_shapes.dart';
 import '../theme/redox_type.dart';
+import 'focus_glow.dart';
 import 'header_search.dart';
 import 'icon_action_button.dart';
 import 'redox_icon.dart';
@@ -20,7 +21,15 @@ import 'redox_icon.dart';
 /// profil sığmaz (saat zaten durum çubuğunda): arama ve [onMore]
 /// (alt menüye sığmayan bölümler) ikon düğmeleri gösterilir.
 class AppHeader extends StatelessWidget {
-  const AppHeader({super.key, required this.clock, required this.profileName, this.onMore, this.onHome});
+  const AppHeader({
+    super.key,
+    required this.clock,
+    required this.profileName,
+    this.onMore,
+    this.onHome,
+    this.onProfile,
+    this.kids = false,
+  });
 
   /// Logo işareti: TV/tablet 44 dp. Telefonda 56 dp (kullanıcı isteği:
   /// biraz büyüsün); başlıkta yer var, dokunma hedefi de 48'i aşar.
@@ -36,6 +45,12 @@ class AppHeader extends StatelessWidget {
   /// Telefonda logoya dokununca Anasayfa'ya gidilir (alt menüde Anasayfa
   /// yoktur; kullanıcı isteği).
   final VoidCallback? onHome;
+
+  /// Profil hapına basılınca: "Kim izliyor?" ekranı (profil değiştir).
+  final VoidCallback? onProfile;
+
+  /// Çocuk profili: hapta çocuk ikonu.
+  final bool kids;
 
   @override
   Widget build(BuildContext context) {
@@ -72,22 +87,43 @@ class AppHeader extends StatelessWidget {
         const SizedBox(width: 16),
         const Expanded(child: HeaderSearch()),
         const SizedBox(width: 16),
-        _Pill(
-          padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(color: RedoxRoles.primaryContainer, shape: BoxShape.circle),
-                child: const Center(
-                  child: RedoxIcon(RedoxIcons.profile, filled: true, color: RedoxRoles.onPrimaryContainer, size: 20),
+        FocusGlow(
+          borderRadius: BorderRadius.circular(RedoxRadius.full),
+          builder: (context, active) => Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: onProfile,
+              borderRadius: BorderRadius.circular(RedoxRadius.full),
+              focusColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              child: Semantics(
+                button: true,
+                label: 'Profil değiştir',
+                child: _Pill(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(color: RedoxRoles.primaryContainer, shape: BoxShape.circle),
+                        child: Center(
+                          child: RedoxIcon(
+                            kids ? RedoxIcons.kids : RedoxIcons.profile,
+                            filled: true,
+                            color: RedoxRoles.onPrimaryContainer,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(profileName, style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(profileName, style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
-            ],
+            ),
           ),
         ),
         const SizedBox(width: 12),

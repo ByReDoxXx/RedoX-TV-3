@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/profiles.dart';
 import '../../core/content/watch_history.dart';
 import '../../core/playback/frame_grabber.dart';
 import '../../core/layout/form_factor.dart';
@@ -11,6 +12,7 @@ import '../../core/navigation/more_sheet.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/bottom_nav_bar.dart';
 import '../../core/ui/nav_rail.dart';
+import '../../core/ui/redox_icon.dart';
 import '../home/home_content.dart';
 import '../home/home_page.dart';
 import '../../core/playback/engine/playback_engine.dart';
@@ -34,7 +36,17 @@ class RootShell extends StatefulWidget {
     this.previewFocus = false,
     this.engineFactory,
     this.rank,
+    this.profile,
+    this.onSwitchProfile,
   });
+
+  /// İzleyen profil; null ise varsayılan ad ("Profil 1"), çocuk kipi kapalı.
+  /// Çocuk profilinde yalnız Çocuk kategorisi görünür, rayda Anasayfa ve
+  /// Televizyon kalır, Ayarlar yoktur.
+  final Profile? profile;
+
+  /// Başlıktaki profil hapı: "Kim izliyor?" ekranına döner.
+  final VoidCallback? onSwitchProfile;
 
   /// Anasayfa içeriği; null ise kanal listesinden ve izleme geçmişinden
   /// türetilir (HomeContent.from).
@@ -114,14 +126,38 @@ class _RootShellState extends State<RootShell> {
     return true;
   }
 
-  void _showMore(BuildContext context) => showMoreSheet(
-    context,
-    items: AppDestinations.phoneMore,
-    onSelected: (i) => _go(AppDestinations.phoneMoreSections[i]),
-  );
+  bool get _kids => widget.profile?.kids ?? false;
+
+  /// Görünen kanallar: çocuk profilinde yalnız Çocuk kategorisi (oynatıcıda
+  /// ▲▼ de bunlarda gezer).
+  late TvContent _tv = _visible();
+
+  TvContent _visible() => _kids ? widget.tv.only(Profile.kidsCategory) : widget.tv;
+
+  @override
+  void didUpdateWidget(RootShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tv != widget.tv || oldWidget.profile != widget.profile) _tv = _visible();
+  }
+
+  List<AppSection> get _rail => _kids ? AppDestinations.kidsRailSections : AppDestinations.railSections;
+  List<AppSection> get _footer => _kids ? const [] : AppDestinations.railFooterSections;
+  List<AppSection> get _more => _kids ? AppDestinations.kidsPhoneMoreSections : AppDestinations.phoneMoreSections;
+
+  /// Telefonda "Diğer": bölümler ve en altta "Profil değiştir".
+  void _showMore(BuildContext context) {
+    final sections = _more;
+    showMoreSheet(
+      context,
+      items: [...AppDestinations.items(sections), if (widget.onSwitchProfile != null) _switchItem],
+      onSelected: (i) => i < sections.length ? _go(sections[i]) : widget.onSwitchProfile?.call(),
+    );
+  }
+
+  static const _switchItem = NavRailItem(RedoxIcons.profile, 'Profil değiştir');
 
   /// Başlık saati: yayın akışının "şimdi"si (gerçek saat); önizlemede örnek saat.
-  String get _clock => switch (widget.tv.nowMinute) {
+  String get _clock => switch (_tv.nowMinute) {
     final m? => EpgProgram.formatClock(m),
     null => RootShell.previewClock,
   };
@@ -129,10 +165,12 @@ class _RootShellState extends State<RootShell> {
   HomeContent get _home =>
       widget.home ??
       HomeContent.from(
-        channels: widget.tv.channels,
+        channels: _tv.channels,
         recent: widget.history?.value ?? const [],
         clock: _clock,
-        nowMinute: widget.tv.nowMinute,
+        nowMinute: _tv.nowMinute,
+        profileName: widget.profile?.name ?? 'Profil 1',
+        kids: _kids,
       );
 
   /// Kanalı tam ekran açar; görüntü gelince geçmişe yazılır. Oynatıcıda ▲▼
@@ -143,8 +181,8 @@ class _RootShellState extends State<RootShell> {
     try {
       await Navigator.of(context).push(
         PlayerPage.route(
-          channels: widget.tv.channels,
-          initialIndex: widget.tv.channels.indexOf(c),
+          channels: _tv.channels,
+          initialIndex: _tv.channels.indexOf(c),
           clock: _clock,
           engineFactory: widget.engineFactory,
           rank: widget.rank,
@@ -168,14 +206,19 @@ class _RootShellState extends State<RootShell> {
         onWatch: (c) => _watch(context, c),
         onGuide: () => _go(AppSection.tv, tvView: TvView.epg),
         frames: widget.frames,
+        onMore: () => _showMore(context),
+        onProfile: widget.onSwitchProfile,
+        kids: _kids,
       ),
     ),
     AppSection.tv => TvPage(
-      content: widget.tv,
+      content: _tv,
       clock: _clock,
       profileName: _home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
+      kids: _kids,
       engineFactory: widget.engineFactory,
       rank: widget.rank,
       initialView: _tvView,
@@ -190,7 +233,8 @@ class _RootShellState extends State<RootShell> {
     return DoubleBackToExit(
       onBack: _onBack,
       child: Scaffold(
-        bottomNavigationBar: phone
+        // Çocuk profilinde alt menü yok (bölümler "Diğer" sayfasında).
+        bottomNavigationBar: phone && !_kids
             ? RedoxBottomBar(
                 items: AppDestinations.phoneBar,
                 // Anasayfa ve "Diğer" bölümleri çubukta yoktur: seçili öğe yok.
@@ -214,10 +258,10 @@ class _RootShellState extends State<RootShell> {
                 top: 0,
                 bottom: 0,
                 child: RedoxNavRail(
-                  items: AppDestinations.main,
-                  footer: AppDestinations.footer,
-                  selectedIndex: AppDestinations.railIndexOf(_section),
-                  onSelected: (i) => _go(AppDestinations.railSectionAt(i)),
+                  items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
+                  footer: _kids ? const [] : AppDestinations.footer,
+                  selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
+                  onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
                 ),
               ),
           ],

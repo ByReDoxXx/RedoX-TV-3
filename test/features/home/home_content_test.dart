@@ -168,12 +168,23 @@ void main() {
     test('cihazda saklanır ve yeniden okunur', () async {
       SharedPreferences.setMockInitialValues({});
       final first = await WatchHistory.load();
-      first
+      first('p1')
         ..record(6)
         ..record(3);
+      first('cocuk').record(9);
       await pumpEventQueue();
       final again = await WatchHistory.load();
-      expect(again.value, [3, 6]);
+      expect(again('p1').value, [3, 6]);
+      expect(again('cocuk').value, [9], reason: 'her profilin geçmişi ayrı');
+    });
+
+    test('profillerden önceki tek liste ilk profile geçer', () async {
+      SharedPreferences.setMockInitialValues({
+        'izlenen_kanallar': ['4', '2'],
+      });
+      final load = await WatchHistory.load();
+      expect(load('p1').value, [4, 2]);
+      expect(load('cocuk').value, isEmpty);
     });
   });
 

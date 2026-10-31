@@ -65,24 +65,28 @@ class HomeContent {
   });
 
   /// Kanal listesinden: geçmişte izlenen kanallar (sırayla) ve vitrinde en
-  /// son izlenen. Geçmiş boşsa ulusal kanallar ve ilk ulusal kanal.
+  /// son izlenen. Geçmiş boşsa ulusal kanallar ve ilk ulusal kanal; ulusal
+  /// kanal yoksa (çocuk profili) listenin başı. Çocuk profilinde kısayol
+  /// yalnız Televizyon'dur.
   factory HomeContent.from({
     required List<LiveChannel> channels,
     required List<int> recent,
     required String clock,
     int? nowMinute,
     String profileName = 'Profil 1',
+    bool kids = false,
   }) {
     final byNumber = {for (final c in channels) c.number: c};
     final watched = [for (final n in recent) ?byNumber[n]];
     final national = channels.where((c) => c.category == 'Ulusal').take(shelfSize).toList();
-    final shelf = watched.isNotEmpty ? watched.take(shelfSize).toList() : national;
+    final fallback = national.isNotEmpty ? national : channels.take(shelfSize).toList();
+    final shelf = watched.isNotEmpty ? watched.take(shelfSize).toList() : fallback;
     final featured = shelf.firstOrNull ?? channels.firstOrNull;
     return HomeContent(
       profileName: profileName,
       clock: clock,
       hero: featured == null ? null : HomeHero.of(featured, nowMinute: nowMinute ?? EpgProgram.parseClock(clock)),
-      shortcuts: shortcutSections,
+      shortcuts: kids ? kidsShortcutSections : shortcutSections,
       channels: shelf,
       fromHistory: watched.isNotEmpty,
     );
@@ -102,6 +106,9 @@ class HomeContent {
     AppSection.splitScreen,
     AppSection.sources,
   ];
+
+  /// Çocuk profilinde tek bölüm Televizyon'dur (yalnız Çocuk kategorisi).
+  static const kidsShortcutSections = [AppSection.tv];
 
   final String profileName;
   final String clock;

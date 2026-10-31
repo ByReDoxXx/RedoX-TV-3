@@ -15,11 +15,18 @@ class WatchHistory extends ValueNotifier<List<int>> {
 
   final Future<void> Function(List<int>)? _save;
 
-  /// Cihazdaki geçmişi okur.
-  static Future<WatchHistory> load() async {
+  /// Cihazdaki geçmişler: her profilin ayrı listesi. Dönen işlev profilin
+  /// geçmişini verir (aynı profil için hep aynı nesne). Profiller gelmeden
+  /// önceki tek liste ilk profile ('p1') geçer.
+  static Future<WatchHistory Function(String profileId)> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = [for (final s in prefs.getStringList(_key) ?? const <String>[]) ?int.tryParse(s)];
-    return WatchHistory(saved, (list) => prefs.setStringList(_key, [for (final n in list) '$n']));
+    final cache = <String, WatchHistory>{};
+    return (id) => cache[id] ??= () {
+      final key = '${_key}_$id';
+      final raw = prefs.getStringList(key) ?? (id == 'p1' ? prefs.getStringList(_key) : null);
+      final saved = [for (final s in raw ?? const <String>[]) ?int.tryParse(s)];
+      return WatchHistory(saved, (list) => prefs.setStringList(key, [for (final n in list) '$n']));
+    }();
   }
 
   /// Kanalı başa alır (listede varsa yeri değişir).

@@ -276,6 +276,17 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
     - Windows derlemesi denenmedi: proje D:, pub önbelleği C: sürücüsünde olduğu için eklenti bağlantısı (symlink) kurulamıyor. Windows'ta Geliştirici Modu gerekir.
   - **2. aşama:** 15 sn geri sarma ve Canlıya dön, favori, kanalı gizle, gece modu, PiP, 2×2, bit hızı/düşen kare, çalışan akışı kanal başına hatırlama, telefon hareketleri ve mini oynatıcı.
 
+- **Profil seçimi "Kim izliyor?" ve çocuk profili (`ProfilePickerPage`, `ProfileStore`; kullanıcı isteği, 2026-11-01).** Kullanıcı YouTube TV'nin profil ekranını referans verdi ("fotoğraftaki tasarımı kullanabiliriz, çocuk profili yapmayı unutma").
+  - **Ne zaman:** her açılışta (kullanıcı seçimi). Başlıktaki profil hapı (TV/tablet) ve telefonda "Diğer" → "Profil değiştir" bu ekrana döner. Profil hapından gelindiyse Geri önceki profile döner.
+  - **Görünüm (referanstan):** gece laciverti zeminde sağ alttan kızıl/amber ışıma; üstte logo işareti, "Kim izliyor?" (headlineLarge). Solda küçük "+" dairesi (profil ekle), sağında büyük renkli daireler (TV 112 dp, telefon 84 dp) ve adın Türkçe büyük baş harfi ("i" → "İ"). Odaktaki profilde beyaz halka, büyüme ve beyaz ad. Düzenleme düğmesi yalnız seçili profilin altında; odak düğmeye inse de yerinde kalır. Telefonda profiller satırlara sarılır, "+" sonda.
+  - **Avatar renkleri:** marka tonları (kızıl `#D7232C`, kor `#C75300`, altın kabı `#936700`) ve ayırt edilsin diye üç soğuk ton (mor `#6B3FA0`, deniz yeşili `#00796B`, mavi `#1E5BB8`); beyaz harf hepsinde okunur. Çocuk profilinde sağ altta altın rozet (çocuk ikonu).
+  - **İlk açılış:** "Profil 1" ve "Çocuk". En çok 6 profil; son yetişkin profili silinemez.
+  - **Çocuk kipi (kullanıcı seçimi: yalnız Çocuk kategorisi):** kanallar `TvContent.only('Çocuk')` ile süzülür; oynatıcıda ▲▼ de bunlarda gezer. Rayda yalnız Anasayfa ve Televizyon, Ayarlar yok. Telefonda alt menü yok; "Diğer"de Televizyon ve "Profil değiştir". Anasayfa kısayolu yalnız Televizyon; raf ulusal kanal yerine listenin başı.
+  - **Ebeveyn PIN'i (kullanıcı seçimi: 4 hane):** çocuk profili PIN yokken ilk açılışta iki kez girilerek belirlenir. Son profil çocuk profiliyse yetişkin profiline geçmek PIN ister; böylece çocuk ne profil hapından ne de uygulamayı kapatıp açarak çıkabilir. Ekleme, düzenleme ve silme de PIN ister. PIN cihazda düz değil, rastgele 16 baytlık tuzla SHA-256 özeti olarak saklanır. Pencerede ekran tuş takımı var; kumandanın ve klavyenin rakam tuşları da çalışır.
+  - **Geçmiş profil başına:** her profilin "Son izlenen kanallar" listesi ayrıdır (`izlenen_kanallar_<id>`). Profillerden önceki tek liste ilk profile ('p1') geçer.
+  - **Kareler önceden (kullanıcı isteği):** "uygulama açılınca anasayfadaki dinamik kanallardan alınacak fotoğraflar alınır, kullanıcı giriş yapana kadar yüklenmiş olur." Seçim ekranı dururken `FrameStore` önce son profilin, sonra diğer profillerin Anasayfa rafındaki kanalların karesini alır. Profil seçilince kabuk aynı kanalları ister; taze olanlar yeniden alınmaz.
+  - Kanıt: `profiles_test.dart`, `profile_picker_test.dart`; görüntüler `build/profiller/` (`REDOX_SNAPSHOT=1`).
+
 ## 6. Logo
 
 **Kaynak:** kullanıcının Logo-3'ü (alevli boğa, koyu lacivert zemin; kullanıcı isteği, 2026-11-01: "yeni logomuz"), `assets/brand/redox-logo-source.jpg` (2000 px). Önceki logolar (Logo-1, Logo-2: geometrik kızıl boğa, siyah zemin) git geçmişinde.

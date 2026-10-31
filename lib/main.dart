@@ -9,6 +9,7 @@ import 'core/content/channel_source.dart';
 import 'core/content/data_pack.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
+import 'core/content/profiles.dart';
 import 'core/content/watch_history.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/layout/form_factor.dart';
@@ -40,8 +41,10 @@ Future<void> main() async {
   unawaited(tv.start());
   // Kanal açılırken akışlar yoklanır: hızlı açılanlar içinde bit hızı en
   // yüksek olan önde (StreamProbe).
-  // Son izlenen kanallar cihazda saklanır.
+  // Profiller ve her profilin son izlenen kanalları cihazda saklanır.
+  final profiles = await ProfileStore.load();
   final history = await WatchHistory.load();
-  // Anasayfa kartlarında yayından gerçek kare (FrameStore).
-  runApp(RedoxApp(tv: tv, history: history, frames: FrameStore(), rank: StreamProbe().rank));
+  // Anasayfa kartlarında yayından gerçek kare (FrameStore); "Kim izliyor?"
+  // ekranı dururken alınmaya başlar.
+  runApp(RedoxApp(tv: tv, profiles: profiles, history: history, frames: FrameStore(), rank: StreamProbe().rank));
 }

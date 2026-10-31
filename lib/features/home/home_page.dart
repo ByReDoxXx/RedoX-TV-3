@@ -36,7 +36,19 @@ class HomePage extends StatelessWidget {
     this.onWatch,
     this.onGuide,
     this.frames,
+    this.onMore,
+    this.onProfile,
+    this.kids = false,
   });
+
+  /// Telefonda "Diğer" düğmesi; null ise bölümlerin "Diğer" sayfası.
+  final VoidCallback? onMore;
+
+  /// Başlıktaki profil hapı (profil değiştir).
+  final VoidCallback? onProfile;
+
+  /// Çocuk profili (başlıkta çocuk ikonu).
+  final bool kids;
 
   final HomeContent content;
 
@@ -99,11 +111,15 @@ class HomePage extends StatelessWidget {
               AppHeader(
                 clock: content.clock,
                 profileName: content.profileName,
-                onMore: () => showMoreSheet(
-                  context,
-                  items: AppDestinations.phoneMore,
-                  onSelected: (i) => onNavigate?.call(AppDestinations.phoneMoreSections[i]),
-                ),
+                onProfile: onProfile,
+                kids: kids,
+                onMore:
+                    onMore ??
+                    () => showMoreSheet(
+                      context,
+                      items: AppDestinations.phoneMore,
+                      onSelected: (i) => onNavigate?.call(AppDestinations.phoneMoreSections[i]),
+                    ),
                 // Zaten Anasayfadayız: başa kaydırır.
                 onHome: () =>
                     PrimaryScrollController.maybeOf(context)
