@@ -13,6 +13,11 @@ dependencies:
   # Tonal paletler çalışma anında tohumlardan hesaplanır (HCT). Sürüm Flutter
   # SDK'nın sabitlediği sürümle aynıdır.
   material_color_utilities: 0.13.0
+  # Oynatıcı: libmpv tabanlı; Android/Android TV, Windows ve Linux'ta HLS
+  # (m3u8) ve MPEG-TS oynatır (video_player Windows/Linux'u desteklemiyor).
+  media_kit: 1.2.6
+  media_kit_video: 2.0.1
+  media_kit_libs_video: 1.0.7
 
 dev_dependencies:
   flutter_test:

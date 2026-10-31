@@ -9,6 +9,7 @@ import '../../core/ui/bottom_nav_bar.dart';
 import '../../core/ui/nav_rail.dart';
 import '../home/home_content.dart';
 import '../home/home_page.dart';
+import '../player/engine/playback_engine.dart';
 import '../player/player_page.dart';
 import '../tv/tv_content.dart';
 import '../tv/tv_page.dart';
@@ -24,6 +25,7 @@ class RootShell extends StatefulWidget {
     required this.tv,
     this.initial = AppSection.home,
     this.previewFocus = false,
+    this.engineFactory,
   });
 
   final HomeContent home;
@@ -32,6 +34,9 @@ class RootShell extends StatefulWidget {
 
   /// Önizleme görüntüleri: Anasayfa vitrin düğmesini odakta çiz.
   final bool previewFocus;
+
+  /// Oynatma motoru; null ise media_kit (testlerde sahte motor).
+  final PlaybackEngine Function()? engineFactory;
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -64,7 +69,15 @@ class _RootShellState extends State<RootShell> {
       profileName: widget.home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
-      onChannel: (c) => Navigator.of(context).push(PlayerPage.route(c)),
+      // Oynatıcıda ▲▼ bütün kanallarda gezer (kategori süzgecinden bağımsız).
+      onChannel: (c) => Navigator.of(context).push(
+        PlayerPage.route(
+          channels: widget.tv.channels,
+          initialIndex: widget.tv.channels.indexOf(c),
+          clock: widget.home.clock,
+          engineFactory: widget.engineFactory,
+        ),
+      ),
     ),
     _ => SectionPlaceholder(section: _section),
   };
@@ -89,7 +102,10 @@ class _RootShellState extends State<RootShell> {
           fit: StackFit.expand,
           children: [
             // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
-            KeyedSubtree(key: ValueKey(_section), child: Builder(builder: _page)),
+            KeyedSubtree(
+              key: ValueKey(_section),
+              child: Builder(builder: _page),
+            ),
             if (!phone)
               Positioned(
                 left: 0,

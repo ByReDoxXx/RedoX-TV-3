@@ -17,6 +17,7 @@ import 'package:redox_tv/features/tv/tv_page.dart';
 import 'package:redox_tv/features/tv/widgets/channel_preview.dart';
 import 'package:redox_tv/features/tv/widgets/epg_grid.dart';
 
+import '../../support/fake_engine.dart';
 import '../../support/render.dart';
 
 Widget _app(FormFactor f, {Key? boundary}) => MaterialApp(
@@ -24,7 +25,13 @@ Widget _app(FormFactor f, {Key? boundary}) => MaterialApp(
   theme: RedoxTheme.dark(formFactor: f),
   home: RepaintBoundary(
     key: boundary,
-    child: const RootShell(home: HomeContent.preview, tv: TvContent.preview, initial: AppSection.tv),
+    child: RootShell(
+      home: HomeContent.preview,
+      tv: TvContent.preview,
+      initial: AppSection.tv,
+      // Yerel video kütüphanesi testte yok: sahte motor.
+      engineFactory: FakeEngine.new,
+    ),
   ),
 );
 
@@ -110,9 +117,14 @@ void main() {
     // Aynı kanalda ikinci kez: tam ekran.
     await tester.tap(find.byType(ChannelTile).at(2));
     await _settle(tester);
-    expect(tester.widget<PlayerPage>(find.byType(PlayerPage)).channel, channels[2]);
+    final player = tester.widget<PlayerPage>(find.byType(PlayerPage));
+    expect(player.channels[player.initialIndex], channels[2]);
 
-    // Geri: tam ekran kapanır, Televizyon (önizleme korunarak) kalır.
+    // Geri: önce kanal açılışında görünen çubuk kapanır, sonra oynatıcıdan
+    // çıkılır; Televizyon (önizleme korunarak) kalır.
+    await tester.binding.handlePopRoute();
+    await _settle(tester);
+    expect(find.byType(PlayerPage), findsOneWidget);
     await tester.binding.handlePopRoute();
     await _settle(tester);
     expect(find.byType(PlayerPage), findsNothing);
@@ -141,7 +153,8 @@ void main() {
       final first = TvContent.preview.channels.first;
       await tester.tap(find.bySemanticsLabel(RegExp('^${first.programTitle},')));
       await _settle(tester);
-      expect(tester.widget<PlayerPage>(find.byType(PlayerPage)).channel, first);
+      final player = tester.widget<PlayerPage>(find.byType(PlayerPage));
+      expect(player.channels[player.initialIndex], first);
     }),
   );
 

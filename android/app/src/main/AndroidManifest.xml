@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Yayınlar ağdan oynatılır (media_kit). Hata ayıklama derlemesinde
+         Flutter ekler; sürüm derlemesinde burada olmalı. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="RedoX TV"
         android:name="${applicationName}"

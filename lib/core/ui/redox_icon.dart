@@ -35,7 +35,16 @@ enum RedoxIcons {
   cardView('view_module', 'Kart görünümü'),
   epg('view_timeline', 'EPG çizelgesi'),
   chevronLeft('chevron_left', 'Sola kaydır'),
-  chevronRight('chevron_right', 'Sağa kaydır');
+  chevronRight('chevron_right', 'Sağa kaydır'),
+  sync('sync', 'Sonraki akış'),
+  moreHorizontal('more_horiz', 'Seçenekler'),
+  expandLess('expand_less', 'Yukarı'),
+  expandMore('expand_more', 'Aşağı'),
+  subtitles('subtitles', 'Altyazı'),
+  aspectRatio('aspect_ratio', 'Ölçek'),
+  quality('hd', 'Kalite'),
+  close('close', 'Kapat'),
+  check('check', 'Seçili');
 
   const RedoxIcons(this.symbol, this.label);
 

@@ -190,6 +190,22 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - **EPG çizelgesi:** solda kanal sütunu, sağda zaman ekseni ve kızıl "şimdi" çizgisi. Yatay kaydırma yoktur: pencere genişliğe sığan, yarım saatin katı uzunluktadır ve şimdiden 30 dk önce başlar. Dar blokta saat (100 dp altı) ve başlık (44 dp altı) yazılmaz. Programa OK o kanalı açar. Veri katmanı (XMLTV) yazılana kadar çizelge şimdiki/sonraki programdan türetilir.
   - **Tam ekran:** oynatıcı henüz yok. Yer tutucu sayfada kanal kimliği ve program durur; Geri/Esc ile dönülür.
   - Kanıt: `test/features/tv/tv_page_test.dart` (4K görüntüler `build/tv/televizyon-4k.png`, `epg-4k.png`). TV emülatöründe sırayla doğrulandı: OK → önizleme → OK → tam ekran → Geri → anahtar → EPG → çizelgede gezinme.
+- **Oynatıcı, 1. aşama (kullanıcı isteği, 2026-10-31).** Eski sürümün oynatıcısı örnek alındı (`design/referans-oynatici.jpg`, eski deponun wiki'si).
+  - **Motor: media_kit 1.2.6 (libmpv).** Android/Android TV, Windows ve Linux'ta HLS ve MPEG-TS oynatır; Flutter'ın `video_player`ı Windows/Linux'u desteklemiyor. Motor bir arayüzün (`PlaybackEngine`) arkasındadır; testler sahte motorla koşar.
+    - APK işlemci başına ~25 MB büyür: CI APK'ları işlemciye göre ayırır (`--split-per-abi`). Linux derlemesi `libmpv-dev` ister.
+    - Sürüm derlemesine internet izni eklendi (yalnız hata ayıklama derlemesinde vardı).
+  - **Alt çubuk (eski düzen):** solda logo + numara rozeti, ad, CANLI, ölçülen çözünürlük, "Akış 1/2"; ortada önceki kanal · oynat/duraklat · sonraki kanal; sağda kanal listesi, sonraki akış (birden çok akış varsa), Seçenekler. Odaktaki düğmenin adı üstünde yazar.
+    - Oynat/duraklat 92 dp'dir; satırda 48 dp yer kaplar, çubuğun üstünden ve altından taşar. Çevresinde koyu kırmızı (`onPrimaryFixedVariant`) 4 dp çizgi vardır (kullanıcı isteği).
+  - **Kumanda:** OK çubuğu açar (odak oynat/duraklatta). ▲▼ kanal değiştirir (uçta başa döner), ◄ hızlı kanal listesi, ► sonraki akış. 0-9 kanal numarası (1,5 sn sonra açılır), tek başına 0 önceki kanal. Geri açık menüyü, listeyi, çubuğu sırayla kapatır; sonra oynatıcıdan çıkar.
+  - **İpuçları:** kanal ya da akış değişince çubuk ve "OK Kontroller · ▲▼ Kanal · ◄ Kanal listesi · ► Sonraki akış" 3,8 sn görünür. Eski sürümde böyleydi; Anasayfadaki kalıcı şerit kaldırılmıştı, bu kısa süreli.
+  - **Seçenekler:** Kalite, Ses, Altyazı, Ölçek (16:9 Orijinal / Ekranı doldur / Uzat), Önceki kanal, Oynatıcıdan çık; altta ölçülen boyut ve akış. Kalite listesi yüksekten düşüğe sıralıdır. İşlevi olmayan satır (gece modu, PiP, 2×2, kanalı gizle) gösterilmez: 2. aşama.
+  - **Otomatik yedek akış:** akış hata verirse ya da 10 sn içinde görüntü gelmezse sıradaki akışa geçilir; hepsi açılmazsa "Tekrar dene" / "Sonraki kanal". Eski sürüm TV'de 2,5 sn bekliyordu; test yayınları emülatörde daha geç açıldığı için 10 sn.
+    - Hatayla geçişten sonraki 1 sn içinde gelen hatalar eski akışın sayılır: emülatörde açılmayan adres iki hata bildirdi, ikincisi yedek akışı da düşürüyordu.
+  - **Test yayınları:** örnek kanallara Mux, Apple (çok sesli/altyazılı) ve Unified Streaming test yayınları bağlı; ULUSAL 2'nin ilk akışı bilerek açılmaz (`.invalid`). Gerçek kanal değildir.
+  - **Doğrulama:** testler (`test/features/player/player_page_test.dart`, 4K görüntüler `build/player/`). TV emülatöründe yayın açıldı, 1920×1080 ölçüldü, kalite izleri listelendi; çubuk, Seçenekler ve kanal listesi çalıştı.
+    - **Görüntü emülatörde çizilemiyor:** media_kit emülatörü tanıyıp yazılımsal çizime geçiyor, emülatörün EGL'i bağlam kuramıyor (`EGL_BAD_ATTRIBUTE`). Görüntü gerçek cihazda doğrulanmalı.
+    - Windows derlemesi denenmedi: proje D:, pub önbelleği C: sürücüsünde olduğu için eklenti bağlantısı (symlink) kurulamıyor. Windows'ta Geliştirici Modu gerekir.
+  - **2. aşama:** 15 sn geri sarma ve Canlıya dön, favori, kanalı gizle, gece modu, PiP, 2×2, bit hızı/düşen kare, çalışan akışı kanal başına hatırlama, telefon hareketleri ve mini oynatıcı.
 
 ## 6. Logo
 

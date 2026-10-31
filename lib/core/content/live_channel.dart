@@ -16,7 +16,12 @@ class LiveChannel {
     this.live = false,
     this.next,
     this.logoUrl,
+    this.streams = const [],
   });
+
+  /// Yayın adresleri (HLS/MPEG-TS), öncelik sırasıyla: "Akış 1/2". İlki
+  /// açılmazsa oynatıcı sıradakine geçer.
+  final List<String> streams;
 
   /// Sonraki program, örn. "22:30 Maç Özetleri".
   final String? next;
