@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'core/layout/form_factor.dart';
@@ -9,8 +10,9 @@ import 'features/tv/tv_content.dart';
 class RedoxApp extends StatelessWidget {
   const RedoxApp({super.key, required this.tv});
 
-  /// Televizyon kanalları (gömülü M3U listesinden, main.dart).
-  final TvContent tv;
+  /// Televizyon kanalları (gömülü M3U listesinden) ve yayın akışı; her
+  /// dakika yenilenir (TvGuideController, main.dart).
+  final ValueListenable<TvContent> tv;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,10 @@ class RedoxApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       // Açılış: Anasayfa. Anasayfa veri katmanı yazılana kadar örnek içerikle;
       // Televizyon gerçek kanal listesiyle.
-      home: RootShell(home: HomeContent.preview, tv: tv),
+      home: ValueListenableBuilder(
+        valueListenable: tv,
+        builder: (context, tv, _) => RootShell(home: HomeContent.preview, tv: tv),
+      ),
     );
   }
 }

@@ -18,6 +18,8 @@ dependencies:
   media_kit: 1.2.6
   media_kit_video: 2.0.1
   media_kit_libs_video: 1.0.7
+  # Yayın akışı (XMLTV) çözümü. flutter_svg zaten bu sürümü kullanıyor.
+  xml: 7.0.1
 
 dev_dependencies:
   flutter_test:

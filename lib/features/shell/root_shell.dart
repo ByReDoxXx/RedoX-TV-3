@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/content/epg_program.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/navigation/destinations.dart';
 import '../../core/navigation/double_back_to_exit.dart';
@@ -61,11 +62,17 @@ class _RootShellState extends State<RootShell> {
     onSelected: (i) => _go(AppDestinations.phoneMoreSections[i]),
   );
 
+  /// Başlık saati: yayın akışının "şimdi"si (gerçek saat); önizlemede örnek saat.
+  String get _clock => switch (widget.tv.nowMinute) {
+    final m? => EpgProgram.formatClock(m),
+    null => widget.home.clock,
+  };
+
   Widget _page(BuildContext context) => switch (_section) {
     AppSection.home => HomePage(content: widget.home, previewFocus: widget.previewFocus, onNavigate: _go),
     AppSection.tv => TvPage(
       content: widget.tv,
-      clock: widget.home.clock,
+      clock: _clock,
       profileName: widget.home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
@@ -75,7 +82,7 @@ class _RootShellState extends State<RootShell> {
         PlayerPage.route(
           channels: widget.tv.channels,
           initialIndex: widget.tv.channels.indexOf(c),
-          clock: widget.home.clock,
+          clock: _clock,
           engineFactory: widget.engineFactory,
         ),
       ),

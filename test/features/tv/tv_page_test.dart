@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
+import 'package:redox_tv/core/content/xmltv.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -230,6 +231,42 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Yayın akışı bilgisi yok'), findsWidgets);
       await maybeSnapshot(tester, key, 'build/tv/epg-gercek-4k.png', pixelRatio: 4);
+    }),
+  );
+
+  testWidgets(
+    'gerçek liste + yayın akışı: kart, panel ve çizelge programı gösterir (4K görüntü)',
+    (tester) => withRealShadows(() async {
+      await loadSora(tester);
+      await _size(tester, const Size(960, 540));
+      final now = DateTime(2026, 10, 31, 20, 15);
+      DateTime t(int h, [int m = 0]) => DateTime(2026, 10, 31, h, m);
+      final guide = EpgGuide({
+        EpgGuide.key('TRT Belgesel'): [
+          GuideEntry(title: 'Evvel Zaman Tarifleri', start: t(20), stop: t(21), category: 'Belgesel'),
+          GuideEntry(title: 'Gizli Oteller', start: t(21), stop: t(22)),
+        ],
+      });
+      final content = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync()).withGuide(guide, now);
+      final key = GlobalKey();
+      await tester.pumpWidget(_app(FormFactor.tv, boundary: key, content: content));
+      await settleAssets(tester, rounds: 2);
+      expect(find.text('Evvel Zaman Tarifleri'), findsOneWidget, reason: 'kartta şimdiki program');
+      expect(find.text('20:15'), findsOneWidget, reason: 'başlık saati akışın "şimdi"si');
+
+      await tester.tap(find.byType(ChannelTile).first);
+      await _settle(tester);
+      expect(find.text('Evvel Zaman Tarifleri'), findsNWidgets(2), reason: 'kart ve panel');
+      expect(find.text('20:00 – 21:00 · Belgesel'), findsOneWidget);
+      expect(find.text('Sonraki: 21:00 Gizli Oteller'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await maybeSnapshot(tester, key, 'build/tv/televizyon-akis-4k.png', pixelRatio: 4);
+
+      await tester.tap(find.text('EPG çizelgesi'));
+      await _settle(tester);
+      expect(find.text('Evvel Zaman Tarifleri'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await maybeSnapshot(tester, key, 'build/tv/epg-akis-4k.png', pixelRatio: 4);
     }),
   );
 

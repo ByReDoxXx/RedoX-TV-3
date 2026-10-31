@@ -2,8 +2,11 @@ import '../ui/channel_card.dart';
 
 /// Canlı kanal (Anasayfa "Son izlenen kanallar" ve Televizyon sayfası).
 /// Program bilgileri (yayın akışı, EPG) isteğe bağlıdır: M3U listelerinde
-/// yoktur; EPG kaynağı (XMLTV) yazılınca dolacak. Burada ağ veya depolama
-/// API'si yoktur.
+/// yoktur; yayın akışı (XMLTV) gelince [withProgram] ile dolar. Burada ağ veya
+/// depolama API'si yoktur.
+///
+/// Eşitlik numara ve addır: program bilgisi her dakika yenilenince kanal yeni
+/// nesne olur, ama aynı kanal sayılır (önizleme seçimi, dizideki yeri).
 class LiveChannel {
   const LiveChannel({
     required this.name,
@@ -53,4 +56,27 @@ class LiveChannel {
 
   /// Canlı yayın rozeti (maç, haber bülteni gibi).
   final bool live;
+
+  /// Aynı kanal, yayın akışından gelen program bilgisiyle (null: bilgi yok).
+  LiveChannel withProgram({String? programTitle, String? timeRange, String? genre, double? progress, String? next}) =>
+      LiveChannel(
+        name: name,
+        number: number,
+        category: category,
+        programTitle: programTitle,
+        timeRange: timeRange,
+        genre: genre,
+        progress: progress,
+        accent: accent,
+        live: live,
+        next: next,
+        logoUrl: logoUrl,
+        streams: streams,
+      );
+
+  @override
+  bool operator ==(Object other) => other is LiveChannel && other.number == number && other.name == name;
+
+  @override
+  int get hashCode => Object.hash(number, name);
 }

@@ -1,6 +1,7 @@
 import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/m3u_parser.dart';
+import '../../core/content/xmltv.dart';
 import '../../core/ui/channel_card.dart';
 
 /// Oynatıcıyı denemek için herkese açık test yayınları (gerçek kanal değildir;
@@ -25,12 +26,26 @@ abstract final class _TestStreams {
   static const dead = 'https://redox.invalid/yayin-yok.m3u8';
 }
 
-/// Televizyon sayfasının içeriği: kanallar ve kategori sırası. Veri katmanı
-/// yazıldığında kaynaktan dolacak.
+/// Televizyon sayfasının içeriği: kanallar, kategori sırası ve (varsa) yayın
+/// akışı. Akış [withGuide] ile bağlanır; kanalların "şimdi" bilgisi o anki
+/// saate göre dolar (TvGuideController her dakika yeniler).
 class TvContent {
-  const TvContent({required this.channels});
+  const TvContent({required this.channels, this.guide, this.now});
 
   final List<LiveChannel> channels;
+
+  /// Yayın akışı; null ise kanallardaki örnek program bilgisi kullanılır
+  /// (tasarım önizlemesi).
+  final EpgGuide? guide;
+
+  /// "Şimdi": akış bu ana göre okunur; null ise önizlemenin sabit saati.
+  final DateTime? now;
+
+  /// [now] gün başından dakika olarak (EPG çizelgesindeki "şimdi" çizgisi).
+  int? get nowMinute => switch (now) {
+    final t? => t.hour * 60 + t.minute,
+    null => null,
+  };
 
   /// Gömülü M3U listesinden (assets/channels/tr.m3u).
   factory TvContent.fromM3u(String text) => TvContent(channels: M3uParser.parse(text));
@@ -66,10 +81,56 @@ class TvContent {
     ];
   }
 
-  /// Kanalın EPG çizelgesi. Veri katmanı (XMLTV) yazılana kadar şimdiki ve
+  /// Listede adı yayın akışındakinden farklı olan kanallar (M3U adı → akıştaki
+  /// ad). Çoğu kanal adla eşleşir ([EpgGuide.key]).
+  static const epgAliases = {'FB TV': 'FENERBAHÇE TV'};
+
+  List<GuideEntry> _entries(EpgGuide g, LiveChannel c) => g.of(epgAliases[c.name] ?? c.name);
+
+  /// Kanalları [now] anındaki programla doldurur: şimdiki program, saat
+  /// aralığı, tür, ilerleme ve sonraki program. Akışta olmayan kanalın program
+  /// bilgisi boşalır.
+  TvContent withGuide(EpgGuide guide, DateTime now) =>
+      TvContent(guide: guide, now: now, channels: [for (final c in channels) _onAir(c, _entries(guide, c), now)]);
+
+  static LiveChannel _onAir(LiveChannel c, List<GuideEntry> e, DateTime now) {
+    final i = e.indexWhere((p) => p.isLiveAt(now));
+    if (i < 0) return c.withProgram();
+    final p = e[i];
+    return c.withProgram(
+      programTitle: p.title,
+      timeRange: '${_clock(p.start)} – ${_clock(p.stop)}',
+      genre: p.category,
+      progress: now.difference(p.start).inSeconds / p.stop.difference(p.start).inSeconds,
+      next: i + 1 < e.length ? '${_clock(e[i + 1].start)} ${e[i + 1].title}' : null,
+    );
+  }
+
+  static String _clock(DateTime t) => EpgProgram.formatClock(t.hour * 60 + t.minute);
+
+  /// Kanalın EPG çizelgesi. Yayın akışı bağlıysa ondan: saatler [now]'ın
+  /// günbaşından dakikadır (dün gece negatif, yarın 1440'tan büyük); akışta
+  /// olmayan kanal "bilgi yok" bloğudur. Akış yoksa (önizleme) şimdiki ve
   /// sonraki programdan türetilir; öncesi ve sonrası kategoriye göre örnek
   /// kuşaklarla doldurulur (gerçek veri değildir).
   List<EpgProgram> scheduleOf(LiveChannel c) {
+    final guide = this.guide;
+    final now = this.now;
+    if (guide != null && now != null) {
+      final midnight = DateTime(now.year, now.month, now.day);
+      final from = now.subtract(const Duration(hours: 6));
+      final to = now.add(const Duration(hours: 24));
+      final programs = [
+        for (final e in _entries(guide, c))
+          if (e.stop.isAfter(from) && e.start.isBefore(to))
+            EpgProgram(
+              title: e.title,
+              start: e.start.difference(midnight).inMinutes,
+              end: e.stop.difference(midnight).inMinutes,
+            ),
+      ];
+      return programs.isEmpty ? const [EpgProgram.unknown()] : programs;
+    }
     final timeRange = c.timeRange;
     final programTitle = c.programTitle;
     if (timeRange == null || programTitle == null) return const [EpgProgram.unknown()];

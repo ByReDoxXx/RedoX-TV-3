@@ -127,7 +127,7 @@ class _TvPageState extends State<TvPage> {
     final resume = _previewed;
     setState(_stopPreview);
     await open(c);
-    if (mounted && resume != null && identical(_previewed, resume)) _preview(resume);
+    if (mounted && resume != null && _previewed == resume) _preview(resume);
   }
 
   List<LiveChannel> get _channels => _category == null
@@ -177,7 +177,7 @@ class _TvPageState extends State<TvPage> {
       TvView.epg => EpgGrid(
         channels: channels,
         scheduleOf: widget.content.scheduleOf,
-        now: EpgProgram.parseClock(widget.clock) ?? 0,
+        now: widget.content.nowMinute ?? EpgProgram.parseClock(widget.clock) ?? 0,
         compact: phone,
         onChannel: (c) => unawaited(_watch(c)),
         padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: phone ? padding.bottom : 0),
@@ -204,7 +204,12 @@ class _TvPageState extends State<TvPage> {
   /// Kart ızgarası (solda) ve önizleme paneli (sağda): TV/tablet.
   Widget _cardsWithPreview(BuildContext context, List<LiveChannel> channels, RedoxMetrics metrics, EdgeInsets padding) {
     const room = TvPage.ringRoom;
-    final previewed = _previewed;
+    // İçerik her dakika yenilenir: panel kanalın güncel program bilgisini
+    // göstersin (eşitlik numara ve addır).
+    final previewed = switch (_previewed) {
+      final p? => widget.content.channels.firstWhere((c) => c == p, orElse: () => p),
+      null => null,
+    };
     return Padding(
       padding: EdgeInsets.only(left: padding.left - room, right: padding.right),
       child: Row(
