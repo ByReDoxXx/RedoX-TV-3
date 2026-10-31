@@ -30,6 +30,22 @@ class EpgGuide {
   /// Kanalın programları, başlangıca göre sıralı; akışı yoksa boş.
   List<GuideEntry> of(String channelName) => _byKey[key(channelName)] ?? const [];
 
+  /// İki kaynağın birleşimi. Kanal ikisinde de varsa bu akışın programları
+  /// kalır; [other]'ın yalnız bunlarla çakışmayan programları boşlukları
+  /// doldurur (kaynaklarda delik olabiliyor: iptv-org'un Digiturk tanımı gece
+  /// yarısını geçen programları atlıyordu, akşam kuşağı boş kalıyordu).
+  EpgGuide mergedWith(EpgGuide other) => EpgGuide({
+    for (final k in {..._byKey.keys, ...other._byKey.keys})
+      k: _fill(_byKey[k] ?? const [], other._byKey[k] ?? const []),
+  });
+
+  static List<GuideEntry> _fill(List<GuideEntry> base, List<GuideEntry> extra) {
+    if (extra.isEmpty) return base;
+    if (base.isEmpty) return extra;
+    bool overlaps(GuideEntry e) => base.any((b) => e.start.isBefore(b.stop) && b.start.isBefore(e.stop));
+    return [...base, ...extra.where((e) => !overlaps(e))]..sort((a, b) => a.start.compareTo(b.start));
+  }
+
   /// Ad eşleme anahtarı: küçük harf, aksansız (ı → i), "HD/FHD/UHD/4K/SD/TV/TR"
   /// gibi ekler ve boşluk/noktalama atılır. "TRT 1 HD", "TRT.1" ve "TRT 1"
   /// aynı anahtarı verir; "Bengütürk TV" ile "BENGÜ TÜRK" de.

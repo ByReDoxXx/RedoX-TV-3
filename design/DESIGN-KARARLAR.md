@@ -201,15 +201,22 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Alınmayanlar: şifreli/ücretli paketler (beIN, FX, Disney Junior, Baby TV, FilmScreen, FIX Sinema), Azerice kanallar, radyo akışları. Gist'te olmadığı için Kanal D, Star TV, NTV ve Teve2 listede yok.
   - Gist'te yayın akışı (EPG) adresi yok, `tvg-id`'ler rastgele; EPG ayrı bir kaynaktan bağlanır (aşağıda).
   - Kanıt: `test/core/content/m3u_parser_test.dart`.
-- **Yayın akışı (EPG, 2026-10-31).** Kaynak: epgshare01'in Türkiye dosyası (`epg_ripper_TR1.xml.gz`, `EpgSource`). Kullanıcının seçimi.
+- **Yayın akışı (EPG, 2026-10-31).** İki kaynak (`EpgSource.urls`), kullanıcının seçimi: önce epgshare01'in Türkiye dosyası (`epg_ripper_TR1.xml.gz`), ikinci olarak kendi dosyamız (herkese açık `ByReDoxXx/redox-epg` deposu). İkisi aynı anda iner ve birleşir; 31 Ekim'de 204 kanalın 52'si.
   - Neden bu kaynak: her gün güncelleniyor (Türksat Kablo'nun yayın akışından), 3 gün, ~170 KB gzip, başlıklar Türkçe, saatler +03:00. 31 Ekim'de gömülü 204 kanalın 31'ini kapsadı.
   - Elenenler: kullanıcının `epg.xml`'i (Rus servisi it999, 404 MB, kanallarımızdan yalnız 5'i, iki gün sonra eskiyor); `ViP.m3u` (EPG adresi yok; adresleri ücretli aboneliğin kullanıcı adı/şifreli bağlantıları, uygulamaya konamaz).
-  - Risk: gönüllü servis, kullanım koşulu yok. Kapanırsa ya da kapsam büyütülecekse `EpgSource.urls`'e ikinci kaynak eklenir. Aday: iptv-org/epg aracıyla Digiturk, D-Smart, Türksat Kablo ve TV+'tan kendi dosyamızı üretmek (ad eşleşmesiyle 57 kanal). Bunun için dosyanın herkese açık bir yerde yayınlanması gerekir; depo gizli.
+  - Risk: epgshare01 gönüllü servis, kullanım koşulu yok. Bu yüzden ikinci kaynak kendi elimizde.
+  - **Kendi dosyamız (`ByReDoxXx/redox-epg`):** iptv-org/epg aracı GitHub Actions'ta günde iki kez (TSİ 05:15, 17:15) yalnız listemizdeki kanallar için 3 günlük XMLTV üretir, `guide.xml.gz` olarak depoya yazar (~80 KB); uygulama `raw.githubusercontent.com`'dan indirir. Kod deposu gizli kaldığı için ayrı ve herkese açık depo (kullanıcı onayladı). 500'den az programlı çıktı eldeki dosyanın yerine yazılmaz.
+    - Kanallar TV+'tan (48), TV+'ta olmayan bir kanal Digiturk'ten. Denenen öteki yollar:
+      - Digiturk öncelikli: gece yarısını geçen programları atlıyor (TRT 1'de 20:00–00:15 boş); üstelik GitHub sunucularından gelen istekleri 403 ile reddediyor (132/132).
+      - D-Smart: 403. Türksat Kablo: sertifika zinciri eksik (epgshare01 zaten aynı veriyi veriyor).
+      - TV+ her istekte oturum açıyor; istekler sık olunca oturum açma düşüyordu (144 istekte 83 hata). İstekler arası 1,5 sn bekleme ile hata kalmadı.
+    - Sonuç (31 Ekim, yerelde): 49 kanal, 48'inde o an yayındaki program var; 21 kanal yalnız burada (TRT 2, NOW, Halk TV, Haber Global, TRT Spor Yıldız, TV8.5…).
+  - **Birleştirme (`EpgGuide.mergedWith`):** kanal iki kaynakta da varsa öndekinin programları kalır, sonrakinin yalnız çakışmayan programları boşlukları doldurur (kaynaklarda delik olabiliyor). epgshare01 önde: gece yarısını geçen programları tam.
   - **Eşleme:** kaynak kimlikleri (`TRT.1.HD.tr`) listedekilerle ortak değil; kanallar adla eşlenir (`EpgGuide.key`: küçük harf, Türkçe harfler sadeleşir, HD/TV/TR ekleri ve boşluk atılır; "TRT 1 HD" = "TRT 1", "Bengütürk TV" = "BENGÜ TÜRK"). Adı farklı olanlar `TvContent.epgAliases`'tadır (FB TV → FENERBAHÇE TV).
   - **Yenileme:** `TvGuideController` akışı açılışta ve 6 saatte bir indirir; kanalların şimdiki programı, saat aralığı, türü, ilerlemesi ve sonraki programı her dakika başında yenilenir (`TvContent.withGuide`). İndirme başarısızsa eldeki akış kalır; akış gelene kadar kanallar akışsız görünür. Çözme (2–3 MB XML) ayrı iş parçacığındadır (`Isolate.run`).
   - Kanal nesnesi her dakika yenilendiği için `LiveChannel` eşitliği numara ve addır (önizleme seçimi ve dizideki yer korunur).
   - Televizyon ve oynatıcı başlığındaki saat artık gerçek saattir. Anasayfa başlığı örnek içerikle birlikte örnek saati (20:45) gösterir.
-  - Kanıt: `test/core/content/xmltv_test.dart` (ad anahtarı, saat dilimi, gzip/BOM, kimlik birleştirme), `test/features/tv/tv_guide_test.dart` (şimdiki/sonraki program, takma ad, çizelge dakikaları, denetleyici), `tv_page_test.dart` (4K görüntüler `build/tv/televizyon-akis-4k.png`, `epg-akis-4k.png`). Gerçek dosyayla masaüstünde denendi: indirme + çözme 1,2 sn, 119 akış kanalı, 31 eşleşme; TRT Çocuk'un akıştaki programı TV'de o an yayındakiyle aynıydı. Cihazda (Chromecast) henüz denenmedi.
+  - Kanıt: `test/core/content/xmltv_test.dart` (ad anahtarı, saat dilimi, gzip/BOM, kimlik birleştirme), `test/features/tv/tv_guide_test.dart` (şimdiki/sonraki program, takma ad, çizelge dakikaları, denetleyici), `tv_page_test.dart` (4K görüntüler `build/tv/televizyon-akis-4k.png`, `epg-akis-4k.png`). Gerçek dosyalarla masaüstünde denendi: epgshare01 tek başına 1,2 sn, 31 eşleşme (TRT Çocuk'un akıştaki programı TV'de o an yayındakiyle aynıydı); iki kaynak birlikte ~0,9 sn, 52 kanal. Cihazda (Chromecast) henüz denenmedi.
 - **Oynatıcı, 1. aşama (kullanıcı isteği, 2026-10-31).** Eski sürümün oynatıcısı örnek alındı (`design/referans-oynatici.jpg`, eski deponun wiki'si).
   - **Motor: media_kit 1.2.6 (libmpv).** Android/Android TV, Windows ve Linux'ta HLS ve MPEG-TS oynatır; Flutter'ın `video_player`ı Windows/Linux'u desteklemiyor. Motor bir arayüzün (`PlaybackEngine`, uygulaması `MediaKitEngine`) arkasındadır; testler sahte motorla (`FakeEngine`) koşar. Kullanıcı kararı: bütün platformlarda aynı motor.
     - mpv ayarları: `demuxer-lavf-analyzeduration=1` (HLS'te akış çözümleme süresi kısalır), `network-timeout=10`.
@@ -294,5 +301,5 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Test ortamı gölgeleri bulanıksız çizer (`debugDisableShadows`).
   - Görüntü alınırken gerçek bulanıklık açılır.
 - Android TV biçim algılaması yok. Biçim şimdilik açılışta verilir; varsayılan TV'dir.
-- Anasayfa'daki içerik örnektir (`HomeContent.preview`). Televizyon sayfası gerçek listeyi ve epgshare01 yayın akışını kullanır (204 kanalın 31'i).
+- Anasayfa'daki içerik örnektir (`HomeContent.preview`). Televizyon sayfası gerçek listeyi ve iki kaynaklı yayın akışını kullanır (204 kanalın 52'si).
 - Simgeler ve TV afişi gerçek bir başlatıcıda görülmedi. Ölçüleri testle, görünüşleri önizleme görüntüleriyle denetlendi.

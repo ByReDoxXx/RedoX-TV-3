@@ -5,31 +5,38 @@ import 'dart:typed_data';
 
 import 'xmltv.dart';
 
-/// Yayın akışı kaynağı: XMLTV dosyasını indirir ve çözer.
-///
-/// Kaynak epgshare01'in Türkiye dosyası: Türksat Kablo'nun yayın akışından
-/// her gün üretiliyor, 3 gün, ~170 KB (gzip). 31 Ekim 2026'da gömülü 204
-/// kanalın 30'unu kapsıyordu. Gönüllü bir servistir; kapanırsa ya da kanal
-/// eklemek gerekirse [urls] listesine ikinci kaynak eklenir (ör. iptv-org/epg
-/// ile üretilen dosya).
+/// Yayın akışı kaynakları: XMLTV dosyalarını indirir, çözer ve birleştirir.
 abstract final class EpgSource {
-  static const urls = ['https://epgshare01.online/epgshare01/epg_ripper_TR1.xml.gz'];
+  /// Öncelik sırasıyla (aynı saatte iki kaynakta program varsa öndeki kalır,
+  /// sonraki boşlukları ve eksik kanalları doldurur, [EpgGuide.mergedWith]):
+  /// 1. epgshare01 Türkiye dosyası: Türksat Kablo'dan, gönüllü servis;
+  ///    gece yarısını geçen programlar tam. 204 kanalın 31'i.
+  /// 2. Kendi dosyamız (ByReDoxXx/redox-epg, herkese açık): iptv-org/epg
+  ///    aracıyla günde iki kez TV+'tan (bir kanal Digiturk), yalnız
+  ///    listemizdeki kanallar için. 49 kanal, 21'i yalnız burada (TRT 2, NOW,
+  ///    Halk TV…).
+  /// İkisi birlikte 31 Ekim 2026'da 52 kanal.
+  static const urls = [
+    'https://epgshare01.online/epgshare01/epg_ripper_TR1.xml.gz',
+    'https://raw.githubusercontent.com/ByReDoxXx/redox-epg/main/guide.xml.gz',
+  ];
 
-  /// Kaynakları sırayla dener; ilk okunabileni döndürür. Hiçbiri olmazsa
-  /// [EpgGuide.empty] (uygulama akışsız çalışır).
+  /// Bütün kaynakları aynı anda indirir; açılanları birleştirir. Hiçbiri
+  /// açılmazsa [EpgGuide.empty] (uygulama akışsız çalışır).
   static Future<EpgGuide> load({List<String> from = urls, Duration timeout = const Duration(seconds: 30)}) async {
-    for (final url in from) {
-      try {
-        final bytes = await _download(Uri.parse(url)).timeout(timeout);
-        // Çözme (2–3 MB XML) zayıf TV işlemcisinde arayüzü takılmasın diye ayrı
-        // iş parçacığında.
-        final guide = await Isolate.run(() => EpgGuide.parse(decode(bytes)));
-        if (guide.channelCount > 0) return guide;
-      } on Object {
-        // Sıradaki kaynak.
-      }
+    final guides = await Future.wait([for (final url in from) _loadOne(url, timeout)]);
+    return guides.fold<EpgGuide>(EpgGuide.empty, (merged, g) => merged.mergedWith(g));
+  }
+
+  static Future<EpgGuide> _loadOne(String url, Duration timeout) async {
+    try {
+      final bytes = await _download(Uri.parse(url)).timeout(timeout);
+      // Çözme (2–3 MB XML) zayıf TV işlemcisinde arayüzü takılmasın diye ayrı
+      // iş parçacığında.
+      return await Isolate.run(() => EpgGuide.parse(decode(bytes)));
+    } on Object {
+      return EpgGuide.empty;
     }
-    return EpgGuide.empty;
   }
 
   /// gzip ise açar (ilk iki bayt 1F 8B), UTF-8 çözer; baştaki BOM atılır

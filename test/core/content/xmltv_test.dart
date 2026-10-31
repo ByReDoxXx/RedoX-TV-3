@@ -69,6 +69,40 @@ void main() {
     expect(p.isLiveAt(p.stop), isFalse);
   });
 
+  test('mergedWith: kanal ikisinde de varsa öndeki kazanır, ötekiler eklenir', () {
+    DateTime t(int h) => DateTime(2026, 10, 31, h);
+    final first = EpgGuide({
+      EpgGuide.key('TRT 1'): [GuideEntry(title: 'Birinci', start: t(20), stop: t(21))],
+    });
+    final second = EpgGuide({
+      EpgGuide.key('TRT 1'): [GuideEntry(title: 'İkinci', start: t(20), stop: t(21))],
+      EpgGuide.key('Kanal D'): [GuideEntry(title: 'Dizi', start: t(20), stop: t(22))],
+    });
+    final m = first.mergedWith(second);
+    expect(m.of('TRT 1').single.title, 'Birinci');
+    expect(m.of('Kanal D').single.title, 'Dizi');
+    expect(m.channelCount, 2);
+    expect(EpgGuide.empty.mergedWith(second).channelCount, 2);
+  });
+
+  test('mergedWith: öndeki kaynağın boşluğunu çakışmayan programlar doldurur', () {
+    DateTime t(int h) => DateTime(2026, 10, 31, h);
+    // Öndeki kaynakta 20–24 arası boş (gece yarısını geçen program yok).
+    final first = EpgGuide({
+      EpgGuide.key('TRT 2'): [
+        GuideEntry(title: 'Öğle', start: t(12), stop: t(20)),
+        GuideEntry(title: 'Gece', start: DateTime(2026, 11, 1), stop: DateTime(2026, 11, 1, 2)),
+      ],
+    });
+    final second = EpgGuide({
+      EpgGuide.key('TRT 2'): [
+        GuideEntry(title: 'Çakışan', start: t(19), stop: t(21)),
+        GuideEntry(title: 'Akşam', start: t(21), stop: t(23)),
+      ],
+    });
+    expect(first.mergedWith(second).of('TRT 2').map((e) => e.title), ['Öğle', 'Akşam', 'Gece']);
+  });
+
   test('EpgSource.decode: gzip açılır, BOM atılır', () {
     final bytes = gzip.encode(utf8.encode('﻿$_xml'));
     final text = EpgSource.decode(bytes);
