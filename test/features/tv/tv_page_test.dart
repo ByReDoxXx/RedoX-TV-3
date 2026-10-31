@@ -5,13 +5,17 @@ import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/category_chip.dart';
-import 'package:redox_tv/core/ui/channel_card.dart';
+import 'package:redox_tv/core/ui/channel_tile.dart';
 import 'package:redox_tv/core/ui/redox_buttons.dart';
+import 'package:redox_tv/core/ui/scroll_hint_row.dart';
+import 'package:redox_tv/core/ui/segmented_toggle.dart';
 import 'package:redox_tv/features/home/home_content.dart';
+import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
 import 'package:redox_tv/features/tv/tv_page.dart';
 import 'package:redox_tv/features/tv/widgets/channel_preview.dart';
+import 'package:redox_tv/features/tv/widgets/epg_grid.dart';
 
 import '../../support/render.dart';
 
@@ -30,8 +34,12 @@ Future<void> _size(WidgetTester tester, Size size) async {
   addTearDown(tester.view.reset);
 }
 
-// Sayfada sonsuz nabız animasyonu var: pumpAndSettle yerine sabit adım.
-Future<void> _settle(WidgetTester tester) => tester.pump(const Duration(milliseconds: 600));
+// Sayfada sonsuz nabız animasyonu var: pumpAndSettle yerine sabit adım. İlk
+// kare ayrı: yeni rota ilk karede sahne dışındadır (geçiş hesabı).
+Future<void> _settle(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 600));
+}
 
 void main() {
   test('kategoriler kanallardaki ilk görülme sırasıyla, tekrarsız', () {
@@ -39,7 +47,7 @@ void main() {
   });
 
   testWidgets(
-    'TV: sayılı çipler, 3 sütunlu ızgara ve önizleme paneli düğmeleriyle ekranda (4K görüntü)',
+    'TV: sayılı çipler, 3 sütunlu logo kartları; panel OK ile dolar, düğmeleri ekranda (4K görüntü)',
     (tester) => withRealShadows(() async {
       await loadSora(tester);
       await _size(tester, const Size(960, 540));
@@ -51,11 +59,19 @@ void main() {
       expect(find.byType(CategoryChip), findsNWidgets(TvContent.preview.categories.length + 1));
       expect(tester.widget<CategoryChip>(find.widgetWithText(CategoryChip, 'Tümü')).count, 20);
       // İlk satırda üç kart, dördüncü alt satırda; önizleme ilk kanalı gösterir.
-      final cards = find.byType(ChannelCard);
+      final cards = find.byType(ChannelTile);
       final top = tester.getTopLeft(cards.at(0)).dy;
       expect(tester.getTopLeft(cards.at(2)).dy, top);
       expect(tester.getTopLeft(cards.at(3)).dy, greaterThan(top));
+      // Açılışta önizleme yok: panelde yönerge durur.
+      expect(find.byType(ChannelPreview), findsNothing);
+      expect(find.byType(ChannelPreviewHint), findsOneWidget);
+      await maybeSnapshot(tester, key, 'build/tv/televizyon-bos-4k.png', pixelRatio: 4);
+
+      await tester.tap(cards.first);
+      await settleAssets(tester, rounds: 2);
       expect(tester.widget<ChannelPreview>(find.byType(ChannelPreview)).channel, TvContent.preview.channels.first);
+      expect(tester.widget<ChannelTile>(cards.first).selected, isTrue);
       // Önizleme düğmeleri kaydırmadan ekranda, panelin içinde.
       final panel = tester.getRect(find.byType(ChannelPreview));
       expect(panel.bottom, lessThanOrEqualTo(540));
@@ -72,7 +88,7 @@ void main() {
     }),
   );
 
-  testWidgets('önizleme odaktaki ve dokunulan kartı izler', (tester) async {
+  testWidgets('ilk OK/dokunma önizler, aynı kanalda ikincisi tam ekran; Geri sayfaya döner', (tester) async {
     await loadSora(tester);
     await _size(tester, const Size(960, 540));
     await tester.pumpWidget(_app(FormFactor.tv));
@@ -80,17 +96,54 @@ void main() {
     final channels = TvContent.preview.channels;
     LiveChannel previewed() => tester.widget<ChannelPreview>(find.byType(ChannelPreview)).channel;
 
-    // Dokunma: ilk dokunuş önizler.
-    await tester.tap(find.byType(ChannelCard).at(1));
+    await tester.tap(find.byType(ChannelTile).at(1));
     await _settle(tester);
     expect(previewed(), channels[1]);
+    expect(find.byType(PlayerPage), findsNothing);
 
-    // D-pad odağı: odaklanan kart önizlemeye gelir.
-    final inkWell = find.descendant(of: find.byType(ChannelCard).at(2), matching: find.byType(InkWell));
-    Focus.of(tester.element(find.descendant(of: inkWell, matching: find.byType(Column)).first)).requestFocus();
+    // Başka kanal: önizleme değişir, tam ekran açılmaz.
+    await tester.tap(find.byType(ChannelTile).at(2));
     await _settle(tester);
     expect(previewed(), channels[2]);
+    expect(find.byType(PlayerPage), findsNothing);
+
+    // Aynı kanalda ikinci kez: tam ekran.
+    await tester.tap(find.byType(ChannelTile).at(2));
+    await _settle(tester);
+    expect(tester.widget<PlayerPage>(find.byType(PlayerPage)).channel, channels[2]);
+
+    // Geri: tam ekran kapanır, Televizyon (önizleme korunarak) kalır.
+    await tester.binding.handlePopRoute();
+    await _settle(tester);
+    expect(find.byType(PlayerPage), findsNothing);
+    expect(find.byType(TvPage), findsOneWidget);
+    expect(previewed(), channels[2]);
   });
+
+  testWidgets(
+    'EPG çizelgesi: anahtarla açılır, taşmasız; programa dokunma kanalı açar (4K görüntü)',
+    (tester) => withRealShadows(() async {
+      await loadSora(tester);
+      await _size(tester, const Size(960, 540));
+      final key = GlobalKey();
+      await tester.pumpWidget(_app(FormFactor.tv, boundary: key));
+      await _settle(tester);
+
+      // Seçili olmayan görünümün adı yazılıdır.
+      await tester.tap(find.text('EPG çizelgesi'));
+      await settleAssets(tester, rounds: 2);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(EpgGrid), findsOneWidget);
+      expect(find.byType(ChannelTile), findsNothing);
+      expect(find.text('20:45'), findsWidgets); // şimdi hapı (ve saat)
+      await maybeSnapshot(tester, key, 'build/tv/epg-4k.png', pixelRatio: 4);
+
+      final first = TvContent.preview.channels.first;
+      await tester.tap(find.bySemanticsLabel(RegExp('^${first.programTitle},')));
+      await _settle(tester);
+      expect(tester.widget<PlayerPage>(find.byType(PlayerPage)).channel, first);
+    }),
+  );
 
   testWidgets('çip seçimi ızgarayı süzer; "Tümü" geri getirir', (tester) async {
     await loadSora(tester);
@@ -98,13 +151,30 @@ void main() {
     await tester.pumpWidget(_app(FormFactor.tv));
     await _settle(tester);
 
+    // Kaydırma okları: başta yalnız ">" görünür; sona kayınca "<" da.
+    List<double> arrows() => [
+      for (final o in tester.widgetList<AnimatedOpacity>(
+        find.descendant(of: find.byType(ScrollHintRow), matching: find.byType(AnimatedOpacity)),
+      ))
+        o.opacity,
+    ];
+    expect(arrows(), [0, 1]);
+    await tester.ensureVisible(find.widgetWithText(CategoryChip, 'Çocuk'));
+    await _settle(tester);
+    expect(arrows(), [1, 0]);
+
+    // Çipler yatay kayar (sağda görünüm anahtarı): önce görünür kıl.
+    await tester.ensureVisible(find.widgetWithText(CategoryChip, 'Spor'));
+    await _settle(tester);
     await tester.tap(find.widgetWithText(CategoryChip, 'Spor'));
     await _settle(tester);
     final spor = TvContent.preview.channels.where((c) => c.category == 'Spor').toList();
-    expect(find.byType(ChannelCard), findsNWidgets(spor.length));
+    expect(find.byType(ChannelTile), findsNWidgets(spor.length));
     expect(find.text('HABER 24'), findsNothing);
     expect(tester.widget<CategoryChip>(find.widgetWithText(CategoryChip, 'Spor')).selected, isTrue);
 
+    await tester.ensureVisible(find.widgetWithText(CategoryChip, 'Tümü'));
+    await _settle(tester);
     await tester.tap(find.widgetWithText(CategoryChip, 'Tümü'));
     await _settle(tester);
     expect(find.text('ULUSAL 1 HD'), findsWidgets);
@@ -122,11 +192,18 @@ void main() {
       await tester.pumpWidget(_app(f));
       await _settle(tester);
       expect(tester.takeException(), isNull);
-      expect(find.byType(ChannelPreview), TvPage.hasPreview(f) ? findsOneWidget : findsNothing);
-      final cards = find.byType(ChannelCard);
+      expect(find.byType(ChannelPreviewHint), TvPage.hasPreview(f) ? findsOneWidget : findsNothing);
+      final cards = find.byType(ChannelTile);
       final top = tester.getTopLeft(cards.at(0)).dy;
       expect(tester.getTopLeft(cards.at(columns - 1)).dy, top);
       expect(tester.getTopLeft(cards.at(columns)).dy, greaterThan(top));
+
+      // EPG görünümü de taşmasız.
+      await tester.tap(find.byType(SegmentedToggle).first);
+      await tester.tap(find.descendant(of: find.byType(SegmentedToggle), matching: find.byType(InkWell)).last);
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(EpgGrid), findsOneWidget);
     });
   }
 }

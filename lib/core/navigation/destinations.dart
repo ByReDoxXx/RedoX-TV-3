@@ -12,7 +12,10 @@ enum AppSection {
   favorites(RedoxIcons.favorites, 'Favoriler', short: 'Favori'),
   splitScreen(RedoxIcons.splitScreen, '2x2 Ekran'),
   sources(RedoxIcons.sources, 'Kaynaklar'),
-  settings(RedoxIcons.settings, 'Ayarlar');
+  settings(RedoxIcons.settings, 'Ayarlar'),
+
+  /// Telefonu kumanda olarak eşleme (yalnız telefonda, "Diğer" sayfasında).
+  remote(RedoxIcons.remote, 'Kumanda');
 
   const AppSection(this.icon, this.label, {String? short}) : shortLabel = short ?? label;
 
@@ -24,7 +27,7 @@ enum AppSection {
 }
 
 /// Bölümlerin yerleşimi. Kumanda eşleme bir telefon/tablet özelliğidir
-/// (telefonda başlıkta); TV'de Ayarlar altından QR ile açılır. İkonlar M3
+/// (telefonda "Diğer" sayfasında); TV'de Ayarlar altından QR ile açılır. İkonlar M3
 /// Expressive rayında tek renktir (onSurfaceVariant); seçili öğe göstergeyle
 /// ayrılır.
 abstract final class AppDestinations {
@@ -42,7 +45,7 @@ abstract final class AppDestinations {
   static const railFooterSections = [AppSection.settings];
 
   /// Telefon alt menüsü (kullanıcı isteği): Anasayfa yok (başlıktaki logo
-  /// Anasayfa'ya götürür), Kumanda başlıkta aramanın yanında. Beş öğe (M3 sınırı).
+  /// Anasayfa'ya götürür), Kumanda "Diğer" sayfasında. Beş öğe (M3 sınırı).
   static const phoneBarSections = [
     AppSection.tv,
     AppSection.radio,
@@ -52,7 +55,8 @@ abstract final class AppDestinations {
   ];
 
   /// Telefonda alt menüye sığmayanlar: başlıktaki "Diğer" düğmesiyle açılır.
-  static const phoneMoreSections = [AppSection.splitScreen, AppSection.sources, AppSection.settings];
+  /// Kumanda burada (kullanıcı isteği: başlıkta göze batıyordu).
+  static const phoneMoreSections = [AppSection.splitScreen, AppSection.sources, AppSection.remote, AppSection.settings];
 
   static final main = [for (final s in railSections) NavRailItem(s.icon, s.label)];
   static final footer = [for (final s in railFooterSections) NavRailItem(s.icon, s.label)];
@@ -66,7 +70,6 @@ abstract final class AppDestinations {
   }
 
   /// Raydaki dizinin bölümü.
-  static AppSection railSectionAt(int index) => index < railSections.length
-      ? railSections[index]
-      : railFooterSections[index - railSections.length];
+  static AppSection railSectionAt(int index) =>
+      index < railSections.length ? railSections[index] : railFooterSections[index - railSections.length];
 }

@@ -145,12 +145,13 @@ void main() {
       expect(find.byType(RedoxNavRail), findsNothing);
       expect(find.byType(RedoxBottomBar), findsOneWidget);
 
-      // Başlık: logo (Anasayfa) · Arama · Kumanda · Diğer (kullanıcı isteği).
+      // Başlık: logo (Anasayfa) · Arama · Diğer; Kumanda "Diğer" sayfasında
+      // (kullanıcı isteği).
       double headerX(String label) =>
           tester.getCenter(find.descendant(of: find.byType(AppHeader), matching: find.bySemanticsLabel(label))).dx;
       expect(headerX('Anasayfa'), lessThan(headerX('Arama')));
-      expect(headerX('Arama'), lessThan(headerX('Kumanda')));
-      expect(headerX('Kumanda'), lessThan(headerX('Diğer')));
+      expect(headerX('Arama'), lessThan(headerX('Diğer')));
+      expect(find.descendant(of: find.byType(AppHeader), matching: find.bySemanticsLabel('Kumanda')), findsNothing);
       // Telefonda logo büyük (kullanıcı isteği).
       expect(
         tester.getSize(find.descendant(of: find.byType(AppHeader), matching: find.bySemanticsLabel('Anasayfa'))).width,
@@ -167,7 +168,12 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Diğer'));
       await tester.pump(const Duration(milliseconds: 600));
       for (final item in AppDestinations.phoneMore) {
-        expect(find.text(item.label), findsOneWidget, reason: item.label);
+        // Anasayfa hikâyelerinde de "Kumanda" var: yalnız alt sayfada ara.
+        expect(
+          find.descendant(of: find.byType(BottomSheet), matching: find.text(item.label)),
+          findsOneWidget,
+          reason: item.label,
+        );
       }
     });
   }

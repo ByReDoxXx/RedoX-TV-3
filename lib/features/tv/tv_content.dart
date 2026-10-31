@@ -1,3 +1,4 @@
+import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/ui/channel_card.dart';
 
@@ -11,6 +12,34 @@ class TvContent {
   /// Kanallardaki kategoriler, ilk görülme sırasıyla ("Tümü" arayüzdedir).
   /// (Küme sabiti ekleme sırasını korur.)
   List<String> get categories => {for (final c in channels) c.category}.toList();
+
+  /// Kanalın EPG çizelgesi. Veri katmanı (XMLTV) yazılana kadar şimdiki ve
+  /// sonraki programdan türetilir; öncesi ve sonrası kategoriye göre örnek
+  /// kuşaklarla doldurulur (gerçek veri değildir).
+  List<EpgProgram> scheduleOf(LiveChannel c) {
+    final range = c.timeRange.split('–');
+    final start = EpgProgram.parseClock(range.first);
+    final end = range.length > 1 ? EpgProgram.parseClock(range.last) : null;
+    if (start == null || end == null) return const [];
+    final filler = _filler[c.category] ?? const ['Kuşak', 'Gece Kuşağı'];
+    final nextTitle = c.next?.replaceFirst(RegExp(r'^\s*\d{1,2}:\d{2}\s*'), '');
+    final nextEnd = end + 60;
+    return [
+      EpgProgram(title: filler.first, start: start - 120, end: start),
+      EpgProgram(title: c.programTitle, start: start, end: end),
+      if (nextTitle != null) EpgProgram(title: nextTitle, start: end, end: nextEnd),
+      EpgProgram(title: filler.last, start: nextTitle == null ? end : nextEnd, end: 24 * 60 + 120),
+    ];
+  }
+
+  static const _filler = {
+    'Ulusal': ['Gündüz Kuşağı', 'Gece Kuşağı'],
+    'Haber': ['Gün Ortası', 'Gece Bülteni'],
+    'Spor': ['Spor Gündemi', 'Gece Özetleri'],
+    'Belgesel': ['Doğa Kuşağı', 'Gece Belgeseli'],
+    'Müzik': ['Klip Kuşağı', 'Gece Müzikleri'],
+    'Çocuk': ['Çizgi Kuşak', 'Ninniler'],
+  };
 
   /// Tasarım önizlemesi için örnek içerik (gerçek veri değildir; kanal adları
   /// uydurmadır).

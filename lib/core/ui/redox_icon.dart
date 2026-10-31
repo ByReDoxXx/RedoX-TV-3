@@ -30,7 +30,12 @@ enum RedoxIcons {
   lock('lock', 'Kilit'),
   menu('menu', 'Menüyü aç'),
   menuOpen('menu_open', 'Menüyü kapat'),
-  more('more_vert', 'Diğer');
+  more('more_vert', 'Diğer'),
+  fullscreen('fullscreen', 'Tam ekran'),
+  cardView('view_module', 'Kart görünümü'),
+  epg('view_timeline', 'EPG çizelgesi'),
+  chevronLeft('chevron_left', 'Sola kaydır'),
+  chevronRight('chevron_right', 'Sağa kaydır');
 
   const RedoxIcons(this.symbol, this.label);
 

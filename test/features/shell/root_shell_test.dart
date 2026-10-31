@@ -102,6 +102,8 @@ void main() {
     // İlk kare alt sayfa animasyonunu başlatır; ikincisi bitirir.
     await tester.pump();
     await _settle(tester);
+    // Kumanda da bu sayfada (başlıkta değil; kullanıcı isteği).
+    expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('Kumanda')), findsOneWidget);
     await tester.tap(find.text('Kaynaklar'));
     // Alt sayfanın kapanış animasyonu da iki karede biter.
     await tester.pump();

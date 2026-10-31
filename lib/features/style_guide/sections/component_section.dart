@@ -121,8 +121,8 @@ class ComponentSection extends StatelessWidget {
             children: [
               const SegmentedToggle(
                 segments: [
-                  ToggleSegment('Kart görünümü', RedoxIcons.splitScreen),
-                  ToggleSegment('EPG çizelgesi', RedoxIcons.clock),
+                  ToggleSegment('Kart görünümü', RedoxIcons.cardView),
+                  ToggleSegment('EPG çizelgesi', RedoxIcons.epg),
                 ],
                 selectedIndex: 0,
                 focusedIndex: 1,

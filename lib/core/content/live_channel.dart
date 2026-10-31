@@ -15,10 +15,14 @@ class LiveChannel {
     this.accent = CardAccent.crimson,
     this.live = false,
     this.next,
+    this.logoUrl,
   });
 
   /// Sonraki program, örn. "22:30 Maç Özetleri".
   final String? next;
+
+  /// Kanal logosu (M3U tvg-logo); null ise baş harfli yer tutucu çizilir.
+  final String? logoUrl;
 
   final String name;
 

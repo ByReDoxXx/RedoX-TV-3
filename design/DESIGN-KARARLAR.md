@@ -132,12 +132,12 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 - **Telefon alt menüsü (kullanıcı isteği, 2026-10-31).** Telefonda ray yoktur. Ray 411 dp ekranın dörtte birini alıyordu; emülatörde kartlar ve yazılar kesildi. Yerine alt menü gelir.
   - Sıra: TV · Radyo · Film · Dizi · Favori. Beş öğe (M3 sınırı).
     - Anasayfa çubukta yoktur; başlıktaki logoya dokununca gidilir (kullanıcı isteği). Anasayfadayken hiçbir öğe seçili değildir.
-    - Kumanda çubuktan alındı, başlıkta aramanın yanında (kullanıcı isteği).
+    - Kumanda çubuktan alındı; önce başlığa, sonra "Diğer" sayfasına taşındı (kullanıcı isteği: başlıkta göze batıyordu).
     - Önceki denemeler: ortada kızıl yuvarlak Anasayfa düğmesi ve 7 öğe. Kullanıcı isteğiyle kaldırıldı.
     - 360 dp'de yuva 72 dp olur; gösterge 56 dp sığar.
   - Ölçüler M3E kısa gezinme çubuğundan alındı: 64 dp, `surfaceContainer`, gösterge 56 × 32 hap, üst 6 dp, ikon–etiket arası 4 dp.
-  - 2x2 Ekran (eski adı "Bölünmüş ekran"; kullanıcı isteğiyle değişti), Kaynaklar ve Ayarlar alt menüye sığmaz. Başlıktaki "Diğer" düğmesiyle açılan M3 modal alt sayfadadırlar.
-  - Telefon başlığı: logo (Anasayfa) · Arama · Kumanda · Diğer (kullanıcı isteğiyle Arama ile Kumanda yer değişti).
+  - 2x2 Ekran (eski adı "Bölünmüş ekran"; kullanıcı isteğiyle değişti), Kaynaklar, Kumanda ve Ayarlar alt menüye sığmaz. Başlıktaki "Diğer" düğmesiyle açılan M3 modal alt sayfadadırlar.
+  - Telefon başlığı: logo (Anasayfa) · Arama · Diğer.
   - **Telefon vitrini (kullanıcı isteği: düğmeler küçük ve yan yana):**
     - İç boşluk 20 dp (M3 kart boşluğu).
     - Tek satırda: "Canlı yayına gir" hap düğmesi, ardından 40 dp yuvarlak, yalnız ikonlu iki cam düğme ("Çoklu ekrana ekle", "Yayın akışı"). Adları ipucu ve ekran okuyucu etiketidir.
@@ -145,7 +145,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - Telefonda "OK" tuş ipucu yoktur; telefonda kumanda yoktur.
   - **Telefon aralıkları (kullanıcı isteği):** raf kartları arası 24 → 12 dp (M3 sıkı yerleşim 8–16 dp). Hikâye halkaları arası 12 dp; telefonda etiket 12 sp olduğu için yeter. Saat ve profil yoktur: emülatörde ekran dışına taşıyordu, saat zaten durum çubuğunda.
   - Raflar telefonda kesirli kart sayısıyla gösterilir (2,3 / 1,15 / 3,3). Sağda kartın ucu görünür, bu da rafın kaydığını belli eder.
-  - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: eşit yuva, taşma) ve `home_page_test.dart` (telefonda taşma yok; Kumanda ve logo başlıkta).
+  - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: eşit yuva, taşma) ve `home_page_test.dart` (telefonda taşma yok; logo başlıkta, Kumanda "Diğer" sayfasında).
 - **Hikâye aralığı (kullanıcı isteği):** yuva = halka + 28 dp; halkalar arasında 28 dp boşluk kalır (48 → 36 → 28).
   - 20 dp denendi: emülatörde yan yana etiketler (~5 dp) birbirine değdi.
   - Etiketin iki yanında 4 dp pay vardır. Yuvaya sığmayan etiket ("Çoklu ekran", "QR kaynak") kesilmez, iki satıra iner. Satır üste hizalıdır, halkalar aynı hizada kalır.
@@ -179,6 +179,17 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 - **Radyo düğmesi:** "obsidyen merkez, amber halka". Seçili radyo düğmesinin içi obsidyen, halka ve noktası amberdir.
 - **Nabız atan nokta:** spec süre vermez. Zip'teki `animate-pulse` değeri kullanıldı: 2 sn, opaklık 1 → 0,5. Sistem animasyonları kapalıysa nokta sabit kalır.
 - **Medya kartı rampası:** spec'teki doğrusal rampa (alt üçte bir, %0 → %95). Çok açık afişlerde başlığın üst kısmı rampanın düşük opaklık bölgesine düşer. Bu yüzden rampa kontrastı **garanti etmez**. Gerçek afişlerle bakılıp gerekirse rampa başlangıcı yukarı çekilmeli; bu açık nokta olarak bırakıldı.
+- **Televizyon sayfası (kullanıcı isteği, 2026-10-31).** Üstte sayılı kategori çipleri ve görünüm anahtarı, altta seçili görünüm. Kullanıcının Stitch referansından esinlenildi, aynısı değil. Teknik panel, numara tuş takımı ve ipucu şeridi alınmadı.
+  - **Anahtar:** "Kart görünümü | EPG çizelgesi". İkonludur; seçili parça yalnız ikon, seçili olmayanın adı yazılı. Ağaç her durumda aynıdır; seçim değişince odak parçada kalır (emülatörde görüldü).
+  - **Çip satırı kayar:** kaydırılabilen uçta "<" / ">" oku ve zemine solma çıkar. Kayma alanı sayfa kenarında başlar; ekran kenarından başlasaydı odakla kayan çip rayın altına girerdi. Odaktaki çip okun altında kalırsa satır ok payı kadar daha kayar.
+  - **Kart görünümü:** TV/tablette 3 sütun ve sağda 280 dp önizleme paneli; telefonda 2 sütun, panel yok.
+    - İlk OK/dokunma önizler (altın kenarlık), aynı kanalda ikincisi tam ekran açar. Önizleme odakla değişmez. Açılışta panelde yönerge durur.
+    - Sık kart (`ChannelTile`, kullanıcının ikinci referansından): logo karosu, numara ve CANLI, kanal adı, program, ince ilerleme çizgisi. 16:9 görsel yoktur.
+    - Kart yazıları 12/14 dp'dir. Bu, TV'nin 16 dp yazı tabanının bilinçli istisnasıdır (kullanıcı isteği: yazılar çok büyüktü). 960 dp tuvalde 12 dp, 1080p ekranda 24 px eder.
+    - TV'de düğmelerin dokunma alanı büyütülmez (`MaterialTapTargetSize.shrinkWrap`). 40 dp düğmeler 48'e çıkmaz, böylece panel düğmeleri 540 dp'ye sığar.
+  - **EPG çizelgesi:** solda kanal sütunu, sağda zaman ekseni ve kızıl "şimdi" çizgisi. Yatay kaydırma yoktur: pencere genişliğe sığan, yarım saatin katı uzunluktadır ve şimdiden 30 dk önce başlar. Dar blokta saat (100 dp altı) ve başlık (44 dp altı) yazılmaz. Programa OK o kanalı açar. Veri katmanı (XMLTV) yazılana kadar çizelge şimdiki/sonraki programdan türetilir.
+  - **Tam ekran:** oynatıcı henüz yok. Yer tutucu sayfada kanal kimliği ve program durur; Geri/Esc ile dönülür.
+  - Kanıt: `test/features/tv/tv_page_test.dart` (4K görüntüler `build/tv/televizyon-4k.png`, `epg-4k.png`). TV emülatöründe sırayla doğrulandı: OK → önizleme → OK → tam ekran → Geri → anahtar → EPG → çizelgede gezinme.
 
 ## 6. Logo
 

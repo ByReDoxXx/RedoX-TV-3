@@ -22,7 +22,18 @@ class SegmentedToggle extends StatelessWidget {
     required this.selectedIndex,
     this.onChanged,
     this.focusedIndex,
+    this.iconOnly = false,
+    this.labelUnselectedOnly = false,
   });
+
+  /// Dar ekran (telefon): yalnız ikon; etiket ipucunda ve erişilebilirlikte.
+  final bool iconOnly;
+
+  /// Seçili parça yalnız ikon, seçili olmayan ikon + ad: geçilecek görünümün
+  /// adı okunur, anahtar dar kalır (kullanıcı isteği).
+  final bool labelUnselectedOnly;
+
+  bool _showsLabel(bool selected) => !iconOnly && !(labelUnselectedOnly && selected);
 
   final List<ToggleSegment> segments;
   final int selectedIndex;
@@ -30,6 +41,12 @@ class SegmentedToggle extends StatelessWidget {
 
   /// Önizleme: bu parçayı odakta göster.
   final int? focusedIndex;
+
+  /// Erişilebilirlik adı hep tam addır (yazısız parçada da). İpucu (Tooltip)
+  /// yoktur: boş/dolu geçişi ağacı değiştirir, seçim değişince parçanın
+  /// odağı kaybolurdu.
+  Widget _labelled(ToggleSegment segment, Widget child, {required bool selected}) =>
+      Semantics(label: segment.label, selected: selected, button: true, excludeSemantics: true, child: child);
 
   @override
   Widget build(BuildContext context) {
@@ -46,34 +63,40 @@ class SegmentedToggle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           for (var i = 0; i < segments.length; i++)
-            FocusGlow(
-              borderRadius: inner,
-              focused: focusedIndex == null ? null : focusedIndex == i,
-              builder: (context, _) {
-                final selected = i == selectedIndex;
-                final fg = selected ? RedoxRoles.onPrimaryContainer : RedoxRoles.onSurfaceVariant;
-                return Material(
-                  color: selected ? RedoxRoles.primaryContainer : Colors.transparent,
-                  borderRadius: inner,
-                  child: InkWell(
-                    onTap: onChanged == null ? null : () => onChanged!(i),
+            _labelled(
+              segments[i],
+              selected: i == selectedIndex,
+              FocusGlow(
+                borderRadius: inner,
+                focused: focusedIndex == null ? null : focusedIndex == i,
+                builder: (context, _) {
+                  final selected = i == selectedIndex;
+                  final fg = selected ? RedoxRoles.onPrimaryContainer : RedoxRoles.onSurfaceVariant;
+                  return Material(
+                    color: selected ? RedoxRoles.primaryContainer : Colors.transparent,
                     borderRadius: inner,
-                    focusColor: Colors.transparent,
-                    hoverColor: Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          RedoxIcon(segments[i].icon, color: fg, size: 18),
-                          const SizedBox(width: 8),
-                          Text(segments[i].label, style: style.copyWith(color: fg)),
-                        ],
+                    child: InkWell(
+                      onTap: onChanged == null ? null : () => onChanged!(i),
+                      borderRadius: inner,
+                      focusColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: _showsLabel(selected) ? 14 : 8, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            RedoxIcon(segments[i].icon, filled: selected, color: fg, size: 18),
+                            if (_showsLabel(selected)) ...[
+                              const SizedBox(width: 8),
+                              Text(segments[i].label, style: style.copyWith(color: fg)),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
         ],
       ),

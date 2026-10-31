@@ -66,7 +66,6 @@ class HomePage extends StatelessWidget {
                   items: AppDestinations.phoneMore,
                   onSelected: (i) => onNavigate?.call(AppDestinations.phoneMoreSections[i]),
                 ),
-                onRemote: () {},
                 // Zaten Anasayfadayız: başa kaydırır.
                 onHome: () => PrimaryScrollController.maybeOf(
                   context,

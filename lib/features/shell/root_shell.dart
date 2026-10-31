@@ -9,6 +9,7 @@ import '../../core/ui/bottom_nav_bar.dart';
 import '../../core/ui/nav_rail.dart';
 import '../home/home_content.dart';
 import '../home/home_page.dart';
+import '../player/player_page.dart';
 import '../tv/tv_content.dart';
 import '../tv/tv_page.dart';
 import 'section_placeholder.dart';
@@ -63,6 +64,7 @@ class _RootShellState extends State<RootShell> {
       profileName: widget.home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
+      onChannel: (c) => Navigator.of(context).push(PlayerPage.route(c)),
     ),
     _ => SectionPlaceholder(section: _section),
   };

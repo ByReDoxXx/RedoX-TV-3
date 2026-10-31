@@ -17,17 +17,10 @@ import 'redox_icon.dart';
 /// 44 dp'de tam logonun yazısı okunmadığı için yazısız işaret kullanılır.
 ///
 /// Arama kutusu profile kadar uzanır (kullanıcı isteği). Telefonda saat ve
-/// profil sığmaz (saat zaten durum çubuğunda): arama, Kumanda ve [onMore]
+/// profil sığmaz (saat zaten durum çubuğunda): arama ve [onMore]
 /// (alt menüye sığmayan bölümler) ikon düğmeleri gösterilir.
 class AppHeader extends StatelessWidget {
-  const AppHeader({
-    super.key,
-    required this.clock,
-    required this.profileName,
-    this.onMore,
-    this.onHome,
-    this.onRemote,
-  });
+  const AppHeader({super.key, required this.clock, required this.profileName, this.onMore, this.onHome});
 
   /// Logo işareti: TV/tablet 44 dp. Telefonda 56 dp (kullanıcı isteği:
   /// biraz büyüsün); başlıkta yer var, dokunma hedefi de 48'i aşar.
@@ -39,10 +32,6 @@ class AppHeader extends StatelessWidget {
 
   /// Telefonda "Diğer" düğmesine basılınca.
   final VoidCallback? onMore;
-
-  /// Telefonda Kumanda düğmesine basılınca (kullanıcı isteği: alt menüden
-  /// aramanın yanına alındı).
-  final VoidCallback? onRemote;
 
   /// Telefonda logoya dokununca Anasayfa'ya gidilir (alt menüde Anasayfa
   /// yoktur; kullanıcı isteği).
@@ -68,10 +57,9 @@ class AppHeader extends StatelessWidget {
             child: InkWell(onTap: onHome, customBorder: const CircleBorder(), child: logo),
           ),
           const Spacer(),
-          // Sıra (kullanıcı isteği): Arama · Kumanda · Diğer.
+          // Sıra: Arama · Diğer. Kumanda "Diğer" sayfasındadır (kullanıcı
+          // isteği: başlıkta göze batıyordu).
           const HeaderSearch(),
-          const SizedBox(width: 8),
-          IconActionButton(icon: RedoxIcons.remote, onPressed: onRemote),
           const SizedBox(width: 8),
           IconActionButton(icon: RedoxIcons.more, onPressed: onMore),
         ],

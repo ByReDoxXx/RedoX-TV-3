@@ -12,7 +12,11 @@ class ArtworkFallback extends StatelessWidget {
     required this.name,
     this.icon,
     this.showInitials = true,
+    this.initialsScale = 0.28,
   });
+
+  /// Baş harflerin boyu, alanın kısa kenarına oranla (logo karosunda büyük).
+  final double initialsScale;
 
   final String name;
   final RedoxIcons? icon;
@@ -64,7 +68,7 @@ class ArtworkFallback extends StatelessWidget {
                   child: Text(
                     _initials,
                     style: TextStyle(
-                      fontSize: s * 0.28,
+                      fontSize: s * initialsScale,
                       fontWeight: FontWeight.w800,
                       color: Colors.white.withValues(alpha: 0.9),
                       height: 1,

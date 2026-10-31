@@ -27,7 +27,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       expect(tester.takeException(), isNull);
 
-      // Anasayfa logoda, Kumanda başlıkta (kullanıcı isteği).
+      // Anasayfa logoda, Kumanda "Diğer" sayfasında (kullanıcı isteği).
       expect(find.text('Anasayfa'), findsNothing);
       expect(find.text('Kumanda'), findsNothing);
       expect(AppDestinations.phoneBar, hasLength(5));

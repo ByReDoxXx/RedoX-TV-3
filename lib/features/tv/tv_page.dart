@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
 
+import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
-import '../../core/ui/artwork_fallback.dart';
 import '../../core/ui/category_chip.dart';
-import '../../core/ui/channel_card.dart';
+import '../../core/ui/channel_tile.dart';
 import '../../core/ui/redox_icon.dart';
-import '../../core/ui/status_badge.dart';
+import '../../core/ui/scroll_hint_row.dart';
+import '../../core/ui/segmented_toggle.dart';
 import 'tv_content.dart';
 import 'widgets/channel_preview.dart';
+import 'widgets/epg_grid.dart';
 
-/// Televizyon: üstte sayılı kategori çipleri, altta kanal kartı ızgarası
-/// (kullanıcı seçimi: "çipler + kart ızgarası"). TV/tablet/masaüstünde sağda
-/// odaktaki kanalın önizleme paneli durur (kullanıcının Stitch referansından
-/// esinlenildi). Izgara tembel kurulur (SliverGrid): gerçek listelerde binlerce
-/// kanal olabilir. Ray, alt menü ve Geri kök kabuktadır (RootShell).
+/// Televizyon: üstte sayılı kategori çipleri ve görünüm anahtarı (Kart
+/// görünümü | EPG çizelgesi), altta seçili görünüm. Kart görünümünde
+/// TV/tablet/masaüstünde sağda önizleme paneli durur: bir kanalda ilk OK
+/// (dokunma) önizler, aynı kanalda ikinci OK tam ekrana geçer (kullanıcının
+/// Stitch referansından esinlenildi). Izgara ve çizelge tembel kurulur:
+/// gerçek listelerde binlerce kanal olabilir. Ray, alt menü ve Geri kök
+/// kabuktadır (RootShell).
+/// Televizyon sayfasının alt görünümleri.
+enum TvView { cards, epg }
+
 class TvPage extends StatefulWidget {
   const TvPage({
     super.key,
@@ -40,7 +47,7 @@ class TvPage extends StatefulWidget {
   /// Telefonda "Diğer" düğmesine basılınca.
   final VoidCallback? onMore;
 
-  /// Kanal izlenmek istenince (oynatıcı yazılınca açılacak).
+  /// Kanal tam ekranda izlenmek istenince.
   final ValueChanged<LiveChannel>? onChannel;
 
   /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam
@@ -62,12 +69,18 @@ class _TvPageState extends State<TvPage> {
   /// Seçili kategori; null "Tümü".
   String? _category;
 
-  /// Önizlemedeki kanal (odaktaki veya son dokunulan); null ise ilk kanal.
+  /// Önizlemedeki kanal (son OK'e basılan / dokunulan); null ise panelde
+  /// yönerge durur.
   LiveChannel? _previewed;
+
+  TvView _view = TvView.cards;
 
   List<LiveChannel> get _channels => _category == null
       ? widget.content.channels
-      : [for (final c in widget.content.channels) if (c.category == _category) c];
+      : [
+          for (final c in widget.content.channels)
+            if (c.category == _category) c,
+        ];
 
   void _select(String? category) => setState(() {
     _category = category;
@@ -84,64 +97,81 @@ class _TvPageState extends State<TvPage> {
       profileName: widget.profileName,
       onHome: widget.onHome,
       onMore: widget.onMore,
-      onRemote: () {},
     );
-    if (!TvPage.hasPreview(metrics.formFactor)) {
-      // Telefon: sayfa tek parça kayar.
+    final phone = !TvPage.hasPreview(metrics.formFactor);
+    if (phone && _view == TvView.cards) {
+      // Telefon kart görünümü: sayfa tek parça kayar.
       return CustomScrollView(
         slivers: [
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, padding.top, padding.right, 0),
             sliver: SliverToBoxAdapter(child: header),
           ),
-          SliverToBoxAdapter(child: _chips(padding)),
+          SliverToBoxAdapter(child: _filters(padding, phone)),
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.bottom),
-            sliver: _grid(context, channels, metrics, padding.left + padding.right, preview: false),
+            sliver: _grid(context, channels, metrics, preview: false),
           ),
         ],
       );
     }
-    // TV/tablet: başlık ve çipler sabit; ızgara kendi içinde kayar, önizleme
+    // Başlık ve çipler sabit; ızgara/çizelge kendi içinde kayar, önizleme
     // paneli sağda sabit durur.
-    final previewed = _previewed ?? (channels.isEmpty ? null : channels.first);
-    const room = TvPage.ringRoom;
+    final body = switch (_view) {
+      TvView.epg => EpgGrid(
+        channels: channels,
+        scheduleOf: widget.content.scheduleOf,
+        now: EpgProgram.parseClock(widget.clock) ?? 0,
+        compact: phone,
+        onChannel: widget.onChannel,
+        padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: phone ? padding.bottom : 0),
+      ),
+      TvView.cards => _cardsWithPreview(context, channels, metrics, padding),
+    };
     return Padding(
-      padding: EdgeInsets.only(top: padding.top, bottom: padding.bottom),
+      padding: EdgeInsets.only(top: padding.top, bottom: phone ? 0 : padding.bottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: EdgeInsets.only(left: padding.left, right: padding.right), child: header),
-          _chips(padding),
+          Padding(
+            padding: EdgeInsets.only(left: padding.left, right: padding.right),
+            child: header,
+          ),
+          _filters(padding, phone),
+          if (_view == TvView.epg) const SizedBox(height: 6),
+          Expanded(child: body),
+        ],
+      ),
+    );
+  }
+
+  /// Kart ızgarası (solda) ve önizleme paneli (sağda): TV/tablet.
+  Widget _cardsWithPreview(BuildContext context, List<LiveChannel> channels, RedoxMetrics metrics, EdgeInsets padding) {
+    const room = TvPage.ringRoom;
+    final previewed = _previewed;
+    return Padding(
+      padding: EdgeInsets.only(left: padding.left - room, right: padding.right),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: padding.left - room, right: padding.right),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, box) => CustomScrollView(
-                        slivers: [
-                          SliverPadding(
-                            padding: const EdgeInsets.all(room),
-                            sliver: _grid(context, channels, metrics, box.maxWidth, preview: true, inset: room),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 24 - room),
-                  if (previewed != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: room),
-                      child: SizedBox(
-                        width: ChannelPreview.width,
-                        child: ChannelPreview(channel: previewed, onWatch: () => widget.onChannel?.call(previewed)),
-                      ),
-                    ),
-                ],
-              ),
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.all(room),
+                  sliver: _grid(context, channels, metrics, preview: true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24 - room),
+          Padding(
+            padding: const EdgeInsets.only(top: room),
+            child: SizedBox(
+              width: ChannelPreview.width,
+              child: previewed == null
+                  ? ChannelPreviewHint(touch: metrics.formFactor != FormFactor.tv)
+                  : ChannelPreview(channel: previewed, onWatch: () => widget.onChannel?.call(previewed)),
             ),
           ),
         ],
@@ -149,37 +179,57 @@ class _TvPageState extends State<TvPage> {
     );
   }
 
-  /// Sayılı çipler; yatay kayar, kayma alanı ekran kenarına kadar uzanır.
+  /// Çipler (yatay kayar) ve sağda görünüm anahtarı.
+  Widget _filters(EdgeInsets padding, bool phone) => Row(
+    children: [
+      Expanded(child: _chips(padding)),
+      Padding(
+        padding: EdgeInsets.only(top: 16, bottom: 6, right: padding.right),
+        child: SegmentedToggle(
+          segments: const [
+            ToggleSegment('Kart görünümü', RedoxIcons.cardView),
+            ToggleSegment('EPG çizelgesi', RedoxIcons.epg),
+          ],
+          // Seçili görünüm yalnız ikon: çiplere yer kalsın.
+          labelUnselectedOnly: true,
+          selectedIndex: _view.index,
+          iconOnly: phone,
+          onChanged: (i) => setState(() => _view = TvView.values[i]),
+        ),
+      ),
+    ],
+  );
+
+  /// Sayılı çipler; yatay kayar, kayma alanı görünüm anahtarına kadar uzanır.
   Widget _chips(EdgeInsets padding) {
     final all = widget.content.channels;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 6),
-      child: Row(
-        children: [
-          for (final (i, category) in [null, ...widget.content.categories].indexed) ...[
-            if (i > 0) const SizedBox(width: 12),
-            CategoryChip(
-              label: category ?? 'Tümü',
-              count: category == null ? all.length : all.where((c) => c.category == category).length,
-              selected: category == _category,
-              onPressed: () => _select(category),
-            ),
+    const room = TvPage.ringRoom;
+    // Kayma alanı sayfa kenarında başlar: ekran kenarına uzansaydı odakla
+    // kayan çip sol rayın altına girerdi.
+    return Padding(
+      padding: EdgeInsets.only(left: padding.left - room),
+      // Kaydırılabilen uçta "<" / ">" oku (kullanıcı isteği).
+      child: ScrollHintRow(
+        padding: const EdgeInsets.fromLTRB(room, 16, 12, 6),
+        child: Row(
+          children: [
+            for (final (i, category) in [null, ...widget.content.categories].indexed) ...[
+              if (i > 0) const SizedBox(width: 12),
+              CategoryChip(
+                label: category ?? 'Tümü',
+                count: category == null ? all.length : all.where((c) => c.category == category).length,
+                selected: category == _category,
+                onPressed: () => _select(category),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
-  /// Kanal ızgarası. [taken]: genişlikten düşülecek yatay dolgu.
-  Widget _grid(
-    BuildContext context,
-    List<LiveChannel> channels,
-    RedoxMetrics metrics,
-    double taken, {
-    required bool preview,
-    double inset = 0,
-  }) {
+  /// Kanal ızgarası; [preview]: önizleme paneli var (TV/tablet).
+  Widget _grid(BuildContext context, List<LiveChannel> channels, RedoxMetrics metrics, {required bool preview}) {
     final gutter = metrics.gutter;
     final columns = TvPage.columnsFor(metrics.formFactor);
     if (channels.isEmpty) {
@@ -190,43 +240,21 @@ class _TvPageState extends State<TvPage> {
         ),
       );
     }
-    final width = preview ? taken - 2 * inset : MediaQuery.sizeOf(context).width - taken;
-    final cell = (width - gutter * (columns - 1)) / columns;
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
         mainAxisSpacing: gutter,
         crossAxisSpacing: gutter,
-        mainAxisExtent: ChannelCard.heightFor(context, cell, withNext: !preview),
+        mainAxisExtent: ChannelTile.heightFor(context),
       ),
       delegate: SliverChildBuilderDelegate((context, i) {
         final c = channels[i];
-        final card = ChannelCard(
-          width: cell,
-          channelName: c.name,
-          number: c.number,
-          // Tür yazılmaz: dar kartta "saat · tür" kesiliyordu (4K görüntü).
-          timeRange: c.timeRange,
-          programTitle: c.programTitle,
-          progress: c.progress,
-          accent: c.accent,
-          // "Sonraki" 3 sütunlu dar kartta kesiliyordu; önizleme panelinde var.
-          next: preview ? null : c.next,
-          badge: c.live ? const StatusBadge(label: 'CANLI', pulse: true) : null,
-          artwork: ArtworkFallback(name: c.name, icon: RedoxIcons.television),
-          // Dokunmatik/fare: önce önizle, ikinci dokunuşta izle. D-pad'de
-          // odak önizler, OK izler.
+        return ChannelTile(
+          channel: c,
+          selected: preview && _previewed == c,
+          // İlk OK/dokunma önizler, aynı kanalda ikincisi tam ekran açar.
+          // Telefonda panel yok: doğrudan tam ekran.
           onPressed: () => preview && _previewed != c ? setState(() => _previewed = c) : widget.onChannel?.call(c),
-        );
-        if (!preview) return card;
-        // Odaktaki kart önizlemeye gelir (kendisi odak almaz, izler).
-        return Focus(
-          canRequestFocus: false,
-          skipTraversal: true,
-          onFocusChange: (focused) {
-            if (focused && _previewed != c) setState(() => _previewed = c);
-          },
-          child: card,
         );
       }, childCount: channels.length),
     );
