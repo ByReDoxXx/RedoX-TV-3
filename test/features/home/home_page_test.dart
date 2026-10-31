@@ -126,32 +126,45 @@ void main() {
     expect(floating, findsNothing);
   });
 
-  testWidgets('telefon: ray yok, alt menü var, sayfa taşmasız; Diğer alt sayfayı açar', (tester) async {
-    await loadSora(tester);
-    tester.view.physicalSize = const Size(411, 891);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
+  for (final width in [360.0, 411.0]) {
+    testWidgets('telefon $width dp: ray yok, alt menü var, taşmasız; vitrin düğmeleri tek satırda', (tester) async {
+      await loadSora(tester);
+      tester.view.physicalSize = Size(width, 891);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: RedoxTheme.dark(formFactor: FormFactor.phone),
-        home: const HomePage(content: HomeContent.preview),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(tester.takeException(), isNull);
-    expect(find.byType(RedoxNavRail), findsNothing);
-    expect(find.byType(RedoxBottomBar), findsOneWidget);
-    // Kumanda başlıkta, logo Anasayfa düğmesi (kullanıcı isteği).
-    expect(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel('Kumanda')), findsOneWidget);
-    expect(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel('Anasayfa')), findsOneWidget);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RedoxTheme.dark(formFactor: FormFactor.phone),
+          home: const HomePage(content: HomeContent.preview),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(RedoxNavRail), findsNothing);
+      expect(find.byType(RedoxBottomBar), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('Diğer'));
-    await tester.pump(const Duration(milliseconds: 600));
-    for (final item in AppDestinations.phoneMore) {
-      expect(find.text(item.label), findsOneWidget, reason: item.label);
-    }
-  });
+      // Başlık: logo (Anasayfa) · Arama · Kumanda · Diğer (kullanıcı isteği).
+      double headerX(String label) =>
+          tester.getCenter(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel(label))).dx;
+      expect(headerX('Anasayfa'), lessThan(headerX('Arama')));
+      expect(headerX('Arama'), lessThan(headerX('Kumanda')));
+      expect(headerX('Kumanda'), lessThan(headerX('Diğer')));
+
+      // Vitrin düğmeleri yan yana; telefonda "OK" ipucu yok (kumanda yok).
+      final primaryY = tester.getCenter(find.text('Canlı yayına gir')).dy;
+      for (final tip in ['Çoklu ekrana ekle', 'Yayın akışı']) {
+        expect(tester.getCenter(find.byTooltip(tip)).dy, closeTo(primaryY, 1), reason: tip);
+      }
+      expect(find.descendant(of: find.byType(HeroBanner), matching: find.text('OK')), findsNothing);
+
+      await tester.tap(find.bySemanticsLabel('Diğer'));
+      await tester.pump(const Duration(milliseconds: 600));
+      for (final item in AppDestinations.phoneMore) {
+        expect(find.text(item.label), findsOneWidget, reason: item.label);
+      }
+    });
+  }
 
   testWidgets('tablet: arama kutusu profile kadar uzanır; saat en sağda', (tester) async {
     await loadSora(tester);

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/form_factor.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_elevation.dart';
+import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/artwork_fallback.dart';
@@ -25,6 +27,24 @@ class HeroBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final radius = BorderRadius.circular(RedoxRadius.xl);
+    // Telefon: kumanda yok ("OK" ipucu anlamsız); düğmeler tek satırda,
+    // ikincil düğmeler yalnız ikon (kullanıcı isteği: yan yana ve küçük).
+    final phone = Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.phone;
+    final primary = PrimaryButton(
+      label: 'Canlı yayına gir',
+      icon: RedoxIcons.play,
+      keyHint: phone ? null : 'OK',
+      onPressed: () {},
+      focused: primaryFocused,
+      autofocus: primaryFocused == null,
+    );
+    final multi = GlassButton(
+      label: 'Çoklu ekrana ekle',
+      icon: RedoxIcons.splitScreen,
+      iconOnly: phone,
+      onPressed: () {},
+    );
+    final guide = GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, iconOnly: phone, onPressed: () {});
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: radius,
@@ -73,7 +93,8 @@ class HeroBanner extends StatelessWidget {
             // Vitrin tam genişliktir; içerik (Wrap) genişliği belirlemez.
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(28, 22, 28, 22),
+              // Telefonda M3 kart iç boşluğu (16–20 dp); düğmeler satıra sığsın.
+              padding: phone ? const EdgeInsets.all(20) : const EdgeInsets.fromLTRB(28, 22, 28, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -132,23 +153,22 @@ class HeroBanner extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Dar ekranda (telefon) düğmeler alt satıra iner.
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 12,
-                    children: [
-                      PrimaryButton(
-                        label: 'Canlı yayına gir',
-                        icon: RedoxIcons.play,
-                        keyHint: 'OK',
-                        onPressed: () {},
-                        focused: primaryFocused,
-                        autofocus: primaryFocused == null,
-                      ),
-                      GlassButton(label: 'Çoklu ekrana ekle', icon: RedoxIcons.splitScreen, onPressed: () {}),
-                      GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, onPressed: () {}),
-                    ],
-                  ),
+                  if (phone)
+                    Row(
+                      children: [
+                        // 360 dp ekranda birincil düğme sığmazsa orantılı küçülür.
+                        Flexible(
+                          child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: primary),
+                        ),
+                        const SizedBox(width: 12),
+                        multi,
+                        const SizedBox(width: 8),
+                        guide,
+                      ],
+                    )
+                  else
+                    // Dar tablet/masaüstü penceresinde düğmeler alt satıra iner.
+                    Wrap(spacing: 16, runSpacing: 12, children: [primary, multi, guide]),
                 ],
               ),
             ),

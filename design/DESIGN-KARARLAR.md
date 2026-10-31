@@ -137,7 +137,13 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - 360 dp'de yuva 72 dp olur; gösterge 56 dp sığar.
   - Ölçüler M3E kısa gezinme çubuğundan alındı: 64 dp, `surfaceContainer`, gösterge 56 × 32 hap, üst 6 dp, ikon–etiket arası 4 dp.
   - 2x2 Ekran (eski adı "Bölünmüş ekran"; kullanıcı isteğiyle değişti), Kaynaklar ve Ayarlar alt menüye sığmaz. Başlıktaki "Diğer" düğmesiyle açılan M3 modal alt sayfadadırlar.
-  - Telefon başlığı: logo (Anasayfa) · Kumanda · Arama · Diğer. Saat ve profil yoktur: emülatörde ekran dışına taşıyordu, saat zaten durum çubuğunda.
+  - Telefon başlığı: logo (Anasayfa) · Arama · Kumanda · Diğer (kullanıcı isteğiyle Arama ile Kumanda yer değişti).
+  - **Telefon vitrini (kullanıcı isteği: düğmeler küçük ve yan yana):**
+    - İç boşluk 20 dp (M3 kart boşluğu).
+    - Tek satırda: "Canlı yayına gir" hap düğmesi, ardından 40 dp yuvarlak, yalnız ikonlu iki cam düğme ("Çoklu ekrana ekle", "Yayın akışı"). Adları ipucu ve ekran okuyucu etiketidir.
+    - Üç etiketli düğme 360 dp'de sığmaz (~465 dp gerekir, ~272 dp yer var). 360 dp'de birincil düğme gerekirse orantılı küçülür.
+    - Telefonda "OK" tuş ipucu yoktur; telefonda kumanda yoktur.
+  - **Telefon aralıkları (kullanıcı isteği):** raf kartları arası 24 → 12 dp (M3 sıkı yerleşim 8–16 dp). Hikâye halkaları arası 12 dp; telefonda etiket 12 sp olduğu için yeter. Saat ve profil yoktur: emülatörde ekran dışına taşıyordu, saat zaten durum çubuğunda.
   - Raflar telefonda kesirli kart sayısıyla gösterilir (2,3 / 1,15 / 3,3). Sağda kartın ucu görünür, bu da rafın kaydığını belli eder.
   - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: eşit yuva, taşma) ve `home_page_test.dart` (telefonda taşma yok; Kumanda ve logo başlıkta).
 - **Hikâye aralığı (kullanıcı isteği):** yuva = halka + 28 dp; halkalar arasında 28 dp boşluk kalır (48 → 36 → 28).

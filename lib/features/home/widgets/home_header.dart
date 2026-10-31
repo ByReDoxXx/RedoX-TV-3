@@ -16,7 +16,7 @@ import '../../../core/ui/redox_icon.dart';
 /// 44 dp'de tam logonun yazısı okunmadığı için yazısız işaret kullanılır.
 ///
 /// Arama kutusu profile kadar uzanır (kullanıcı isteği). Telefonda saat ve
-/// profil sığmaz (saat zaten durum çubuğunda): Kumanda, arama ve [onMore]
+/// profil sığmaz (saat zaten durum çubuğunda): arama, Kumanda ve [onMore]
 /// (alt menüye sığmayan bölümler) ikon düğmeleri gösterilir.
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
@@ -61,9 +61,10 @@ class HomeHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          IconActionButton(icon: RedoxIcons.remote, onPressed: onRemote),
-          const SizedBox(width: 8),
+          // Sıra (kullanıcı isteği): Arama · Kumanda · Diğer.
           const HeaderSearch(),
+          const SizedBox(width: 8),
+          IconActionButton(icon: RedoxIcons.remote, onPressed: onRemote),
           const SizedBox(width: 8),
           IconActionButton(icon: RedoxIcons.more, onPressed: onMore),
         ],

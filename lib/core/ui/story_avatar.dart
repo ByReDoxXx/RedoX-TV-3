@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../layout/form_factor.dart';
 import '../theme/redox_colors.dart';
+import '../theme/redox_metrics.dart';
 import 'focus_glow.dart';
 
 /// Hikâye halkası (Anasayfa: yeni kanallar ve özellikler). Görülmemiş: ısıl
@@ -32,14 +34,19 @@ class StoryAvatar extends StatelessWidget {
   /// komşu etiketler arası en az 8 dp. Yuvaya sığmayan etiket ("Çoklu ekran",
   /// TV'de ~105 dp) kesilmez, iki satıra iner; daha uzunu "…" ile kısalır.
   static const slotExtra = 28.0;
+
+  /// Telefonda etiketler 12 sp'dir (TV'de 16): halkalar arası 12 dp yeter
+  /// (kullanıcı isteği). En uzun etiket iki satıra iner.
+  static const slotExtraPhone = 12.0;
   static const labelInset = 4.0;
   static const labelLines = 2;
 
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelMedium!;
+    final phone = Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.phone;
     return SizedBox(
-      width: diameter + slotExtra,
+      width: diameter + (phone ? slotExtraPhone : slotExtra),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -37,7 +37,7 @@ class RedoxMetrics extends ThemeExtension<RedoxMetrics> {
       focusScale: RedoxElevation.focusScaleDesktop,
       iconButtonSize: 48,
       margin: EdgeInsets.all(RedoxSpace.margin),
-      gutter: RedoxSpace.gutter,
+      gutter: RedoxSpace.gutterPhone,
     ),
   };
 

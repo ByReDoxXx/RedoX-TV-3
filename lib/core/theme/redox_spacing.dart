@@ -11,6 +11,10 @@ abstract final class RedoxSpace {
 
   static const double gutter = 24;
 
+  /// Telefon raflarında kartlar arası (kullanıcı isteği: 24 çok açık). M3
+  /// sıkı yerleşimde kartlar arası 8–16 dp.
+  static const double gutterPhone = 12;
+
   /// TV raflarında kartlar arası (kullanıcı isteği: spec'in 48'i çok açık).
   /// Odaktaki kart 1,08 büyür ve 4 dp halka alır; 16 dp'de komşuya değmez.
   static const double gutterTv = 16;
