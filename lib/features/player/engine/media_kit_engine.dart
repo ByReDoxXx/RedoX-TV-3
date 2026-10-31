@@ -24,17 +24,38 @@ class MediaKitEngine implements PlaybackEngine {
           _state.value.copyWith(videoTrack: t.video.id, audioTrack: t.audio.id, subtitleTrack: t.subtitle.id),
         ),
       ),
-      s.error.listen(_errors.add),
+      s.error.listen((e) {
+        if (!_transient(e)) _errors.add(e);
+      }),
     ]);
   }
 
   final _player = Player();
-  late final _video = VideoController(_player);
+  late final _video = VideoController(
+    _player,
+    configuration: _android ? _zeroCopy : const VideoControllerConfiguration(),
+  );
+
+  static bool get _android => defaultTargetPlatform == TargetPlatform.android;
+
+  /// Android'de donanım çözücü kareyi doğrudan yüzeye çizer (kopyasız).
+  /// Varsayılan yol (vo=gpu, mediacodec-copy) her kareyi belleğe kopyalıyordu:
+  /// Chromecast with Google TV'de 1080p/1440p yayınlar saniyede 5–8 kare
+  /// atladı, görüntü 40 sn'de sesin 10–24 sn gerisine düştü ("kasma"; ölçüldü).
+  /// Kopyasız yolda aynı kanallarda atlama 0, ses-görüntü farkı 0, işlemci yükü
+  /// yarıya indi. Hafif ölçekleme (bilinear) ve 1080p sınırı denendi, etkisiz.
+  static const _zeroCopy = VideoControllerConfiguration(vo: 'mediacodec_embed', hwdec: 'mediacodec');
+
+  /// Yayını düşürmeyen mpv iletileri: media_kit yüzey bağlanınca çözücüyü
+  /// yeniden kurar ve oynatma konumuna atlar; canlı yayında atlama "Cannot
+  /// seek" verir, kopyasız kipte ilk açılış "Could not open codec." verebilir.
+  /// Bunlar hata sayılsaydı oturum çalışan akışı bırakıp yedeğe geçerdi.
+  /// Gerçekten açılmayan akışı açılış süresi yakalar.
+  static bool _transient(String e) =>
+      e.contains('Cannot seek') || e.contains('force-seekable') || (_android && e.contains('Could not open codec'));
 
   /// Canlı yayında açılışı hızlandırır: ffmpeg yayın biçimini varsayılan 5 sn
   /// yerine 1 sn çözümler (IPTV akışlarında yeterli). Ağ beklemesi 10 sn.
-  /// (Doğrudan çizim, vo=mediacodec_embed, denendi: gerçek TV'de "Could not
-  /// open codec." verdi; kullanılmıyor.)
   Future<void> _tune() async {
     final native = _player.platform;
     if (native is! NativePlayer) return;

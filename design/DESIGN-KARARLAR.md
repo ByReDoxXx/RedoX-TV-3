@@ -203,8 +203,13 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Kanıt: `test/core/content/m3u_parser_test.dart`.
 - **Oynatıcı, 1. aşama (kullanıcı isteği, 2026-10-31).** Eski sürümün oynatıcısı örnek alındı (`design/referans-oynatici.jpg`, eski deponun wiki'si).
   - **Motor: media_kit 1.2.6 (libmpv).** Android/Android TV, Windows ve Linux'ta HLS ve MPEG-TS oynatır; Flutter'ın `video_player`ı Windows/Linux'u desteklemiyor. Motor bir arayüzün (`PlaybackEngine`, uygulaması `MediaKitEngine`) arkasındadır; testler sahte motorla (`FakeEngine`) koşar. Kullanıcı kararı: bütün platformlarda aynı motor.
-    - mpv ayarları: `demuxer-lavf-analyzeduration=1` (HLS'te akış çözümleme süresi kısalır), `network-timeout=10`. Android varsayılanları (`vo=gpu`, `hwdec=auto-safe`) korunur.
-    - `vo=mediacodec_embed` / `hwdec=mediacodec` denendi: Chromecast'te TRT 1 "Could not open codec" verdi ve bazı kanallar kaplamasız siyah kaldı. Geri alındı.
+    - mpv ayarları: `demuxer-lavf-analyzeduration=1` (HLS'te akış çözümleme süresi kısalır), `network-timeout=10`.
+    - **Android'de kopyasız çizim (`vo=mediacodec_embed`, `hwdec=mediacodec`) — kasmanın çözümü (2026-10-31).** Varsayılan yol (`vo=gpu`, `mediacodec-copy`) donanım çözücünün her karesini belleğe kopyalıyordu. Chromecast'te ölçüldü (mpv sayaçları, 40'ar sn):
+      - 1440p yayınlar (TRT Genç, 360): saniyede ~8 kare atlama, görüntü sesin 18–24 sn gerisine düştü.
+      - 1080p'ye sınırlayınca da saniyede ~5 kare atlama, 10 sn gecikme. Hafif ölçekleme (bilinear, dithering kapalı) etkisiz: darboğaz GPU değil kopyalama.
+      - Kopyasız yolda aynı kanallarda atlama 0, ses-görüntü farkı 0; işlemci yükü ~%130'dan ~%60'a indi. Panel önizlemesi, tam ekran ve üstündeki çubuk çiziliyor.
+      - İlk denemede "Could not open codec" yedek akışa geçiriyordu: media_kit yüzey bağlanınca çözücüyü yeniden kurar, ilk açılış hata verebilir; ardından canlı yayında konuma atlama "Cannot seek" verir. Bu iletiler artık yayını düşürmez (`MediaKitEngine._transient`); gerçekten açılmayan akışı açılış süresi yakalar.
+      - Windows ve Linux varsayılan yolda kalır.
     - APK işlemci başına ~25 MB büyür: CI APK'ları işlemciye göre ayırır (`--split-per-abi`). Linux derlemesi `libmpv-dev` ister.
     - Sürüm derlemesine internet izni eklendi (yalnız hata ayıklama derlemesinde vardı).
   - Bileşenler: sayfa `PlayerPage`, oturum `PlaybackSession`, çubuk `PlayerBar` + `PlayerHints`, menü `PlayerOptions`, hızlı liste `ChannelDrawer`.
@@ -223,7 +228,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - **Gerçek cihazda doğrulandı (Chromecast with Google TV, Android 14, 32 bit ARM, 2026-10-31):** görüntü ve ses geliyor (1080p); ULUSAL 2'de bozuk ilk akıştan yedeğe geçiliyor; Seçenekler (ses listesi, ölçek "Ekranı doldur", önceki kanal), kanal listesi, numara girişi ve Geri sırası çalışıyor.
     - Gerçek kanallar cihazda açıldı (TRT Spor, NOW, ATV, Show, Kanal 7, Habertürk, TV8).
     - Apple ve Unified Streaming test yayınları bu cihazda mpv ile hiç açılmadı (40 sn'de bile hata yok). Bu yüzden çok sesli/altyazılı yayında seçim cihazda doğrulanamadı.
-    - **Açık sorun:** bazı kanallarda oynatma takılıyor ("kasma"); nedeni henüz bulunmadı.
+    - Kasma (yüksek çözünürlüklü yayınlarda kare atlama ve sesin gerisinde kalma) kopyasız çizimle giderildi (yukarıda).
     - Windows derlemesi denenmedi: proje D:, pub önbelleği C: sürücüsünde olduğu için eklenti bağlantısı (symlink) kurulamıyor. Windows'ta Geliştirici Modu gerekir.
   - **2. aşama:** 15 sn geri sarma ve Canlıya dön, favori, kanalı gizle, gece modu, PiP, 2×2, bit hızı/düşen kare, çalışan akışı kanal başına hatırlama, telefon hareketleri ve mini oynatıcı.
 
