@@ -278,7 +278,7 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
 
 - **Profil seçimi "Kim izliyor?" ve çocuk profili (`ProfilePickerPage`, `ProfileStore`; kullanıcı isteği, 2026-11-01).** Kullanıcı YouTube TV'nin profil ekranını referans verdi ("fotoğraftaki tasarımı kullanabiliriz, çocuk profili yapmayı unutma").
   - **Ne zaman:** her açılışta (kullanıcı seçimi). Başlıktaki profil hapı (TV/tablet) ve telefonda "Diğer" → "Profil değiştir" bu ekrana döner. Profil hapından gelindiyse Geri önceki profile döner.
-  - **Görünüm (referanstan):** gece laciverti zeminde sağ alttan kızıl/amber ışıma; üstte tam logo (işaret ve altında "RedoX TV" yazısı; TV 150 dp, telefon 180 dp; kullanıcı isteği), "Kim izliyor?" (headlineLarge). Solda küçük "+" dairesi (profil ekle), sağında büyük renkli daireler (TV 112 dp, telefon 84 dp) ve adın Türkçe büyük baş harfi ("i" → "İ"). Odaktaki profilde beyaz halka, büyüme ve beyaz ad. Düzenleme düğmesi yalnız seçili profilin altında; odak düğmeye inse de yerinde kalır. Telefonda profiller satırlara sarılır, "+" sonda.
+  - **Görünüm (referanstan):** gece laciverti zeminde sağ alttan kızıl/amber ışıma; üstte zeminsiz tam logo (`redox-logo-saydam.svg`: işaret ve altında "RedoX TV" yazısı, lacivert karo yok; yükseklik TV 180 dp, telefon 220 dp; kullanıcı isteği), "Kim izliyor?" (headlineLarge). Solda küçük "+" dairesi (profil ekle), sağında büyük renkli daireler (TV 112 dp, telefon 84 dp) ve adın Türkçe büyük baş harfi ("i" → "İ"). Odaktaki profilde beyaz halka, büyüme ve beyaz ad. Düzenleme düğmesi yalnız seçili profilin altında; odak düğmeye inse de yerinde kalır. Telefonda profiller satırlara sarılır, "+" sonda.
   - **Avatar renkleri:** marka tonları (kızıl `#D7232C`, kor `#C75300`, altın kabı `#936700`) ve ayırt edilsin diye üç soğuk ton (mor `#6B3FA0`, deniz yeşili `#00796B`, mavi `#1E5BB8`); beyaz harf hepsinde okunur. Çocuk profilinde sağ altta altın rozet (çocuk ikonu).
   - **İlk açılış:** "Profil 1" ve "Çocuk". En çok 6 profil; son yetişkin profili silinemez.
   - **Çocuk kipi (kullanıcı seçimi: yalnız Çocuk kategorisi):** kanallar `TvContent.only('Çocuk')` ile süzülür; oynatıcıda ▲▼ de bunlarda gezer. Rayda yalnız Anasayfa ve Televizyon, Ayarlar yok. Telefonda alt menü yok; "Diğer"de Televizyon ve "Profil değiştir". Anasayfa kısayolu yalnız Televizyon; raf ulusal kanal yerine listenin başı.
@@ -331,6 +331,10 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
 - Afiş tek dillidir. Başka dil eklenirse her dil için ayrı afiş gerekir (TV belgesi).
 - Tek renk katmanda alevler ve kıvılcımlar da görünür.
 - Palet Logo-3'ten türetildi (2. bölüm, "Palet: Logo-3'ten türetme").
+
+- **Zeminsiz tam logo (`redox-logo-saydam.svg`, 2026-11-01; kullanıcı isteği: "logonun arkası saydam olanını kullan").** `redox-logo.svg`'deki lacivert karo zemini atılır; boğa, halka ve "REDOX TV" yazısı kalır.
+  - Yöntem (`write_transparent_svg`): sıcak pikseller (r − b > 70) 9 px genişletilir; kenardan taşkın dolgunun ulaşamadığı her şey konudur (yazı ve kıvılcımlar dahil). Görünen alanının yarısından çoğu konunun dışında kalan yol zemin sayılır ve atılır (2339 yoldan 33'ü). Boğanın içindeki koyu ayrıntılar kalır.
+  - viewBox konuya kırpılır (730 × 865 birim). Kullanım: profil seçim ekranı.
 
 ## 7. Doğrulanmayanlar
 

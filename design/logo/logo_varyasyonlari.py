@@ -321,6 +321,76 @@ def write_full_svg(src1000):
     print(f"redox-logo.svg: karo sınırı {len(outline)} nokta, köşeler saydam")
 
 
+def figure_mask(img):
+    """Boğa, halka ve yazı: sıcak pikseller genişletilir, kenardan taşkın dolgu
+    ile zemin bulunur; dolgunun ulaşamadığı her şey (iç boşluklar dahil)
+    konudur. subject_mask'tan farkı: yalnız en büyük bileşen değil, yazı ve
+    kıvılcımlar da kalır."""
+    w, h = img.size
+    hot = warmth(img).point(lambda v: 255 if v > 70 else 0).filter(ImageFilter.MaxFilter(9))
+    data = hot.load()
+    seen = bytearray(w * h)
+    queue = deque([(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)])
+    while queue:
+        x, y = queue.popleft()
+        i = y * w + x
+        if seen[i] or data[x, y]:
+            continue
+        seen[i] = 1
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if 0 <= nx < w and 0 <= ny < h:
+                queue.append((nx, ny))
+    mask = Image.new("1", (w, h), 0)
+    m = mask.load()
+    for y in range(h):
+        for x in range(w):
+            if not seen[y * w + x]:
+                m[x, y] = 1
+    return mask
+
+
+def write_transparent_svg(src1000):
+    """Zeminsiz tam logo (redox-logo-saydam.svg): lacivert karo zemini atılır,
+    boğa, halka ve "REDOX TV" yazısı kalır. Bir yol, görünen alanının yarısından
+    çoğu konu maskesinin dışındaysa zemindir. viewBox konuya kırpılır."""
+    from PIL import ImageDraw
+
+    svg = SRC_SVG.read_text(encoding="utf-8")
+    mask = figure_mask(src1000)
+    kept, dropped = [], 0
+    for m in PATH_RE.finditer(svg):
+        polys = [p for p in flatten(m.group(1), float(m.group(3)), float(m.group(4))) if len(p) >= 3]
+        if not polys:
+            continue
+        shape = Image.new("1", src1000.size, 0)
+        for p in polys:
+            layer = Image.new("1", src1000.size, 0)
+            ImageDraw.Draw(layer).polygon(p, fill=1)
+            shape = ImageChops.logical_xor(shape, layer)
+        box = shape.getbbox()
+        if box is None:
+            dropped += 1
+            continue
+        area = shape.crop(box).histogram()[-1]
+        inside = ImageChops.logical_and(shape, mask).crop(box).histogram()[-1]
+        if inside * 2 < area:
+            dropped += 1
+            continue
+        kept.append(m.group(0))
+    x0, y0, x1, y1 = mask.getbbox()
+    pad = 4
+    x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
+    out = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        "<!-- RedoX TV tam logo, zeminsiz: redox-logo.svg'den (design/logo/logo_varyasyonlari.py). -->\n"
+        f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="{x1 - x0}" height="{y1 - y0}" '
+        f'viewBox="{x0} {y0} {x1 - x0} {y1 - y0}">\n' + "\n".join(kept) + "\n</svg>\n"
+    )
+    dest = ROOT / "assets/brand/redox-logo-saydam.svg"
+    dest.write_text(out, encoding="utf-8")
+    print(f"redox-logo-saydam.svg: {len(kept)} yol, {dropped} zemin yolu atıldı, kutu {x1 - x0}x{y1 - y0}")
+
+
 def write_mark_svg():
     """İzlenmiş vektörü işaret kutusuna kırpar: viewBox + yuvarlak köşeli kesme.
     Kutunun tamamen dışında kalan yollar (yazı) atılır."""
@@ -362,6 +432,7 @@ def main():
     half = src.resize((1000, 1000), Image.LANCZOS)
     recolor_trace(half)
     write_full_svg(half)
+    write_transparent_svg(half)
 
     # Saydam köşeli tam logo (PNG): Stitch gibi SVG almayan araçlara yüklemek
     # için. Kaynak görselin beyaz köşeleri, SVG'dekiyle aynı karo sınırıyla

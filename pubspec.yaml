@@ -35,6 +35,7 @@ flutter:
 
   assets:
     - assets/brand/redox-logo.svg
+    - assets/brand/redox-logo-saydam.svg
     - assets/brand/redox-mark.svg
     - assets/icons/
     # Şifreli kanal listesi (DataPack). Kaynak tr.m3u uygulamaya konmaz.
