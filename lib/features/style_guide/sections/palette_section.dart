@@ -19,9 +19,9 @@ class PaletteSection extends StatelessWidget {
   };
 
   static const _surfaces = <String, Color>{
-    'lowest · tuval': RedoxRoles.surfaceContainerLowest,
-    'surface': RedoxRoles.surface,
-    'low · ray': RedoxRoles.surfaceContainerLow,
+    'lowest': RedoxRoles.surfaceContainerLowest,
+    'surface · ray': RedoxRoles.surface,
+    'low': RedoxRoles.surfaceContainerLow,
     'container · kart': RedoxRoles.surfaceContainer,
     'high · üst katman': RedoxRoles.surfaceContainerHigh,
     'highest · diyalog': RedoxRoles.surfaceContainerHighest,
@@ -57,7 +57,7 @@ class PaletteSection extends StatelessWidget {
     return SectionFrame(
       index: 1,
       title: 'Renk',
-      subtitle: 'DESIGN.md · roller dört tohumun M3 tonal paletlerinden birebir türer (testle kanıtlı).',
+      subtitle: 'Tohumlar logodan (Logo-2) ölçüldü · roller M3 sadakat şemasıyla türer (testle kanıtlı).',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -71,7 +71,7 @@ class PaletteSection extends StatelessWidget {
           Row(
             children: [
               // Sora'da "→" glifi yok; görünen metinde "–" kullanılır.
-              Expanded(child: _GradientBar(colors: RedoxAccent.thermal, label: 'kızıl – amber kabı – altın')),
+              Expanded(child: _GradientBar(colors: RedoxAccent.thermal, label: 'kızıl – amber – altın')),
               const SizedBox(width: 12),
               const Expanded(child: _GradientBar(colors: [RedoxSeeds.crimson, RedoxAccent.ember], label: 'kızıl – kor')),
             ],

@@ -31,7 +31,7 @@ class ShapeSection extends StatelessWidget {
   };
 
   static const _levels = <String, Color>{
-    '0 · tuval (lowest)': RedoxRoles.surfaceContainerLowest,
+    '0 · tuval (saf siyah)': RedoxSeeds.obsidian,
     '1 · kart (container)': RedoxRoles.surfaceContainer,
     '2 · üst katman (high)': RedoxRoles.surfaceContainerHigh,
     '3 · diyalog (highest)': RedoxRoles.surfaceContainerHighest,

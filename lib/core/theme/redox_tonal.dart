@@ -2,8 +2,9 @@ import 'package:material_color_utilities/material_color_utilities.dart';
 
 import 'redox_colors.dart';
 
-/// Tohumlardan hesaplanan M3 tonal paletleri (HCT). Rol değerleri bu
-/// paletlerin tonlarıdır; eşleşmeyi test/core/theme/redox_roles_test.dart kilitler.
+/// Tohumlardan hesaplanan M3 tonal paletleri (HCT) ve koyu sadakat şeması.
+/// RedoxRoles bu şemanın değerleridir; eşleşmeyi
+/// test/core/theme/redox_roles_test.dart kilitler.
 abstract final class RedoxTonal {
   static final _crimson = Hct.fromInt(RedoxSeeds.crimson.toARGB32());
 
@@ -17,6 +18,21 @@ abstract final class RedoxTonal {
 
   /// M3 varsayılan hata paleti.
   static final error = TonalPalette.of(25, 84);
+
+  /// Stitch'in tasarım sistemiyle aynı hesap: sadakat varyantı, koyu, standart
+  /// kontrast, ana/ikincil/üçüncül/nötr paletler tohumlardan. Eski tohumlarla
+  /// ilk DESIGN.md'nin 44 rolünü birebir üretti.
+  static final scheme = DynamicScheme(
+    sourceColorHct: _crimson,
+    variant: Variant.fidelity,
+    isDark: true,
+    primaryPalette: primary,
+    secondaryPalette: secondary,
+    tertiaryPalette: tertiary,
+    neutralPalette: neutral,
+    neutralVariantPalette: neutralVariant,
+    errorPalette: error,
+  );
 
   /// Rehberde gösterilen tonlar.
   static const tones = [0, 4, 6, 10, 12, 17, 20, 22, 24, 30, 40, 50, 60, 70, 80, 87, 90, 92, 94, 95, 96, 98, 99, 100];

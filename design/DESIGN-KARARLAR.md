@@ -25,38 +25,57 @@ Görsel ilham: kullanıcının verdiği Stitch Anasayfa ekranı (`stitch_redox_t
 
 ## 2. Renk
 
-**Roller YAML'dan birebir alınır.** YAML rolleri, düzyazının dört tohumundan M3 tonal paletleriyle türer. Her rol tamsayı tonla tam eşleşir (`redox_roles_test.dart`):
+### Palet: Logo-2'den türetme (2026-10-31)
 
-| Rol grubu | Tohum / palet | Tonlar |
+Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyla aynı çizimdir (piksel hizalı, en iyi kayma 0,0); fark zemindedir: lacivert yerine saf siyah.
+
+**Tohumlar logodan ölçüldü** (2048 px görsel, 1024 px'e ölçeklenip boğa ve halka bölgesinde):
+
+| Tohum | Değer | Ölçüm |
 |---|---|---|
-| primary, on-primary, fixed, inverse | Crimson Flame `#E61638` | T80, T20, T90/T80/T10/T30, T40; kap = tohum |
-| secondary | Molten Amber `#FF9E1B` | T80, T20, T90, T10, T30 |
-| tertiary | Incandescent Gold `#FFD54F` | T80, T20, T70, T90, T10, T30 |
-| yüzeyler ve metin | Obsidian Void `#0D0E11` | T4, T6, T10, T12, T17, T22, T24, T90, T20 |
-| on-surface-variant, outline | kızıl tonu, chroma/8+4 (M3 içerik şeması) | T80, T60, T30 |
-| error | M3 hata paleti | T80, T20, T30, T90 |
+| Crimson Flame (primary) | `#D82131` | Kızıl aile (ton 340°–12°, doygunluk ≥ 0,55) içinde, iki kısıtı sağlayan piksellerin medyanı (aşağıda) |
+| Molten Amber (secondary) | `#ED9650` | Turuncu aile (12°–32°), parlak (V ≥ 0,85) piksellerin medyanı: kıvılcım ve parlama |
+| Incandescent Gold (tertiary) | `#F6BD58` | Altın aile (32°–58°), parlak piksellerin medyanı: halka ve "TV" |
+| Obsidian Void (nötr) | `#000000` | Logonun zemini (köşe ve kenar örnekleri `#000000`/`#010101`) |
 
-**Çelişki 1 – yüzey merdiveni.** YAML ve düzyazı farklı değerler veriyor:
-- YAML: `#0D0E11 #1B1B1F #1F1F23 #292A2D #343538`
-- Düzyazı (Tonal Surface Hierarchy): `#08090B #121418 #181A20 #22252C #2C3039`
+**Kızıl için iki kısıt.** Logonun en sık kızılı `#D51931` kartta 3:1'in altında kalıyordu; en parlak kızılı `#E6313A` ise beyaz yazıyı 4,5:1'in altına düşürüyordu. Bu yüzden kızıl, şu iki koşulu birlikte sağlayan logo piksellerinin medyanıdır:
+- Beyaz düğme yazısı ≥ 4,5:1 olmalı.
+- Odak halkası kartta (`#1F1F1F`) ≥ 3:1 olmalı.
 
-**Karar: YAML.** Gerekçeler:
-- YAML merdiveni düzyazının kendi tuval tohumunun (Obsidian Void `#0D0E11`) tonal paletidir.
-- Düzyazı merdiveni hiçbir tohumdan türemez.
+**Roller M3 sadakat (fidelity) şemasıyla hesaplanır.** Bu Stitch'in yöntemidir. Kanıt:
+- Eski tohumlar (`#E61638 #FF9E1B #FFD54F #0D0E11`) bu şemayla ilk DESIGN.md'nin 44 rolünü **birebir** üretti (0/44 fark).
+- Yeni roller aynı hesapla üretildi ve DESIGN.md YAML'ına yazıldı.
+- `redox_roles_test.dart`, 44 rolün `RedoxTonal.scheme` ile eşleştiğini denetler.
 
-**Çelişki 2 – tuval.** YAML `background: #121316` diyor. Düzyazı iki yerde tuvali `surface-container-lowest` / `#0D0E11` olarak veriyor: "Base Level" ve "Neutral Canvas". Zip'teki ekran da `bg-surface-container-lowest` kullanıyor.
+**Tuval saf siyah.** Scaffold zemini nötr tohumdur (`#000000`, paletin T0'ı).
+- M3'ün `surface-container-lowest` rolü T4 (`#0E0E0E`) olarak kalır.
+- Düzyazının "true-black OLED baselines" ilkesiyle ve logonun zeminiyle uyumludur.
 
-**Karar:** Scaffold zemini `#0D0E11`; `ColorScheme.surface` YAML'daki `#121316` olarak kalır.
+**Sonuçlar** (`redox_contrast_test.dart`):
 
-**Çelişki 3 – seçili çip.** Spec: kızıl → `#FF9E1B` degrade, beyaz yazı. Beyaz yazı amber ucunda **2,07:1**; WCAG küçük yazı için 4,5:1 ister.
+| Çift | Oran |
+|---|---|
+| Beyaz / kızıl `#D82131` | 5,02:1 |
+| on-primary-container `#FFF0EF` / kızıl | 4,53:1 |
+| Kızıl odak halkası tuvalde / lowest'ta / kartta | 4,18 / 3,84 / 3,28:1 |
+| Siyah / amber (cam düğme odağı) | 9,08:1 |
+| Beyaz / amber | 2,31:1; çip ucu olamaz |
 
-**Karar (kullanıcı onayladı, 2026-10-31):** Degradenin ucu "kor" `#A86500`. Bu, amber tonal paletinin beyazla 4,5:1'i sağlayan **en açık** tonudur: T49 = 4,64:1, T50 = 4,47:1 (`redox_contrast_test.dart`). Spec'in birebir hâli stil rehberinde karşılaştırma için gösteriliyordu; karar verildiği için kaldırıldı. Neden yetmediği regresyon testinde kayıtlı.
+**Seçili çip ucu (kor).** Kullanıcının "Kor kalsın" kararı korunur: uç, amber paletinin beyazla 4,5:1'i sağlayan en açık tonudur.
+- Yeni palette yine T49'dur: `#AC6220`.
+- T49 4,64:1, T50 4,50:1'in altında (4,498).
 
-**Kızıl yazı kuralı.** Kızıl `#E61638` kartta 3,55:1 verir, bu yüzden küçük yazıda kullanılmaz (`redox_contrast_test.dart`). Kanal adı gibi vurgulu metinlerde yazı rengi `primary`, `secondary` ve `tertiary` rolleridir; kartta hepsi ≥ 4,5:1.
+**Isıl degrade.** Sadakat şemasında amber kabı koyu çıkar (`#884500`): izde 2,66:1, yani 3:1'in altında.
+- **Karar:** Degrade tohumlarla çizilir: kızıl → amber `#ED9650` → altın `#F6BD58`.
+- İzde sırasıyla 3,84 / 8,35 / 11,34:1.
 
-**İlerleme izi.** Kızıl dolgu, `surface-container-highest` izde 2,65:1 kalır; metin dışı öğe eşiği 3:1'dir.
+**Kızıl yazı kuralı.** Kızıl kartta 3,28:1 verir, bu yüzden küçük yazıda kullanılmaz.
+- Vurgulu metinlerde `primary`, `secondary`, `tertiary` rolleri kullanılır; kartta hepsi ≥ 4,5:1.
 
-**Karar:** İz obsidyen `#0D0E11`. Bu izde kızıl 4,17:1, amber 9,34:1, altın 13,68:1 verir.
+**İlerleme izi.** Kızıl dolgu en yüksek kapta (`#353535`) 2,44:1 kalır.
+- **Karar:** İz `surface-container-lowest`'tır (`#0E0E0E`).
+
+**Düzyazının yüzey merdiveni** (`#08090B #121418 #181A20 #22252C #2C3039`) hiçbir tohumdan türemez ve kullanılmaz (ilk sürümdeki "Çelişki 1" kararı değişmedi).
 
 ## 3. Yazı
 
@@ -87,28 +106,81 @@ Görsel ilham: kullanıcının verdiği Stitch Anasayfa ekranı (`stitch_redox_t
   - CSS'te sigma = blur / 2. Flutter'da sigma = r × 0,57735 + 0,5.
   - `cssBlur(px)` bu iki formülü eşitler (`redox_type_test.dart`).
 - **Halka ofseti 2 dp.** Spec ofset vermez. Kızıl düğmenin etrafındaki kızıl halka görüntüde seçilmiyordu; M3 odak göstergesindeki gibi 2 dp boşluk eklendi.
-- **Hayalet kenar** `rgba(255,255,255,.08)`. **Cam düğme** %10 dolgu ve %15 kenar; odakta amber zemin ve obsidyen yazı (9,34:1).
+- **Hayalet kenar** `rgba(255,255,255,.08)`. **Cam düğme** %10 dolgu ve %15 kenar; odakta amber zemin ve siyah yazı (9,08:1).
 - **Vitrin hâlesi.** Spec'teki "Chromatic Backlight Flares" ve zip'teki hero: arkada kızıl ve amber bulanık ışık.
 
 ## 5. Bileşen yorumları
 
-- **Ray seçili öğesi:** sol kenara yaslı asimetrik kızıl hap (spec).
-  - Seçili öğe dinlenirken parlamaz. Parıltı yalnızca odak içindir; böylece kumandada seçim ile odak karışmaz.
-  - Zip'teki ekranda seçili öğe sürekli parlıyordu; bu bilerek alınmadı.
-- **Ray öğe yüksekliği** her biçimde 48 dp. Testte 56 dp ile 540 dp TV yüksekliğinde 156 dp taşma ölçüldü. Bu yüzden:
-  - Logo raydan başlığa taşındı.
-  - Ana öğeler daha kısa ekranlarda kayar.
+- **Gezinme rayı: M3 Expressive (kullanıcı isteği, 2026-10-31).** Kullanıcı eski rayı beğenmedi ve M3 Expressive istedi.
+  - Spec'teki "sol kenara yaslı asimetrik hap" M3E ile çelişir. **Karar: M3E.**
+  - Ölçü ve renkler, Compose Material 3 belirteç dosyalarından okundu (androidx `NavigationRailCollapsedTokens`, `…ExpandedTokens`, `…VerticalItemTokens`, `…HorizontalItemTokens`, `…ColorTokens`). m3.material.io sayfası metin olarak okunamadı.
+  - **Daralmış:** 96 dp, `surface`; gösterge 56 × 32 dp hap; öğe arası 4 dp; üst boşluk 44 dp.
+  - **Açık:** modal genişletilmiş ray. Genişlik 256 dp (spec 220–360); `surfaceContainer`; uç köşeler 16 dp (CornerLarge); seviye 2 gölge. Öğe 56 dp; ikon ve etiket yan yana (labelLarge, araları 8 dp); gösterge içeriği sarar (iç boşluk 16 dp).
+  - **Renk:** gösterge `secondaryContainer`, etkin ikon `onSecondaryContainer`, etkin etiket `secondary`, edilgen ikon ve etiket `onSurfaceVariant`. Durum katmanı `onSecondaryContainer`: %8 üstüne gelme, %10 odak ve basma.
+  - Bölüm başına renkli ikonlar kaldırıldı; M3E rayında ikonlar tek renktir.
+  - Gösterge sol kenarı iki durumda da 20 dp'dedir; açılırken ikon yerinden oynamaz.
+  - **Etiketler:** M3E daralmış rayda etiket ikonun altındadır (labelMedium).
+    - TV'de (540 dp) 9 öğe etiketle sığmaz: 44 + 9 × (66 + 4) dp. Bu yüzden etiketler yalnızca yükseklik yettiğinde gösterilir (`LayoutBuilder` ile ölçülür).
+    - TV'de daralmış ray yalnızca ikondur; etiketler ray odakla açılınca görünür.
+  - **Menü düğmesi** (M3E'de isteğe bağlı) TV dışında gösterilir. Dokunmatikte rayı açar ve açık tutar; TV'de açma odakla olur.
+  - Proje kuralı korunur: üstüne gelince veya içine odak girince açılır, ayrılınca kapanır.
+  - Seçili öğe dinlenirken parlamaz; parıltı ve halka yalnızca odaktadır (halka ölçeği 1, büyüme yok).
+  - Açık rayda ana öğeler kaydırılır (TV'de 9 × 56 dp sığmaz). Kaydırma alanı keser; odak halkası için 4 dp pay bırakılır.
+  - Kanıt: `test/core/ui/nav_rail_test.dart` (konumlar, gösterge ölçüsü ve rengi, menü düğmesi).
 - **Ray açılış eğrisi:** spec `cubic-bezier(0.2, 0, 0, 1)`; süre spec'te yok, M3 `medium4` = 400 ms seçildi.
-  - Daralmış ray "low" yüzeyde durur.
-  - Açık ray yan çekmece sayılır ve spec'e göre "high" yüzeye geçer.
 - **Radyo düğmesi:** "obsidyen merkez, amber halka". Seçili radyo düğmesinin içi obsidyen, halka ve noktası amberdir.
 - **Nabız atan nokta:** spec süre vermez. Zip'teki `animate-pulse` değeri kullanıldı: 2 sn, opaklık 1 → 0,5. Sistem animasyonları kapalıysa nokta sabit kalır.
 - **Medya kartı rampası:** spec'teki doğrusal rampa (alt üçte bir, %0 → %95). Çok açık afişlerde başlığın üst kısmı rampanın düşük opaklık bölgesine düşer. Bu yüzden rampa kontrastı **garanti etmez**. Gerçek afişlerle bakılıp gerekirse rampa başlangıcı yukarı çekilmeli; bu açık nokta olarak bırakıldı.
 
-## 6. Doğrulanmayanlar
+## 6. Logo
+
+**Kaynak:** kullanıcının Logo-2'si (siyah zemin), `assets/brand/redox-logo-source.jpg` (2048 px; ölçüm 2000 px ölçekte).
+- `redox-logo.svg`'nin geometrisi ilk logodan VTracer ile izlendi. Logo-2 aynı çizimdir (piksel hizalı), bu yüzden her yolun rengi Logo-2'de görünen alanının medyanıyla yeniden boyandı.
+- **Beyaz köşeler saydam:** tam logo, kaynaktaki karo sınırıyla kesilir (927 noktalı yol; köşelerde beyazın bittiği yerden 2 birim içeride). Kenardaki 23 beyaz kalıntı böylece görünmez. İşaret, simgeler ve afiş karo içinden kırpıldığı için beyaz içermez.
+- Varyasyonlar `design/logo/logo_varyasyonlari.py` ile üretilir.
+- Ölçüleri `test/platform/brand_assets_test.dart` denetler.
+
+| Varyasyon | Dosya | Kullanım |
+|---|---|---|
+| Tam logo | `assets/brand/redox-logo.svg` | 96 dp ve üstü; yazı daha küçükte okunmaz |
+| İşaret (yazısız karo) | `assets/brand/redox-mark.svg` | 64 dp ve altı; Anasayfa başlığında 44 dp |
+| Metin markası | `BrandWordmark` (Sora 800) | Metin olarak marka adı |
+| Android eski simge | `mipmap-*/ic_launcher.png`, 48 dp | API 24–25 |
+| Android uyarlanabilir simge | `mipmap-anydpi-v26/ic_launcher.xml`; ön ve tek renk katman 108 dp; zemin `#0B0203` (logonun siyah zemininin ortalaması) | API 26+; temalı simge API 33+ |
+| Android TV afişi | `drawable-xhdpi/banner.png`, 320×180 px | `android:banner` |
+| Windows | `windows/runner/resources/app_icon.ico`, 16–256 px, 10 boyut | Exe ve pencere |
+
+**Geometri (kaynak px):**
+- Boynuz ucu y=156, çene ve halka altı y=1518; yazı y=1534'te başlar.
+- İşaret kutusu x 295–1705, y 116–1526 (1410 px kare). Yazı kutunun dışında kalır.
+- Köşe yarıçapı kenarın %22'si.
+
+**Android kaynakları** (developer.android.com, 2026-10-31'de okundu):
+- **Uyarlanabilir simge:** "Size all layers to 108x108 dp". Güvenli alan 66 dp; logo 48–66 dp olmalı.
+  - İşaret, en uzak opak pikseli 33 dp yarıçapta kalacak biçimde ölçeklendi. Sonuç: 55,5 × 54,8 dp kutu.
+  - İşaret, kaynak görselden ayrıldı: sıcaklık (kırmızı − mavi) maskesi + kenardan taşkın dolgu. Koyu dış çizgiler korunur.
+- **TV afişi:** "use an xhdpi resource with a size of 320 x 180 px. Text must be included in the image." Afişte işaret ve logonun kendi "RedoX TV" yazısı var.
+- **Android 12+ açılış ekranı:** varsayılan olarak başlatıcı simgesini gösterir. Zemin olarak tema `windowBackground`'ını kullanır, ama yalnızca tek renkse.
+  - Bu yüzden açılış ve pencere zemini obsidyen (`@color/redox_obsidian`, `#000000`) yapıldı.
+  - Flutter'ın beyaz `launch_background` çizimleri kaldırıldı.
+  - Android 12 öncesinde açılışta logo yok; yalnızca obsidyen zemin görünür.
+
+**Karar:**
+- Platform simgeleri PNG/ICO'dur, çünkü platformlar bu biçimleri ister.
+- Uygulama içinde logo her zaman SVG'dir.
+- Uygulama adı Android etiketinde ve Windows/Linux pencere başlığında "RedoX TV".
+
+**Açık noktalar:**
+- Linux masaüstü simgesi yok. Flutter Linux şablonu simge ayarlamaz; simge paketlemede `.desktop` dosyasıyla verilir.
+- TV başlatıcısında görünmek için iki bildirim gerekir: `LEANBACK_LAUNCHER` filtresi ve `android.hardware.touchscreen required="false"`. Bunlar ayrı TV APK'sı işine bırakıldı; afiş şimdiden tanımlı.
+- Afiş tek dillidir. Başka dil eklenirse her dil için ayrı afiş gerekir (TV belgesi).
+- Tek renk katmanda kıvılcım ve ışın çizgileri de görünür.
+
+## 7. Doğrulanmayanlar
 
 - Hiçbir şey cihazda çalıştırılmadı. Görüntüler test ortamında çizildi.
   - Test ortamı gölgeleri bulanıksız çizer (`debugDisableShadows`).
   - Görüntü alınırken gerçek bulanıklık açılır.
 - Android TV biçim algılaması yok. Biçim şimdilik açılışta verilir; varsayılan TV'dir.
 - Anasayfa'daki içerik örnektir (`HomeContent.preview`). Veri katmanı yazılmadı.
+- Simgeler ve TV afişi gerçek bir başlatıcıda görülmedi. Ölçüleri testle, görünüşleri önizleme görüntüleriyle denetlendi.

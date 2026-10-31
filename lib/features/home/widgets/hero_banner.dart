@@ -55,7 +55,7 @@ class HeroBanner extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [RedoxRoles.surfaceContainerLowest, Color(0xB30D0E11), Color(0x000D0E11)],
+                    colors: [RedoxSeeds.obsidian, Color(0xB3000000), Color(0x00000000)],
                   ),
                 ),
               ),
@@ -65,7 +65,7 @@ class HeroBanner extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     stops: [0, 0.45, 0.8],
-                    colors: [RedoxRoles.surfaceContainerLowest, Color(0xCC0D0E11), Color(0x000D0E11)],
+                    colors: [RedoxSeeds.obsidian, Color(0xCC000000), Color(0x00000000)],
                   ),
                 ),
               ),

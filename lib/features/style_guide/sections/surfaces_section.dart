@@ -83,7 +83,7 @@ class SurfacesSection extends StatelessWidget {
               StoryAvatar(label: 'Özellik', focused: true, child: ArtworkFallback(name: 'Bölünmüş Ekran', icon: RedoxIcons.splitScreen)),
             ],
           ),
-          const GroupLabel('Gezinme rayı · daralmış / açık (üstüne gelince açılır)'),
+          const GroupLabel('Gezinme rayı (M3 Expressive) · daralmış / açık'),
           SizedBox(
             height: 560,
             child: Row(
@@ -106,9 +106,10 @@ class SurfacesSection extends StatelessWidget {
                 const SizedBox(width: 24),
                 Expanded(
                   child: Text(
-                    'Seçili: sol kenara yaslı asimetrik kızıl hap. Odak: halka + aura. '
-                    'Daralmış ray "low", açık ray yan çekmece olarak "high" yüzeydedir. '
-                    'Açık ray içeriğin üstüne biner.',
+                    'M3 Expressive rayı. Daralmış: 96 dp, surface, 56 x 32 hap gösterge. '
+                    'Açık: 256 dp modal ray, surfaceContainer, 16 dp uç köşe, seviye 2 gölge; '
+                    'öğe 56 dp, ikon + etiket. Seçili: secondaryContainer gösterge. '
+                    'Odak: halka + aura. Açık ray içeriğin üstüne biner.',
                     style: label,
                   ),
                 ),

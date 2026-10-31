@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Logonun lacivert zemini (işaret kırpıntısının arka plan ortalaması). -->
+    <color name="ic_launcher_background">#0B0203</color>
+    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (Logo-2'nin siyah zemini). -->
+    <color name="redox_obsidian">#000000</color>
+</resources>

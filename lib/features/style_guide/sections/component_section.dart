@@ -87,7 +87,7 @@ class ComponentSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text('İzlenme (amber) · canlı maç süresi (ısıl) · oynatma konumu (kızıl). İz: obsidyen.', style: label),
+          Text('İzlenme (amber) · canlı maç süresi (ısıl) · oynatma konumu (kızıl). İz: surface-container-lowest.', style: label),
           const GroupLabel('Giriş ve seçim'),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

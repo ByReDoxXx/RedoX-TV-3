@@ -64,11 +64,12 @@ void main() {
 
   group('Metin dışı öğeler >= 3:1', () {
     test('odak halkası tuvalde ve kartta', () {
-      expect(contrast(RedoxElevation.focusRing.color, RedoxRoles.surfaceContainerLowest), greaterThanOrEqualTo(3.0));
-      expect(contrast(RedoxElevation.focusRing.color, RedoxRoles.surfaceContainer), greaterThanOrEqualTo(3.0));
+      for (final bg in [RedoxSeeds.obsidian, RedoxRoles.surfaceContainerLowest, RedoxRoles.surfaceContainer]) {
+        expect(contrast(RedoxElevation.focusRing.color, bg), greaterThanOrEqualTo(3.0), reason: '$bg');
+      }
     });
 
-    test('ilerleme dolguları obsidyen izde', () {
+    test('ilerleme dolguları izde (iz: surface-container-lowest)', () {
       for (final fill in [...CardAccent.values.map((a) => a.fill), ...RedoxAccent.thermal]) {
         expect(contrast(fill, RedoxRoles.surfaceContainerLowest), greaterThanOrEqualTo(3.0), reason: '$fill');
       }
@@ -79,13 +80,17 @@ void main() {
     });
 
     test('marka adındaki kızıl yalnızca büyük yazı: tuvalde >= 3:1', () {
-      expect(contrast(RedoxSeeds.crimson, RedoxRoles.surfaceContainerLowest), greaterThanOrEqualTo(3.0));
+      expect(contrast(RedoxSeeds.crimson, RedoxSeeds.obsidian), greaterThanOrEqualTo(3.0));
     });
   });
 
   group('Bilinen sınırlar (regresyon)', () {
-    test('spec birebir çip ucu: beyaz / #FF9E1B yetmez', () {
+    test('amber tohum çip ucu olamaz: beyaz / amber yetmez', () {
       expect(contrast(_white, RedoxSeeds.amber), lessThan(3.0));
+    });
+
+    test('sadakat şemasının amber kabı siyah izde yetmez; ısıl degradede tohum kullanılır', () {
+      expect(contrast(RedoxRoles.secondaryContainer, RedoxRoles.surfaceContainerLowest), lessThan(3.0));
     });
 
     test('kızıl dolgu en yüksek kap izinde yetmez; iz bu yüzden obsidyen', () {

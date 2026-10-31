@@ -10,40 +10,62 @@ import '../../support/contrast.dart';
 Color _tone(TonalPalette p, int t) => Color(p.get(t));
 
 void main() {
-  group('DESIGN.md rolleri tohumların M3 tonal paletlerinden türer', () {
-    test('kızıl paleti: primary, on-primary, fixed ve inverse rolleri', () {
-      final p = RedoxTonal.primary;
-      expect(RedoxRoles.primary, _tone(p, 80));
-      expect(RedoxRoles.onPrimary, _tone(p, 20));
-      expect(RedoxRoles.inversePrimary, _tone(p, 40));
-      expect(RedoxRoles.primaryFixed, _tone(p, 90));
-      expect(RedoxRoles.primaryFixedDim, _tone(p, 80));
-      expect(RedoxRoles.onPrimaryFixed, _tone(p, 10));
-      expect(RedoxRoles.onPrimaryFixedVariant, _tone(p, 30));
-      // Kap = tohumun kendisi (içerik/sadakat şeması).
+  group('DESIGN.md rolleri tohumlardan M3 sadakat şemasıyla türer', () {
+    final s = RedoxTonal.scheme;
+    final roles = <String, (Color, DynamicColor)>{
+      'surface': (RedoxRoles.surface, MaterialDynamicColors.surface),
+      'surfaceDim': (RedoxRoles.surfaceDim, MaterialDynamicColors.surfaceDim),
+      'surfaceBright': (RedoxRoles.surfaceBright, MaterialDynamicColors.surfaceBright),
+      'surfaceContainerLowest': (RedoxRoles.surfaceContainerLowest, MaterialDynamicColors.surfaceContainerLowest),
+      'surfaceContainerLow': (RedoxRoles.surfaceContainerLow, MaterialDynamicColors.surfaceContainerLow),
+      'surfaceContainer': (RedoxRoles.surfaceContainer, MaterialDynamicColors.surfaceContainer),
+      'surfaceContainerHigh': (RedoxRoles.surfaceContainerHigh, MaterialDynamicColors.surfaceContainerHigh),
+      'surfaceContainerHighest': (RedoxRoles.surfaceContainerHighest, MaterialDynamicColors.surfaceContainerHighest),
+      'onSurface': (RedoxRoles.onSurface, MaterialDynamicColors.onSurface),
+      'onSurfaceVariant': (RedoxRoles.onSurfaceVariant, MaterialDynamicColors.onSurfaceVariant),
+      'inverseSurface': (RedoxRoles.inverseSurface, MaterialDynamicColors.inverseSurface),
+      'inverseOnSurface': (RedoxRoles.inverseOnSurface, MaterialDynamicColors.inverseOnSurface),
+      'outline': (RedoxRoles.outline, MaterialDynamicColors.outline),
+      'outlineVariant': (RedoxRoles.outlineVariant, MaterialDynamicColors.outlineVariant),
+      'surfaceTint': (RedoxRoles.surfaceTint, MaterialDynamicColors.surfaceTint),
+      'primary': (RedoxRoles.primary, MaterialDynamicColors.primary),
+      'onPrimary': (RedoxRoles.onPrimary, MaterialDynamicColors.onPrimary),
+      'primaryContainer': (RedoxRoles.primaryContainer, MaterialDynamicColors.primaryContainer),
+      'onPrimaryContainer': (RedoxRoles.onPrimaryContainer, MaterialDynamicColors.onPrimaryContainer),
+      'inversePrimary': (RedoxRoles.inversePrimary, MaterialDynamicColors.inversePrimary),
+      'secondary': (RedoxRoles.secondary, MaterialDynamicColors.secondary),
+      'onSecondary': (RedoxRoles.onSecondary, MaterialDynamicColors.onSecondary),
+      'secondaryContainer': (RedoxRoles.secondaryContainer, MaterialDynamicColors.secondaryContainer),
+      'onSecondaryContainer': (RedoxRoles.onSecondaryContainer, MaterialDynamicColors.onSecondaryContainer),
+      'tertiary': (RedoxRoles.tertiary, MaterialDynamicColors.tertiary),
+      'onTertiary': (RedoxRoles.onTertiary, MaterialDynamicColors.onTertiary),
+      'tertiaryContainer': (RedoxRoles.tertiaryContainer, MaterialDynamicColors.tertiaryContainer),
+      'onTertiaryContainer': (RedoxRoles.onTertiaryContainer, MaterialDynamicColors.onTertiaryContainer),
+      'error': (RedoxRoles.error, MaterialDynamicColors.error),
+      'onError': (RedoxRoles.onError, MaterialDynamicColors.onError),
+      'errorContainer': (RedoxRoles.errorContainer, MaterialDynamicColors.errorContainer),
+      'onErrorContainer': (RedoxRoles.onErrorContainer, MaterialDynamicColors.onErrorContainer),
+      'primaryFixed': (RedoxRoles.primaryFixed, MaterialDynamicColors.primaryFixed),
+      'primaryFixedDim': (RedoxRoles.primaryFixedDim, MaterialDynamicColors.primaryFixedDim),
+      'onPrimaryFixed': (RedoxRoles.onPrimaryFixed, MaterialDynamicColors.onPrimaryFixed),
+      'onPrimaryFixedVariant': (RedoxRoles.onPrimaryFixedVariant, MaterialDynamicColors.onPrimaryFixedVariant),
+      'secondaryFixed': (RedoxRoles.secondaryFixed, MaterialDynamicColors.secondaryFixed),
+      'secondaryFixedDim': (RedoxRoles.secondaryFixedDim, MaterialDynamicColors.secondaryFixedDim),
+      'onSecondaryFixed': (RedoxRoles.onSecondaryFixed, MaterialDynamicColors.onSecondaryFixed),
+      'onSecondaryFixedVariant': (RedoxRoles.onSecondaryFixedVariant, MaterialDynamicColors.onSecondaryFixedVariant),
+      'tertiaryFixed': (RedoxRoles.tertiaryFixed, MaterialDynamicColors.tertiaryFixed),
+      'tertiaryFixedDim': (RedoxRoles.tertiaryFixedDim, MaterialDynamicColors.tertiaryFixedDim),
+      'onTertiaryFixed': (RedoxRoles.onTertiaryFixed, MaterialDynamicColors.onTertiaryFixed),
+      'onTertiaryFixedVariant': (RedoxRoles.onTertiaryFixedVariant, MaterialDynamicColors.onTertiaryFixedVariant),
+    };
+
+    test('44 rolün hepsi şemanın değeri', () {
+      expect(roles, hasLength(44));
+      roles.forEach((name, r) => expect(r.$1, Color(r.$2.getArgb(s)), reason: name));
+    });
+
+    test('kap = tohum; yüzey merdiveni nötr paletin T4…T24 tonları', () {
       expect(RedoxRoles.primaryContainer, RedoxSeeds.crimson);
-    });
-
-    test('amber paleti: secondary rolleri', () {
-      final p = RedoxTonal.secondary;
-      expect(RedoxRoles.secondary, _tone(p, 80));
-      expect(RedoxRoles.onSecondary, _tone(p, 20));
-      expect(RedoxRoles.secondaryFixed, _tone(p, 90));
-      expect(RedoxRoles.onSecondaryFixed, _tone(p, 10));
-      expect(RedoxRoles.onSecondaryFixedVariant, _tone(p, 30));
-    });
-
-    test('altın paleti: tertiary rolleri', () {
-      final p = RedoxTonal.tertiary;
-      expect(RedoxRoles.tertiary, _tone(p, 80));
-      expect(RedoxRoles.onTertiary, _tone(p, 20));
-      expect(RedoxRoles.tertiaryContainer, _tone(p, 70));
-      expect(RedoxRoles.tertiaryFixed, _tone(p, 90));
-      expect(RedoxRoles.onTertiaryFixed, _tone(p, 10));
-      expect(RedoxRoles.onTertiaryFixedVariant, _tone(p, 30));
-    });
-
-    test('obsidyen nötr paleti: YAML yüzey merdiveni (T4…T24) ve metin', () {
       final n = RedoxTonal.neutral;
       expect(RedoxRoles.surfaceContainerLowest, _tone(n, 4));
       expect(RedoxRoles.surface, _tone(n, 6));
@@ -52,22 +74,8 @@ void main() {
       expect(RedoxRoles.surfaceContainerHigh, _tone(n, 17));
       expect(RedoxRoles.surfaceContainerHighest, _tone(n, 22));
       expect(RedoxRoles.surfaceBright, _tone(n, 24));
-      expect(RedoxRoles.onSurface, _tone(n, 90));
-      expect(RedoxRoles.inverseOnSurface, _tone(n, 20));
-      // Tuval tohumu = en alt kap.
-      expect(RedoxRoles.surfaceContainerLowest, RedoxSeeds.obsidian);
-    });
-
-    test('nötr varyant (kızıl tonu, chroma/8+4) ve hata paletleri', () {
-      final v = RedoxTonal.neutralVariant;
-      expect(RedoxRoles.onSurfaceVariant, _tone(v, 80));
-      expect(RedoxRoles.outline, _tone(v, 60));
-      expect(RedoxRoles.outlineVariant, _tone(v, 30));
-      final e = RedoxTonal.error;
-      expect(RedoxRoles.error, _tone(e, 80));
-      expect(RedoxRoles.onError, _tone(e, 20));
-      expect(RedoxRoles.errorContainer, _tone(e, 30));
-      expect(RedoxRoles.onErrorContainer, _tone(e, 90));
+      // Nötr tohum logonun saf siyahı: paletin T0'ı.
+      expect(RedoxSeeds.obsidian, _tone(n, 0));
     });
   });
 
@@ -75,7 +83,7 @@ void main() {
     final theme = RedoxTheme.dark();
     final s = theme.colorScheme;
 
-    test('tuval obsidyen, kart surface-container', () {
+    test('tuval nötr tohum (saf siyah), kart surface-container', () {
       expect(theme.scaffoldBackgroundColor, RedoxSeeds.obsidian);
       expect(theme.cardTheme.color, s.surfaceContainer);
     });
@@ -97,8 +105,9 @@ void main() {
       });
     });
 
-    test('metin rolleri her yüzey kademesinde >= 4.5:1', () {
+    test('metin rolleri tuvalde ve her yüzey kademesinde >= 4.5:1', () {
       for (final bg in [
+        RedoxSeeds.obsidian,
         s.surfaceContainerLowest,
         s.surface,
         s.surfaceContainerLow,
@@ -113,12 +122,13 @@ void main() {
     });
 
     test('çerçeve (outline) tuvalde ve kartta >= 3:1', () {
-      expect(contrast(s.outline, s.surfaceContainerLowest), greaterThanOrEqualTo(3.0));
+      expect(contrast(s.outline, RedoxSeeds.obsidian), greaterThanOrEqualTo(3.0));
       expect(contrast(s.outline, s.surfaceContainer), greaterThanOrEqualTo(3.0));
     });
 
     test('yüzey kademeleri koyudan açığa tek yönlü', () {
       final order = [
+        RedoxSeeds.obsidian,
         s.surfaceContainerLowest,
         s.surface,
         s.surfaceContainerLow,

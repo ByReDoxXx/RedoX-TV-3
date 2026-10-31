@@ -27,7 +27,9 @@ enum RedoxIcons {
   clock('schedule', 'Saat'),
   notifications('notifications', 'Bildirim'),
   profile('account_circle', 'Profil'),
-  lock('lock', 'Kilit');
+  lock('lock', 'Kilit'),
+  menu('menu', 'Menüyü aç'),
+  menuOpen('menu_open', 'Menüyü kapat');
 
   const RedoxIcons(this.symbol, this.label);
 

@@ -30,7 +30,7 @@ class StyleGuideContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return ColoredBox(
-      color: RedoxRoles.surfaceContainerLowest,
+      color: RedoxSeeds.obsidian,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(48, 40, 48, 24),
         child: Column(

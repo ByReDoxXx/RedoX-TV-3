@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/brand/brand_assets.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/header_search.dart';
 import '../../../core/ui/redox_icon.dart';
 
-/// Üst şerit: logo, arama (TV'de kutu), saat ve profil. Logo rayda değil
-/// burada durur: 540 dp TV yüksekliğinde ray öğelerine yer kalsın diye.
+/// Üst şerit: logo işareti, arama (TV'de kutu), saat ve profil. Logo rayda
+/// değil burada durur: 540 dp TV yüksekliğinde ray öğelerine yer kalsın diye.
+/// 44 dp'de tam logonun yazısı okunmadığı için yazısız işaret kullanılır.
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key, required this.clock, required this.profileName});
 
@@ -21,7 +23,7 @@ class HomeHeader extends StatelessWidget {
     return Row(
       children: [
         SvgPicture.asset(
-          'assets/brand/redox-logo.svg',
+          BrandAssets.mark,
           width: 44,
           height: 44,
           semanticsLabel: 'RedoX TV',

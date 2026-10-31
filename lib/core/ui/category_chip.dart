@@ -5,8 +5,8 @@ import '../theme/redox_shapes.dart';
 import 'focus_glow.dart';
 
 /// Filtre çipi (DESIGN.md "Filter Chips"). Boşta en yüksek-1 kap; seçili kızıl
-/// → kor degrade, beyaz yazı. Degrade ucu spec'teki #FF9E1B yerine
-/// RedoxAccent.ember'dir: beyaz yazı amberde 2,07:1 kalıyordu.
+/// → kor degrade, beyaz yazı. Degrade ucu amber tohum yerine
+/// RedoxAccent.ember'dir: beyaz yazı amberde 2,31:1 kalıyordu.
 class CategoryChip extends StatelessWidget {
   const CategoryChip({
     super.key,

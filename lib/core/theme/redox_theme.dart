@@ -69,8 +69,9 @@ abstract final class RedoxTheme {
       colorScheme: _scheme,
       fontFamily: RedoxType.family,
       textTheme: text,
-      // Taban seviye (0dp) tuval = surface-container-lowest (Obsidian Void).
-      scaffoldBackgroundColor: RedoxRoles.surfaceContainerLowest,
+      // Taban seviye (0dp) tuval = nötr tohum (Obsidian Void, logonun siyahı).
+      // M3'ün surface-container-lowest'ı (T4) bir kademe üstte kalır.
+      scaffoldBackgroundColor: RedoxSeeds.obsidian,
       extensions: [RedoxMetrics.of(formFactor)],
       cardTheme: CardThemeData(
         color: RedoxRoles.surfaceContainer,
