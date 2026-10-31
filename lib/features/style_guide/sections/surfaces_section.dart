@@ -83,7 +83,7 @@ class SurfacesSection extends StatelessWidget {
               StoryAvatar(label: 'Özellik', focused: true, child: ArtworkFallback(name: 'Bölünmüş Ekran', icon: RedoxIcons.splitScreen)),
             ],
           ),
-          const GroupLabel('Gezinme rayı (M3 Expressive) · daralmış / açık'),
+          const GroupLabel('Gezinme rayı (M3 Expressive) · odaktaki öğe sağa açılır / menüyle açık ray'),
           SizedBox(
             height: 560,
             child: Row(
@@ -94,8 +94,10 @@ class SurfacesSection extends StatelessWidget {
                   footer: AppDestinations.footer,
                   selectedIndex: 0,
                   expanded: false,
+                  focusedIndex: 1,
                 ),
-                const SizedBox(width: 48),
+                // Daralmış raydaki açık hap içeriğin üstüne taşar; yer bırak.
+                const SizedBox(width: 200),
                 const RedoxNavRail(
                   items: AppDestinations.main,
                   footer: AppDestinations.footer,

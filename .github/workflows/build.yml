@@ -26,9 +26,14 @@ jobs:
       - run: flutter test
 
   android:
-    name: Android APK
+    # Televizyon, tablet ve telefon ayrı APK'lardır (android/app/build.gradle.kts).
+    name: Android APK (${{ matrix.flavor }})
     needs: check
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [tv, tablet, phone]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -42,11 +47,11 @@ jobs:
           cache: true
       - run: flutter pub get
       # Keystore tanımlanana kadar release, Flutter şablonunun debug imzasını kullanır.
-      - run: flutter build apk --release
+      - run: flutter build apk --release --flavor ${{ matrix.flavor }}
       - uses: actions/upload-artifact@v7
         with:
-          name: redox-tv-android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: redox-tv-android-${{ matrix.flavor }}
+          path: build/app/outputs/flutter-apk/app-${{ matrix.flavor }}-release.apk
           if-no-files-found: error
 
   windows:

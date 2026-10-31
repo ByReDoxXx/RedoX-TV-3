@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
@@ -33,6 +34,12 @@ List<Offset> _iconOrigins(WidgetTester tester) => [
     if ((e.widget as RedoxIcon).icon != RedoxIcons.menu && (e.widget as RedoxIcon).icon != RedoxIcons.menuOpen)
       (e.renderObject! as RenderBox).localToGlobal(Offset.zero),
 ];
+
+/// Rayın yandaki etiketinin opaklığı (etiket rayın 96 dp dışında çizilir;
+/// isabet testi rayın sınırında kesildiği için görünürlük opaklıkla ölçülür).
+double _labelOpacity(WidgetTester tester, String label) => tester
+    .widget<AnimatedOpacity>(find.ancestor(of: find.text(label).first, matching: find.byType(AnimatedOpacity)).first)
+    .opacity;
 
 void _tv(WidgetTester tester) {
   tester.view.physicalSize = const Size(960, 540);
@@ -110,5 +117,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.getSize(find.byType(RedoxNavRail)).width, RedoxNavRail.expandedWidth);
     expect(find.byWidgetPredicate((w) => w is RedoxIcon && w.icon == RedoxIcons.menuOpen), findsOneWidget);
+  });
+
+  testWidgets('kumanda odağı: odaktaki öğe sağa açılır ve adını gösterir, ray daralmış kalır', (tester) async {
+    _tv(tester);
+    await tester.pumpWidget(_rail(FormFactor.tv));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(_labelOpacity(tester, 'Anasayfa'), 0);
+
+    // Sekme/D-pad: geleneksel odak kipi, ilk öğe (Anasayfa) odağa gelir.
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(tester.getSize(find.byType(RedoxNavRail)).width, RedoxNavRail.collapsedWidth);
+    final selectedPill = find.byWidgetPredicate(
+      (w) => w is AnimatedContainer && (w.decoration as BoxDecoration?)?.color == RedoxRoles.secondaryContainer,
+    );
+    expect(tester.getSize(selectedPill).width, greaterThan(RedoxNavRail.collapsedWidth));
+    expect(_labelOpacity(tester, 'Anasayfa'), 1);
+
+    // Odak Televizyon'a geçince Anasayfa kapanır, Televizyon yüzen hapla açılır.
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(tester.getSize(selectedPill).width, RedoxNavRail.indicatorWidth);
+    final floating = find.byWidgetPredicate(
+      (w) => w is AnimatedContainer && (w.decoration as BoxDecoration?)?.color == RedoxRoles.surfaceContainerHighest,
+    );
+    expect(floating, findsOneWidget);
+    expect(_labelOpacity(tester, 'Televizyon'), 1);
+    expect(_labelOpacity(tester, 'Anasayfa'), 0);
   });
 }

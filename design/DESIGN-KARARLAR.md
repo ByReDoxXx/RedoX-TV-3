@@ -123,7 +123,8 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - TV'de (540 dp) 9 öğe etiketle sığmaz: 44 + 9 × (66 + 4) dp. Bu yüzden etiketler yalnızca yükseklik yettiğinde gösterilir (`LayoutBuilder` ile ölçülür).
     - TV'de daralmış ray yalnızca ikondur; etiketler ray odakla açılınca görünür.
   - **Menü düğmesi** (M3E'de isteğe bağlı) TV dışında gösterilir. Dokunmatikte rayı açar ve açık tutar; TV'de açma odakla olur.
-  - Proje kuralı korunur: üstüne gelince veya içine odak girince açılır, ayrılınca kapanır.
+  - **Odaktaki öğe açılır (kullanıcı isteği):** odak (D-pad) veya fare üstündeki öğe sağa doğru açılıp adını gösterir; ayrılınca kapanır. Ray daralmış kalır, hap içeriğin üstüne taşar. Seçili değilse hap `surfaceContainerHighest` zeminle yüzer. Bütün ray menü düğmesiyle açılır.
+  - Açık hapın 96 dp dışında kalan kısmı fareyle tıklanmaz (Flutter isabet testi rayın sınırında biter); ikon alanı tıklanır, TV'de seçim OK tuşuyladır.
   - Seçili öğe dinlenirken parlamaz; parıltı ve halka yalnızca odaktadır (halka ölçeği 1, büyüme yok).
   - Açık rayda ana öğeler kaydırılır (TV'de 9 × 56 dp sığmaz). Kaydırma alanı keser; odak halkası için 4 dp pay bırakılır.
   - Kanıt: `test/core/ui/nav_rail_test.dart` (konumlar, gösterge ölçüsü ve rengi, menü düğmesi).

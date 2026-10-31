@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Yalnızca TV APK'sı (developer.android.com/training/tv/get-started/create):
+         dokunmatik gerekmez, leanback zorunlu (bu APK yalnızca Android TV için),
+         TV başlatıcısı için LEANBACK_LAUNCHER filtresi ve 320x180 afiş. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+
+    <application android:banner="@drawable/banner">
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

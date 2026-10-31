@@ -2,8 +2,7 @@
     <application
         android:label="RedoX TV"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:banner="@drawable/banner">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

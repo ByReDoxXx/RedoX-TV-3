@@ -36,6 +36,24 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Ayrı APK'lar: televizyon, tablet, telefon (docs.flutter.dev/deployment/flavors).
+    // Derleme: flutter build apk --flavor <tv|tablet|phone>. Uygulama kimliği
+    // ortak: bir cihazda tek RedoX TV kurulur. Dart tarafı biçimi appFlavor'dan
+    // okur (lib/core/layout/form_factor.dart). TV'ye özgü bildirimler:
+    // src/tv/AndroidManifest.xml.
+    flavorDimensions += "device"
+    productFlavors {
+        create("tv") {
+            dimension = "device"
+        }
+        create("tablet") {
+            dimension = "device"
+        }
+        create("phone") {
+            dimension = "device"
+        }
+    }
 }
 
 kotlin {

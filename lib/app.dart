@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/layout/form_factor.dart';
 import 'core/theme/redox_theme.dart';
 import 'features/style_guide/style_guide_page.dart';
 
@@ -11,7 +12,7 @@ class RedoxApp extends StatelessWidget {
     return MaterialApp(
       title: 'RedoX TV',
       debugShowCheckedModeBanner: false,
-      theme: RedoxTheme.dark(),
+      theme: RedoxTheme.dark(formFactor: FormFactor.current),
       themeMode: ThemeMode.dark,
       // Ekranlar tasarlanana kadar açılışta stil rehberi gösterilir.
       home: const StyleGuidePage(),

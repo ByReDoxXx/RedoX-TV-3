@@ -27,10 +27,11 @@ const _densities = {'mdpi': 1.0, 'hdpi': 1.5, 'xhdpi': 2.0, 'xxhdpi': 3.0, 'xxxh
 
 void main() {
   group('Android', () {
-    test('manifest: uygulama adı ve TV afişi', () {
+    test('manifest: uygulama adı ortak, TV afişi yalnız TV APK\'sında', () {
       final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
       expect(manifest, contains('android:label="RedoX TV"'));
-      expect(manifest, contains('android:banner="@drawable/banner"'));
+      final tv = File('android/app/src/tv/AndroidManifest.xml').readAsStringSync();
+      expect(tv, contains('android:banner="@drawable/banner"'));
     });
 
     test('TV afişi xhdpi 320 x 180 px', () {

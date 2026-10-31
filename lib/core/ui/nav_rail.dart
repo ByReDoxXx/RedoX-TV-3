@@ -31,8 +31,10 @@ class NavRailItem {
 ///   etkin etiket `secondary`, edilgen ikon ve etiket `onSurfaceVariant`;
 ///   durum katmanı `onSecondaryContainer`.
 ///
-/// Proje kuralı: üstüne gelince veya içine odak girince açılır, ayrılınca
-/// kapanır. TV dışında üstteki menü düğmesi de açar ve kapatır (dokunmatik).
+/// Odak (D-pad) veya fare üstündeki öğe sağa doğru açılır ve adını gösterir;
+/// odak ayrılınca kapanır (kullanıcı isteği). Seçili değilse hap
+/// `surfaceContainerHighest` zeminle içeriğin üstünde yüzer. Bütün ray TV
+/// dışında üstteki menü düğmesiyle açılır ve kapanır (dokunmatik).
 /// Açıkken içeriğin üstüne biner, içeriği itmez. Gösterge sol kenarı iki
 /// durumda da 20 dp'dedir; açılırken ikon yerinden oynamaz.
 class RedoxNavRail extends StatefulWidget {
@@ -86,14 +88,13 @@ class RedoxNavRail extends StatefulWidget {
 const double _ringRoom = 4;
 
 class _RedoxNavRailState extends State<RedoxNavRail> {
-  bool _hovered = false;
-  bool _focusInside = false;
   bool _pinned = false;
 
-  bool get _expanded => widget.expanded ?? (_pinned || _hovered || _focusInside);
+  /// Bütün ray yalnızca menü düğmesiyle (veya dışarıdan) açılır. Odak ya da
+  /// fare üstü yalnızca o öğeyi sağa açar (kullanıcı isteği, 2026-10-31).
+  bool get _expanded => widget.expanded ?? _pinned;
 
-  Duration get _duration =>
-      MediaQuery.maybeDisableAnimationsOf(context) == true ? Duration.zero : M3EMotion.medium4;
+  Duration get _duration => MediaQuery.maybeDisableAnimationsOf(context) == true ? Duration.zero : M3EMotion.medium4;
 
   @override
   Widget build(BuildContext context) {
@@ -103,69 +104,62 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
     final t = Theme.of(context).textTheme;
     final collapsedLabel = t.labelMedium!;
     final count = widget.items.length + widget.footer.length;
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
-      includeSemantics: false,
-      onFocusChange: (f) => setState(() => _focusInside = f),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedContainer(
-          duration: _duration,
-          curve: M3EMotion.standard,
-          width: expanded ? RedoxNavRail.expandedWidth : RedoxNavRail.collapsedWidth,
-          decoration: BoxDecoration(
-            color: expanded ? RedoxRoles.surfaceContainer : RedoxRoles.surface,
-            borderRadius: BorderRadius.horizontal(right: Radius.circular(expanded ? RedoxRadius.lg : 0)),
-            boxShadow: expanded ? kElevationToShadow[3] : const [],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.horizontal(right: Radius.circular(expanded ? RedoxRadius.lg : 0)),
-            child: OverflowBox(
-              alignment: Alignment.topLeft,
-              minWidth: RedoxNavRail.expandedWidth,
-              maxWidth: RedoxNavRail.expandedWidth,
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  // Daralmış etiketler ancak tüm öğeler kaymadan sığarsa gösterilir.
-                  final labelLine = (collapsedLabel.height ?? 1.2) * collapsedLabel.fontSize!;
-                  final labelled = RedoxNavRail.collapsedLabelledItemHeight(labelLine);
-                  final header = RedoxNavRail.topSpace + (menuButton ? 48 + RedoxNavRail.itemSpace : 0);
-                  final need = header + count * (labelled + RedoxNavRail.itemSpace) + 16;
-                  final showCollapsedLabels = need <= c.maxHeight;
-                  // Kaydırma alanı keser (taşan öğe alt bölümün üstüne binmesin);
-                  // odak halkası kesilmesin diye alanın içinde 4 dp pay var.
-                  return Padding(
-                    padding: const EdgeInsets.only(top: RedoxNavRail.topSpace - _ringRoom, bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (menuButton) ...[
-                          const SizedBox(height: _ringRoom),
-                          _menuButton(expanded),
-                          const SizedBox(height: RedoxNavRail.itemSpace - _ringRoom),
-                        ],
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(vertical: _ringRoom),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (var i = 0; i < widget.items.length; i++)
-                                  _item(i, widget.items[i], expanded, showCollapsedLabels),
-                              ],
-                            ),
-                          ),
+    return AnimatedContainer(
+      duration: _duration,
+      curve: M3EMotion.standard,
+      width: expanded ? RedoxNavRail.expandedWidth : RedoxNavRail.collapsedWidth,
+      decoration: BoxDecoration(
+        color: expanded ? RedoxRoles.surfaceContainer : RedoxRoles.surface,
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(expanded ? RedoxRadius.lg : 0)),
+        boxShadow: expanded ? kElevationToShadow[3] : const [],
+      ),
+      // Daralmışken kesilmez: odaktaki öğenin hapı rayın dışına, içeriğin
+      // üstüne açılır.
+      child: ClipRRect(
+        clipBehavior: expanded ? Clip.antiAlias : Clip.none,
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(expanded ? RedoxRadius.lg : 0)),
+        child: OverflowBox(
+          alignment: Alignment.topLeft,
+          minWidth: RedoxNavRail.expandedWidth,
+          maxWidth: RedoxNavRail.expandedWidth,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              // Daralmış etiketler ancak tüm öğeler kaymadan sığarsa gösterilir.
+              final labelLine = (collapsedLabel.height ?? 1.2) * collapsedLabel.fontSize!;
+              final labelled = RedoxNavRail.collapsedLabelledItemHeight(labelLine);
+              final header = RedoxNavRail.topSpace + (menuButton ? 48 + RedoxNavRail.itemSpace : 0);
+              final need = header + count * (labelled + RedoxNavRail.itemSpace) + 16;
+              final showCollapsedLabels = need <= c.maxHeight;
+              // Kaydırma alanı keser (taşan öğe alt bölümün üstüne binmesin);
+              // odak halkası kesilmesin diye alanın içinde 4 dp pay var.
+              return Padding(
+                padding: const EdgeInsets.only(top: RedoxNavRail.topSpace - _ringRoom, bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (menuButton) ...[
+                      const SizedBox(height: _ringRoom),
+                      _menuButton(expanded),
+                      const SizedBox(height: RedoxNavRail.itemSpace - _ringRoom),
+                    ],
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(vertical: _ringRoom),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var i = 0; i < widget.items.length; i++)
+                              _item(i, widget.items[i], expanded, showCollapsedLabels),
+                          ],
                         ),
-                        for (var j = 0; j < widget.footer.length; j++)
-                          _item(widget.items.length + j, widget.footer[j], expanded, showCollapsedLabels),
-                      ],
+                      ),
                     ),
-                  );
-                },
-              ),
-            ),
+                    for (var j = 0; j < widget.footer.length; j++)
+                      _item(widget.items.length + j, widget.footer[j], expanded, showCollapsedLabels),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -178,10 +172,7 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
       child: IconButton(
         tooltip: expanded ? RedoxIcons.menuOpen.label : RedoxIcons.menu.label,
         onPressed: widget.expanded == null ? () => setState(() => _pinned = !_pinned) : null,
-        icon: RedoxIcon(
-          expanded ? RedoxIcons.menuOpen : RedoxIcons.menu,
-          color: RedoxRoles.onSurfaceVariant,
-        ),
+        icon: RedoxIcon(expanded ? RedoxIcons.menuOpen : RedoxIcons.menu, color: RedoxRoles.onSurfaceVariant),
       ),
     );
   }
@@ -206,7 +197,7 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
     final labelColor = selected ? RedoxRoles.secondary : RedoxRoles.onSurfaceVariant;
     final sideLabel = t.labelLarge!.copyWith(color: labelColor);
     final belowLabel = t.labelMedium!.copyWith(color: labelColor);
-    final indicatorW = expanded ? _expandedIndicatorWidth(item.label, sideLabel) : RedoxNavRail.indicatorWidth;
+    final openWidth = _expandedIndicatorWidth(item.label, sideLabel);
     final indicatorH = expanded ? RedoxNavRail.expandedItemHeight : RedoxNavRail.indicatorHeight;
     final showBelow = !expanded && showCollapsedLabels;
     const pill = BorderRadius.all(Radius.circular(RedoxRadius.full));
@@ -215,58 +206,67 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
       borderRadius: pill,
       scale: 1,
       focused: widget.focusedIndex == null ? null : widget.focusedIndex == index,
-      builder: (context, _) => Semantics(
-        selected: selected,
-        button: true,
-        label: item.label,
-        excludeSemantics: true,
-        child: Material(
-          color: Colors.transparent,
-          shape: const StadiumBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: widget.onSelected == null ? null : () => widget.onSelected!(index),
-            customBorder: const StadiumBorder(),
-            // M3 durum katmanı opaklıkları: üstüne gelme %8, odak ve basma %10.
-            hoverColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.08),
-            focusColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.10),
-            highlightColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.10),
-            splashColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.10),
-            child: AnimatedContainer(
-              duration: _duration,
-              curve: M3EMotion.standard,
-              width: indicatorW,
-              height: indicatorH,
-              decoration: BoxDecoration(
-                color: selected ? RedoxRoles.secondaryContainer : Colors.transparent,
-                borderRadius: pill,
-              ),
-              child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  maxWidth: double.infinity,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(width: 16),
-                      RedoxIcon(item.icon, filled: selected, color: iconColor),
-                      AnimatedOpacity(
-                        opacity: expanded ? 1 : 0,
-                        duration: expanded ? M3EMotion.medium4 : M3EMotion.short4,
-                        curve: M3EMotion.standard,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 16),
-                          child: Text(item.label, style: sideLabel, maxLines: 1, softWrap: false),
+      builder: (context, active) {
+        // Odakta veya fare üstünde öğe sağa açılır ve adını gösterir.
+        final open = expanded || active;
+        final floating = active && !expanded;
+        return Semantics(
+          selected: selected,
+          button: true,
+          label: item.label,
+          excludeSemantics: true,
+          child: Material(
+            color: Colors.transparent,
+            shape: const StadiumBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onSelected == null ? null : () => widget.onSelected!(index),
+              customBorder: const StadiumBorder(),
+              // M3 durum katmanı opaklıkları: üstüne gelme %8, odak ve basma %10.
+              hoverColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.08),
+              focusColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.10),
+              highlightColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.10),
+              splashColor: RedoxRoles.onSecondaryContainer.withValues(alpha: 0.10),
+              child: AnimatedContainer(
+                duration: _duration,
+                curve: M3EMotion.standard,
+                width: open ? openWidth : RedoxNavRail.indicatorWidth,
+                height: indicatorH,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? RedoxRoles.secondaryContainer
+                      : floating
+                      ? RedoxRoles.surfaceContainerHighest
+                      : Colors.transparent,
+                  borderRadius: pill,
+                ),
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    maxWidth: double.infinity,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 16),
+                        RedoxIcon(item.icon, filled: selected, color: iconColor),
+                        AnimatedOpacity(
+                          opacity: open ? 1 : 0,
+                          duration: open ? M3EMotion.medium4 : M3EMotion.short4,
+                          curve: M3EMotion.standard,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 16),
+                            child: Text(item.label, style: sideLabel, maxLines: 1, softWrap: false),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     final labelLine = (belowLabel.height ?? 1.2) * belowLabel.fontSize!;
