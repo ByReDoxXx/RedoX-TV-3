@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/content/epg_program.dart';
+import '../../core/content/live_channel.dart';
+import '../../core/content/watch_history.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/navigation/destinations.dart';
 import '../../core/navigation/double_back_to_exit.dart';
@@ -23,16 +25,25 @@ import 'section_placeholder.dart';
 class RootShell extends StatefulWidget {
   const RootShell({
     super.key,
-    required this.home,
     required this.tv,
+    this.home,
+    this.history,
     this.initial = AppSection.home,
     this.previewFocus = false,
     this.engineFactory,
     this.rank,
   });
 
-  final HomeContent home;
+  /// Anasayfa içeriği; null ise kanal listesinden ve izleme geçmişinden
+  /// türetilir (HomeContent.from).
+  final HomeContent? home;
   final TvContent tv;
+
+  /// İzleme geçmişi (Anasayfa "Son izlenen kanallar"); null ise geçmiş yok.
+  final WatchHistory? history;
+
+  /// Yayın akışı olmadığında (tasarım önizlemesi) başlıkta gösterilen saat.
+  static const previewClock = '20:45';
   final AppSection initial;
 
   /// Önizleme görüntüleri: Anasayfa vitrin düğmesini odakta çiz.
@@ -51,8 +62,17 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> {
   late AppSection _section = widget.initial;
 
-  void _go(AppSection section) {
-    if (section != _section) setState(() => _section = section);
+  /// Televizyon sayfası açılınca gösterilecek görünüm (Anasayfa'dan "Yayın
+  /// akışı" ile gelinince EPG).
+  TvView _tvView = TvView.cards;
+
+  void _go(AppSection section, {TvView tvView = TvView.cards}) {
+    if (section != _section || tvView != _tvView) {
+      setState(() {
+        _section = section;
+        _tvView = tvView;
+      });
+    }
   }
 
   bool _onBack() {
@@ -70,29 +90,53 @@ class _RootShellState extends State<RootShell> {
   /// Başlık saati: yayın akışının "şimdi"si (gerçek saat); önizlemede örnek saat.
   String get _clock => switch (widget.tv.nowMinute) {
     final m? => EpgProgram.formatClock(m),
-    null => widget.home.clock,
+    null => RootShell.previewClock,
   };
 
+  HomeContent get _home =>
+      widget.home ??
+      HomeContent.from(
+        channels: widget.tv.channels,
+        recent: widget.history?.value ?? const [],
+        clock: _clock,
+        nowMinute: widget.tv.nowMinute,
+      );
+
+  /// Kanalı tam ekran açar; görüntü gelince geçmişe yazılır. Oynatıcıda ▲▼
+  /// bütün kanallarda gezer (kategori süzgecinden bağımsız).
+  Future<void> _watch(BuildContext context, LiveChannel c) => Navigator.of(context).push(
+    PlayerPage.route(
+      channels: widget.tv.channels,
+      initialIndex: widget.tv.channels.indexOf(c),
+      clock: _clock,
+      engineFactory: widget.engineFactory,
+      rank: widget.rank,
+      onWatched: (watched) => widget.history?.record(watched.number),
+    ),
+  );
+
   Widget _page(BuildContext context) => switch (_section) {
-    AppSection.home => HomePage(content: widget.home, previewFocus: widget.previewFocus, onNavigate: _go),
+    AppSection.home => ListenableBuilder(
+      // Geçmiş değişince "Son izlenen kanallar" yenilenir.
+      listenable: widget.history ?? const _NoHistory(),
+      builder: (context, _) => HomePage(
+        content: _home,
+        previewFocus: widget.previewFocus,
+        onNavigate: _go,
+        onWatch: (c) => _watch(context, c),
+        onGuide: () => _go(AppSection.tv, tvView: TvView.epg),
+      ),
+    ),
     AppSection.tv => TvPage(
       content: widget.tv,
       clock: _clock,
-      profileName: widget.home.profileName,
+      profileName: _home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       engineFactory: widget.engineFactory,
       rank: widget.rank,
-      // Oynatıcıda ▲▼ bütün kanallarda gezer (kategori süzgecinden bağımsız).
-      onChannel: (c) => Navigator.of(context).push(
-        PlayerPage.route(
-          channels: widget.tv.channels,
-          initialIndex: widget.tv.channels.indexOf(c),
-          clock: _clock,
-          engineFactory: widget.engineFactory,
-          rank: widget.rank,
-        ),
-      ),
+      initialView: _tvView,
+      onChannel: (c) => _watch(context, c),
     ),
     _ => SectionPlaceholder(section: _section),
   };
@@ -118,7 +162,7 @@ class _RootShellState extends State<RootShell> {
           children: [
             // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
             KeyedSubtree(
-              key: ValueKey(_section),
+              key: ValueKey((_section, _tvView)),
               child: Builder(builder: _page),
             ),
             if (!phone)
@@ -138,4 +182,15 @@ class _RootShellState extends State<RootShell> {
       ),
     );
   }
+}
+
+/// Geçmiş verilmediğinde dinlenecek boş Listenable.
+class _NoHistory implements Listenable {
+  const _NoHistory();
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
 }

@@ -45,6 +45,7 @@ class TvPage extends StatefulWidget {
     this.onChannel,
     this.engineFactory,
     this.rank,
+    this.initialView = TvView.cards,
   });
 
   final TvContent content;
@@ -66,6 +67,9 @@ class TvPage extends StatefulWidget {
 
   /// Önizlemede akış sıralayıcı (StreamProbe.rank); null ise listedeki sıra.
   final StreamRanker? rank;
+
+  /// Açılıştaki görünüm (Anasayfa'daki "Yayın akışı" EPG çizelgesini açar).
+  final TvView initialView;
 
   /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam
   /// genişlikte 2.
@@ -90,7 +94,7 @@ class _TvPageState extends State<TvPage> {
   /// yönerge durur.
   LiveChannel? _previewed;
 
-  TvView _view = TvView.cards;
+  late TvView _view = widget.initialView;
 
   /// Önizleme panelinde oynayan yayın (ilk OK ile başlar).
   PlaybackEngine? _previewEngine;

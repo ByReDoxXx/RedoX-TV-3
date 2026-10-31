@@ -1,14 +1,14 @@
+import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
-import '../../core/ui/channel_card.dart';
-import '../../core/ui/redox_icon.dart';
+import '../../core/navigation/destinations.dart';
 
-// Anasayfa'nın gösterim modelleri. Veri katmanı (GitHub'daki şifreli JSON)
-// yazıldığında bu modellere eşlenecek; burada ağ veya depolama API'si yoktur.
+// Anasayfa'nın gösterim modelleri: kanal listesinden ve izleme geçmişinden
+// türer. Burada ağ veya depolama API'si yoktur.
 
+/// Vitrin: şu an yayında olan bir kanal (son izlenen ya da ilk ulusal kanal).
 class HomeHero {
   const HomeHero({
-    required this.channelName,
-    required this.number,
+    required this.channel,
     required this.title,
     required this.subtitle,
     required this.phase,
@@ -17,62 +17,41 @@ class HomeHero {
     required this.tech,
   });
 
-  final String channelName;
-  final int number;
+  /// Yayın akışından kanalın şimdiki programıyla.
+  factory HomeHero.of(LiveChannel c, {int? nowMinute}) {
+    final range = c.timeRange;
+    final end = range == null ? null : EpgProgram.parseClock(range.split('–').last);
+    final left = end == null || nowMinute == null ? null : (end - nowMinute) % (24 * 60);
+    return HomeHero(
+      channel: c,
+      title: c.programTitle ?? c.name,
+      subtitle: [c.category, ?c.genre, 'Canlı'].join(' · '),
+      phase: range ?? 'Yayın akışı bilgisi yok',
+      clock: left == null || left == 0 ? '' : '$left dk kaldı',
+      progress: c.progress ?? 0,
+      tech: '${c.streams.length} akış',
+    );
+  }
+
+  final LiveChannel channel;
+  String get channelName => channel.name;
+  int get number => channel.number;
+
+  /// Şimdiki program; yayın akışı yoksa kanal adı.
   final String title;
+
+  /// Örn. "Ulusal · Dizi · Canlı".
   final String subtitle;
 
-  /// Örn. "2. yarı · 68. dakika".
+  /// Örn. "20:00 – 22:30".
   final String phase;
 
-  /// Örn. "45:12 / 90:00".
+  /// Örn. "35 dk kaldı".
   final String clock;
   final double progress;
 
-  /// Teknik bilgi rozeti, örn. "4K · HDR10".
+  /// Teknik bilgi rozeti, örn. "12 akış".
   final String tech;
-}
-
-class HomeStory {
-  const HomeStory(this.label, this.icon, {this.seen = false});
-
-  final String label;
-  final RedoxIcons icon;
-  final bool seen;
-}
-
-class HomeContinueItem {
-  const HomeContinueItem({
-    required this.title,
-    required this.detail,
-    required this.remaining,
-    required this.progress,
-    required this.icon,
-  });
-
-  final String title;
-
-  /// Örn. "2. sezon · 5. bölüm" veya "Film · 2024".
-  final String detail;
-
-  /// Örn. "18 dk kaldı".
-  final String remaining;
-  final double progress;
-  final RedoxIcons icon;
-}
-
-class HomeRadio {
-  const HomeRadio(this.name, this.genre);
-
-  final String name;
-  final String genre;
-}
-
-class HomeFilm {
-  const HomeFilm(this.title, this.subtitle);
-
-  final String title;
-  final String subtitle;
 }
 
 class HomeContent {
@@ -80,124 +59,60 @@ class HomeContent {
     required this.profileName,
     required this.clock,
     required this.hero,
-    required this.stories,
+    required this.shortcuts,
     required this.channels,
-    required this.continueItems,
-    required this.radios,
-    required this.films,
+    required this.fromHistory,
   });
+
+  /// Kanal listesinden: geçmişte izlenen kanallar (sırayla) ve vitrinde en
+  /// son izlenen. Geçmiş boşsa ulusal kanallar ve ilk ulusal kanal.
+  factory HomeContent.from({
+    required List<LiveChannel> channels,
+    required List<int> recent,
+    required String clock,
+    int? nowMinute,
+    String profileName = 'Profil 1',
+  }) {
+    final byNumber = {for (final c in channels) c.number: c};
+    final watched = [for (final n in recent) ?byNumber[n]];
+    final national = channels.where((c) => c.category == 'Ulusal').take(shelfSize).toList();
+    final shelf = watched.isNotEmpty ? watched.take(shelfSize).toList() : national;
+    final featured = shelf.firstOrNull ?? channels.firstOrNull;
+    return HomeContent(
+      profileName: profileName,
+      clock: clock,
+      hero: featured == null ? null : HomeHero.of(featured, nowMinute: nowMinute ?? EpgProgram.parseClock(clock)),
+      shortcuts: shortcutSections,
+      channels: shelf,
+      fromHistory: watched.isNotEmpty,
+    );
+  }
+
+  /// Rafta gösterilen en çok kanal.
+  static const shelfSize = 8;
+
+  /// Kısayol halkaları: uygulamanın bölümleri (telefonda ray olmadığından
+  /// asıl gezinme yolu; TV'de hızlı erişim).
+  static const shortcutSections = [
+    AppSection.tv,
+    AppSection.radio,
+    AppSection.film,
+    AppSection.series,
+    AppSection.favorites,
+    AppSection.splitScreen,
+    AppSection.sources,
+  ];
 
   final String profileName;
   final String clock;
-  final HomeHero hero;
 
-  /// En yeni kanallar ve özellikler.
-  final List<HomeStory> stories;
+  /// Vitrin; kanal listesi boşsa null.
+  final HomeHero? hero;
+  final List<AppSection> shortcuts;
 
-  /// Son izlenen kanallar.
+  /// Son izlenen kanallar (geçmiş boşsa ulusal kanallar).
   final List<LiveChannel> channels;
 
-  /// Yarım kalan dizi ve filmler.
-  final List<HomeContinueItem> continueItems;
-
-  /// Son dinlenen radyolar.
-  final List<HomeRadio> radios;
-
-  /// Son izlenen filmler.
-  final List<HomeFilm> films;
-
-  /// Tasarım önizlemesi için örnek içerik (gerçek veri değildir).
-  static const preview = HomeContent(
-    profileName: 'Profil 1',
-    clock: '20:45',
-    hero: HomeHero(
-      channelName: 'Spor 1 4K',
-      number: 104,
-      title: 'Şampiyonlar Ligi — Çeyrek Final',
-      subtitle: 'Ev sahibi – Deplasman · Canlı · Türkçe anlatım',
-      phase: '2. yarı · 68. dakika',
-      clock: '68:12 / 90:00',
-      progress: 0.74,
-      tech: '4K · HDR10',
-    ),
-    stories: [
-      HomeStory('Spor 2 4K', RedoxIcons.television),
-      HomeStory('Belgesel+', RedoxIcons.television),
-      HomeStory('Caz Radyo', RedoxIcons.radio),
-      HomeStory('Çoklu ekran', RedoxIcons.splitScreen),
-      HomeStory('QR kaynak', RedoxIcons.qrCode),
-      HomeStory('Kumanda', RedoxIcons.remote, seen: true),
-    ],
-    channels: [
-      LiveChannel(
-        name: 'ULUSAL 1 HD',
-        category: 'Ulusal',
-        number: 1,
-        programTitle: 'Akşam Dizisi',
-        timeRange: '20:00 – 22:30',
-        genre: 'Dram',
-        progress: 0.3,
-        accent: CardAccent.gold,
-      ),
-      LiveChannel(
-        name: 'SPOR 1 4K',
-        category: 'Spor',
-        number: 104,
-        programTitle: 'Çeyrek Final',
-        timeRange: '19:45 – 22:00',
-        genre: 'Futbol',
-        progress: 0.74,
-        live: true,
-      ),
-      LiveChannel(
-        name: 'HABER 24',
-        category: 'Haber',
-        number: 24,
-        programTitle: 'Ana Haber',
-        timeRange: '20:00 – 21:00',
-        genre: 'Haber',
-        progress: 0.75,
-        accent: CardAccent.amber,
-      ),
-      LiveChannel(
-        name: 'BELGESEL HD',
-        category: 'Belgesel',
-        number: 42,
-        programTitle: 'Derin Uzay',
-        timeRange: '20:30 – 21:45',
-        genre: 'Bilim',
-        progress: 0.2,
-        accent: CardAccent.gold,
-      ),
-    ],
-    continueItems: [
-      HomeContinueItem(
-        title: 'Örnek Dizi',
-        detail: '2. sezon · 5. bölüm',
-        remaining: '18 dk kaldı',
-        progress: 0.6,
-        icon: RedoxIcons.series,
-      ),
-      HomeContinueItem(
-        title: 'Örnek Film',
-        detail: 'Film · 2024',
-        remaining: '42 dk kaldı',
-        progress: 0.65,
-        icon: RedoxIcons.film,
-      ),
-    ],
-    radios: [
-      HomeRadio('Caz Radyo', 'Caz'),
-      HomeRadio('Pop FM', 'Pop'),
-      HomeRadio('Haber Radyo', 'Haber'),
-      HomeRadio('Türkü FM', 'Halk müziği'),
-    ],
-    films: [
-      HomeFilm('Çöl Gezegeni', '2024 · 2 sa 46 dk'),
-      HomeFilm('Gece Treni', '2023 · 1 sa 58 dk'),
-      HomeFilm('Mavi Derinlik', '2022 · 1 sa 40 dk'),
-      HomeFilm('Son Vardiya', '2024 · 2 sa 5 dk'),
-      HomeFilm('Kuzey Işığı', '2021 · 1 sa 52 dk'),
-    ],
-  );
+  /// Kanallar izleme geçmişinden mi (raf başlığı buna göre).
+  final bool fromHistory;
 }

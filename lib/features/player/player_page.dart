@@ -32,6 +32,7 @@ class PlayerPage extends StatefulWidget {
     required this.clock,
     this.engineFactory,
     this.rank,
+    this.onWatched,
   });
 
   final List<LiveChannel> channels;
@@ -44,12 +45,17 @@ class PlayerPage extends StatefulWidget {
   /// Akış sıralayıcı (StreamProbe.rank); null ise listedeki sıra.
   final StreamRanker? rank;
 
+  /// Kanal görüntü verince (izleme geçmişi): kanal başına bir kez, kanal
+  /// değişince yeniden.
+  final ValueChanged<LiveChannel>? onWatched;
+
   static Route<void> route({
     required List<LiveChannel> channels,
     required int initialIndex,
     required String clock,
     PlaybackEngine Function()? engineFactory,
     StreamRanker? rank,
+    ValueChanged<LiveChannel>? onWatched,
   }) => MaterialPageRoute(
     builder: (_) => PlayerPage(
       channels: channels,
@@ -57,6 +63,7 @@ class PlayerPage extends StatefulWidget {
       clock: clock,
       engineFactory: engineFactory,
       rank: rank,
+      onWatched: onWatched,
     ),
   );
 
@@ -94,6 +101,9 @@ class _PlayerPageState extends State<PlayerPage> {
   String? _notice;
   VideoScale _scale = VideoScale.original;
   int _shownIndex = -1;
+
+  /// Geçmişe en son yazılan kanal (aynı kanal tekrar yazılmasın).
+  int? _watched;
   int _shownStream = -1;
 
   Timer? _barTimer;
@@ -125,6 +135,10 @@ class _PlayerPageState extends State<PlayerPage> {
   /// Kanal veya akış değişince çubuğu ve ipuçlarını kısa süre göster.
   void _onSession() {
     if (!mounted) return;
+    if (_session.status == PlaybackStatus.playing && _session.channel.number != _watched) {
+      _watched = _session.channel.number;
+      widget.onWatched?.call(_session.channel);
+    }
     if (_session.index != _shownIndex || _session.streamIndex != _shownStream) {
       _shownIndex = _session.index;
       _shownStream = _session.streamIndex;

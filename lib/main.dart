@@ -9,6 +9,7 @@ import 'core/content/channel_source.dart';
 import 'core/content/data_pack.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
+import 'core/content/watch_history.dart';
 import 'core/layout/form_factor.dart';
 import 'core/playback/stream_probe.dart';
 import 'features/tv/tv_content.dart';
@@ -38,5 +39,7 @@ Future<void> main() async {
   unawaited(tv.start());
   // Kanal açılırken akışlar yoklanır: hızlı açılanlar içinde bit hızı en
   // yüksek olan önde (StreamProbe).
-  runApp(RedoxApp(tv: tv, rank: StreamProbe().rank));
+  // Son izlenen kanallar cihazda saklanır.
+  final history = await WatchHistory.load();
+  runApp(RedoxApp(tv: tv, history: history, rank: StreamProbe().rank));
 }

@@ -7,7 +7,6 @@ import 'package:redox_tv/core/ui/app_header.dart';
 import 'package:redox_tv/core/ui/bottom_nav_bar.dart';
 import 'package:redox_tv/core/ui/nav_rail.dart';
 import 'package:redox_tv/core/ui/redox_icon.dart';
-import 'package:redox_tv/features/home/home_content.dart';
 import 'package:redox_tv/features/home/home_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/shell/section_placeholder.dart';
@@ -18,7 +17,7 @@ import '../../support/render.dart';
 
 Widget _app(FormFactor f) => MaterialApp(
   theme: RedoxTheme.dark(formFactor: f),
-  home: const RootShell(home: HomeContent.preview, tv: TvContent.preview),
+  home: const RootShell(tv: TvContent.preview),
 );
 
 Future<void> _settle(WidgetTester tester) => tester.pump(const Duration(milliseconds: 600));
@@ -104,7 +103,8 @@ void main() {
     await _settle(tester);
     // Kumanda da bu sayfada (başlıkta değil; kullanıcı isteği).
     expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('Kumanda')), findsOneWidget);
-    await tester.tap(find.text('Kaynaklar'));
+    // Anasayfa kısayollarında da "Kaynaklar" var: alt sayfadakine dokun.
+    await tester.tap(find.descendant(of: find.byType(BottomSheet), matching: find.text('Kaynaklar')));
     // Alt sayfanın kapanış animasyonu da iki karede biter.
     await tester.pump();
     await _settle(tester);

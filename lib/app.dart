@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 
 import 'core/layout/form_factor.dart';
 import 'core/theme/redox_theme.dart';
-import 'features/home/home_content.dart';
+import 'core/content/watch_history.dart';
 import 'core/playback/stream_probe.dart';
 import 'features/shell/root_shell.dart';
 import 'features/tv/tv_content.dart';
 
 class RedoxApp extends StatelessWidget {
-  const RedoxApp({super.key, required this.tv, this.rank});
+  const RedoxApp({super.key, required this.tv, this.history, this.rank});
 
   /// Televizyon kanalları (gömülü M3U listesinden) ve yayın akışı; her
   /// dakika yenilenir (TvGuideController, main.dart).
   final ValueListenable<TvContent> tv;
+
+  /// İzleme geçmişi (Anasayfa "Son izlenen kanallar").
+  final WatchHistory? history;
 
   /// Akış sıralayıcı (StreamProbe.rank).
   final StreamRanker? rank;
@@ -25,11 +28,11 @@ class RedoxApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: RedoxTheme.dark(formFactor: FormFactor.current),
       themeMode: ThemeMode.dark,
-      // Açılış: Anasayfa. Anasayfa veri katmanı yazılana kadar örnek içerikle;
-      // Televizyon gerçek kanal listesiyle.
+      // Açılış: Anasayfa. Anasayfa ve Televizyon gerçek kanal listesiyle;
+      // Anasayfa'nın "Son izlenen kanallar" rafı izleme geçmişinden.
       home: ValueListenableBuilder(
         valueListenable: tv,
-        builder: (context, tv, _) => RootShell(home: HomeContent.preview, tv: tv, rank: rank),
+        builder: (context, tv, _) => RootShell(tv: tv, history: history, rank: rank),
       ),
     );
   }

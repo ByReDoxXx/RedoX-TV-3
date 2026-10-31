@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/content/watch_history.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_colors.dart';
@@ -13,7 +14,6 @@ import 'package:redox_tv/core/ui/header_search.dart';
 import 'package:redox_tv/core/ui/nav_rail.dart';
 import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/ui/redox_icon.dart';
-import 'package:redox_tv/features/home/home_content.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
 import 'package:redox_tv/features/home/widgets/hero_banner.dart';
@@ -25,7 +25,7 @@ Widget _app(Key boundary, {bool previewFocus = false}) => MaterialApp(
   theme: RedoxTheme.dark(),
   home: RepaintBoundary(
     key: boundary,
-    child: RootShell(home: HomeContent.preview, tv: TvContent.preview, previewFocus: previewFocus),
+    child: RootShell(tv: TvContent.preview, history: WatchHistory(const [104, 1, 24, 42]), previewFocus: previewFocus),
   ),
 );
 
@@ -46,9 +46,11 @@ void main() {
       await settleAssets(tester);
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Şampiyonlar Ligi — Çeyrek Final'), findsOneWidget);
-      // Hikâye yuvası daraltıldı; en uzun etiket yine kesilmeden sığar.
-      expect(tester.renderObject<RenderParagraph>(find.text('Çoklu ekran')).didExceedMaxLines, isFalse);
+      // Vitrin: en son izlenen kanal (104) ve şimdiki programı.
+      expect(find.descendant(of: find.byType(HeroBanner), matching: find.text('Çeyrek Final')), findsOneWidget);
+      expect(find.text('SPOR 1 4K · Kanal 104'), findsOneWidget);
+      // Kısayol yuvası daraltıldı; en uzun etiket yine kesilmeden sığar.
+      expect(tester.renderObject<RenderParagraph>(find.text('Televizyon').first).didExceedMaxLines, isFalse);
       await maybeSnapshot(tester, key, 'build/home/anasayfa-4k.png', pixelRatio: 4);
     }),
   );
@@ -67,13 +69,10 @@ void main() {
       await settleAssets(tester);
 
       expect(tester.takeException(), isNull);
-      for (final title in [
-        'Son izlenen kanallar',
-        'İzlemeye devam et',
-        'Son dinlenen radyolar',
-        'Son izlenen filmler',
-      ]) {
-        expect(find.text(title), findsOneWidget, reason: title);
+      expect(find.text('Son izlenen kanallar'), findsOneWidget);
+      // Veri kaynağı olmayan raflar (dizi, film, radyo) gösterilmez.
+      for (final title in ['İzlemeye devam et', 'Son dinlenen radyolar', 'Son izlenen filmler']) {
+        expect(find.text(title), findsNothing, reason: title);
       }
       await maybeSnapshot(tester, key, 'build/home/anasayfa-tam.png', pixelRatio: 2);
     }),
@@ -137,7 +136,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: RedoxTheme.dark(formFactor: FormFactor.phone),
-          home: const RootShell(home: HomeContent.preview, tv: TvContent.preview),
+          home: const RootShell(tv: TvContent.preview),
         ),
       );
       await tester.pump(const Duration(milliseconds: 600));
@@ -160,15 +159,13 @@ void main() {
 
       // Vitrin düğmeleri yan yana; telefonda "OK" ipucu yok (kumanda yok).
       final primaryY = tester.getCenter(find.text('Canlı yayına gir')).dy;
-      for (final tip in ['Çoklu ekrana ekle', 'Yayın akışı']) {
-        expect(tester.getCenter(find.byTooltip(tip)).dy, closeTo(primaryY, 1), reason: tip);
-      }
+      expect(tester.getCenter(find.byTooltip('Yayın akışı')).dy, closeTo(primaryY, 1));
       expect(find.descendant(of: find.byType(HeroBanner), matching: find.text('OK')), findsNothing);
 
       await tester.tap(find.bySemanticsLabel('Diğer'));
       await tester.pump(const Duration(milliseconds: 600));
       for (final item in AppDestinations.phoneMore) {
-        // Anasayfa hikâyelerinde de "Kumanda" var: yalnız alt sayfada ara.
+        // Kısayollarda da bölüm adları var: yalnız alt sayfada ara.
         expect(
           find.descendant(of: find.byType(BottomSheet), matching: find.text(item.label)),
           findsOneWidget,
@@ -187,7 +184,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: RedoxTheme.dark(formFactor: FormFactor.tablet),
-        home: const RootShell(home: HomeContent.preview, tv: TvContent.preview),
+        home: const RootShell(tv: TvContent.preview),
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));

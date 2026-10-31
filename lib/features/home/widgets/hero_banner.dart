@@ -7,18 +7,26 @@ import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/artwork_fallback.dart';
+import '../../../core/ui/channel_logo.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../../core/ui/redox_progress_bar.dart';
 import '../../../core/ui/status_badge.dart';
 import '../home_content.dart';
 
-/// Vitrin: şu an yayında olan öne çıkan içerik. rounded-xl, arkada kromatik
+/// Vitrin: şu an yayında olan öne çıkan kanal. rounded-xl, arkada kromatik
 /// ışık (DESIGN.md "Chromatic Backlight Flares"; zip'teki tasarımın hero hâlesi).
+/// "Çoklu ekrana ekle" 2x2 ekran yazılana kadar gösterilmez.
 class HeroBanner extends StatelessWidget {
-  const HeroBanner({super.key, required this.hero, this.primaryFocused});
+  const HeroBanner({super.key, required this.hero, this.primaryFocused, this.onWatch, this.onGuide});
 
   final HomeHero hero;
+
+  /// "Canlı yayına gir": kanalı tam ekran açar.
+  final VoidCallback? onWatch;
+
+  /// "Yayın akışı": EPG çizelgesine gider.
+  final VoidCallback? onGuide;
 
   /// Önizleme: birincil düğmeyi odakta göster.
   final bool? primaryFocused;
@@ -34,17 +42,11 @@ class HeroBanner extends StatelessWidget {
       label: 'Canlı yayına gir',
       icon: RedoxIcons.play,
       keyHint: phone ? null : 'OK',
-      onPressed: () {},
+      onPressed: onWatch,
       focused: primaryFocused,
       autofocus: primaryFocused == null,
     );
-    final multi = GlassButton(
-      label: 'Çoklu ekrana ekle',
-      icon: RedoxIcons.splitScreen,
-      iconOnly: phone,
-      onPressed: () {},
-    );
-    final guide = GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, iconOnly: phone, onPressed: () {});
+    final guide = GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, iconOnly: phone, onPressed: onGuide);
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: radius,
@@ -65,9 +67,7 @@ class HeroBanner extends StatelessWidget {
         borderRadius: radius,
         child: Stack(
           children: [
-            Positioned.fill(
-              child: ArtworkFallback(name: hero.channelName, showInitials: false),
-            ),
+            Positioned.fill(child: ArtworkFallback(name: hero.channelName, showInitials: false)),
             // Okunurluk: alttan ve soldan obsidyen perde.
             const Positioned.fill(
               child: DecoratedBox(
@@ -90,6 +90,22 @@ class HeroBanner extends StatelessWidget {
                 ),
               ),
             ),
+            // Kanalın logosu sağda (telefonda yer yok).
+            if (!phone)
+              Positioned(
+                right: 32,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(RedoxRadius.lg),
+                    child: SizedBox.square(
+                      dimension: 150,
+                      child: ChannelLogo(name: hero.channelName, logoUrl: hero.channel.logoUrl, size: 0.7),
+                    ),
+                  ),
+                ),
+              ),
             // Vitrin tam genişliktir; içerik (Wrap) genişliği belirlemez.
             Container(
               width: double.infinity,
@@ -103,10 +119,7 @@ class HeroBanner extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       const StatusBadge(label: 'CANLI YAYIN', pulse: true),
-                      _InfoPill(
-                        text: '${hero.channelName} · Kanal ${hero.number}',
-                        color: RedoxRoles.tertiary,
-                      ),
+                      _InfoPill(text: '${hero.channelName} · Kanal ${hero.number}', color: RedoxRoles.tertiary),
                       _InfoPill(text: hero.tech, color: RedoxRoles.onSurfaceVariant),
                     ],
                   ),
@@ -136,7 +149,7 @@ class HeroBanner extends StatelessWidget {
                                   style: t.labelMedium!.copyWith(color: RedoxRoles.onSurface),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              if (hero.clock.isNotEmpty) const SizedBox(width: 12),
                               Text(
                                 hero.clock,
                                 style: t.labelMedium!.copyWith(
@@ -161,14 +174,12 @@ class HeroBanner extends StatelessWidget {
                           child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: primary),
                         ),
                         const SizedBox(width: 12),
-                        multi,
-                        const SizedBox(width: 8),
                         guide,
                       ],
                     )
                   else
                     // Dar tablet/masaüstü penceresinde düğmeler alt satıra iner.
-                    Wrap(spacing: 16, runSpacing: 12, children: [primary, multi, guide]),
+                    Wrap(spacing: 16, runSpacing: 12, children: [primary, guide]),
                 ],
               ),
             ),

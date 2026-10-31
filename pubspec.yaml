@@ -22,6 +22,8 @@ dependencies:
   xml: 7.0.1
   # Şifreli veri paketleri: AES-256-GCM çözme, Ed25519 imza doğrulama.
   cryptography: 2.9.0
+  # Son izlenen kanallar cihazda saklanır (Flutter ekibinin paketi).
+  shared_preferences: 2.5.6
 
 dev_dependencies:
   flutter_test:

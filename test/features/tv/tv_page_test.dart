@@ -12,7 +12,6 @@ import 'package:redox_tv/core/ui/channel_tile.dart';
 import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/ui/scroll_hint_row.dart';
 import 'package:redox_tv/core/ui/segmented_toggle.dart';
-import 'package:redox_tv/features/home/home_content.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
@@ -30,7 +29,6 @@ Widget _app(FormFactor f, {Key? boundary, TvContent content = TvContent.preview,
       home: RepaintBoundary(
         key: boundary,
         child: RootShell(
-          home: HomeContent.preview,
           tv: content,
           initial: AppSection.tv,
           // Yerel video kütüphanesi testte yok: sahte motor.

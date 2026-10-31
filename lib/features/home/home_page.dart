@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/navigation/destinations.dart';
@@ -10,31 +11,42 @@ import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/artwork_fallback.dart';
 import '../../core/ui/channel_card.dart';
-import '../../core/ui/media_card.dart';
+import '../../core/ui/channel_logo.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/section_header.dart';
 import '../../core/ui/shelf.dart';
-import '../../core/ui/status_badge.dart';
 import '../../core/ui/story_avatar.dart';
 import 'home_content.dart';
-import 'widgets/continue_card.dart';
 import 'widgets/hero_banner.dart';
-import 'widgets/radio_tile.dart';
 
-/// Anasayfa: hikâyeler (yeni kanal ve özellikler), vitrin, son izlenen kanallar,
-/// yarım kalan dizi/filmler, son dinlenen radyolar ve son izlenen filmler.
+/// Anasayfa: bölüm kısayolları, vitrin (şu an yayında olan kanal) ve son
+/// izlenen kanallar (geçmiş boşsa ulusal kanallar). Dizi, film ve radyo rafları
+/// o bölümler yazılınca gelecek; uydurma içerik gösterilmez.
 /// TV tuvali 960×540 dp (Android TV tasarım ölçüsü); içerik dikey kayar.
 /// Ray, alt menü ve Geri kök kabuktadır (RootShell).
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.content, this.previewFocus = false, this.onNavigate});
+  const HomePage({
+    super.key,
+    required this.content,
+    this.previewFocus = false,
+    this.onNavigate,
+    this.onWatch,
+    this.onGuide,
+  });
 
   final HomeContent content;
 
   /// Önizleme: vitrin düğmesini odakta çiz (gerçek odak yerine).
   final bool previewFocus;
 
-  /// "Diğer" sayfasından bir bölüm seçilince.
+  /// Kısayol halkası ya da "Diğer" sayfasından bir bölüm seçilince.
   final ValueChanged<AppSection>? onNavigate;
+
+  /// Kanal tam ekran izlenmek istenince (vitrin, raf).
+  final ValueChanged<LiveChannel>? onWatch;
+
+  /// "Yayın akışı": Televizyon sayfasının EPG çizelgesi.
+  final VoidCallback? onGuide;
 
   /// Kart genişliği: içerik genişliği n karta ve aradaki oluklara bölünür.
   /// Kesirli n (telefon) sağda bir kartın ucunu gösterir: raf kaydırılabilir.
@@ -47,12 +59,12 @@ class HomePage extends StatelessWidget {
     final gutter = metrics.gutter;
     // Telefonda raf başına görünen kart: dört kart sığmaz, yazılar kesilir.
     final phone = metrics.formFactor == FormFactor.phone;
-    double perRow(double wide, double narrow) => phone ? narrow : wide;
+    final hero = content.hero;
     return LayoutBuilder(
       builder: (context, box) {
         final padding = PageLayout.scrollPadding(context, metrics);
         final width = box.maxWidth - padding.horizontal;
-        final card = _cardWidth(width, perRow(4, 2.3), gutter);
+        final card = _cardWidth(width, phone ? 2.3 : 4, gutter);
         return SingleChildScrollView(
           padding: padding,
           child: Column(
@@ -67,9 +79,9 @@ class HomePage extends StatelessWidget {
                   onSelected: (i) => onNavigate?.call(AppDestinations.phoneMoreSections[i]),
                 ),
                 // Zaten Anasayfadayız: başa kaydırır.
-                onHome: () => PrimaryScrollController.maybeOf(
-                  context,
-                )?.animateTo(0, duration: M3EMotion.medium4, curve: M3EMotion.standard),
+                onHome: () =>
+                    PrimaryScrollController.maybeOf(context)
+                        ?.animateTo(0, duration: M3EMotion.medium4, curve: M3EMotion.standard),
               ),
               const SizedBox(height: 12),
               SingleChildScrollView(
@@ -79,68 +91,57 @@ class HomePage extends StatelessWidget {
                   // Üste hizalı: iki satırlı etiket halkayı kaydırmaz.
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final s in content.stories)
+                    for (final s in content.shortcuts)
                       StoryAvatar(
-                        label: s.label,
-                        seen: s.seen,
-                        onPressed: () {},
-                        child: ArtworkFallback(name: s.label, icon: s.icon),
+                        // Kısa ad: "Televizyon" halkanın altına sığmıyor ("TV").
+                        label: s.shortLabel,
+                        onPressed: () => onNavigate?.call(s),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ArtworkFallback(name: s.label, showInitials: false),
+                            Center(child: RedoxIcon(s.icon, size: 30, color: RedoxRoles.onSurface)),
+                          ],
+                        ),
                       ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              HeroBanner(hero: content.hero, primaryFocused: previewFocus ? true : null),
-              const SizedBox(height: 40),
-              Shelf(
-                header: const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar'),
-                children: [
-                  for (final c in content.channels)
-                    ChannelCard(
-                      width: card,
-                      channelName: c.name,
-                      number: c.number,
-                      programTitle: c.programTitle ?? '',
-                      timeRange: c.timeRange ?? '',
-                      progress: c.progress ?? 0,
-                      accent: c.accent,
-                      badge: c.live ? const StatusBadge(label: 'CANLI', pulse: true) : null,
-                      artwork: ArtworkFallback(name: c.name, icon: RedoxIcons.television),
-                      onPressed: () {},
-                    ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Shelf(
-                header: const SectionHeader(
-                  title: 'İzlemeye devam et',
-                  subtitle: 'Yarım kalan dizi ve filmler',
-                  accent: RedoxSeeds.amber,
+              if (hero != null)
+                HeroBanner(
+                  hero: hero,
+                  primaryFocused: previewFocus ? true : null,
+                  onWatch: () => onWatch?.call(hero.channel),
+                  onGuide: onGuide,
                 ),
-                children: [
-                  for (final c in content.continueItems)
-                    ContinueCard(item: c, width: _cardWidth(width, perRow(2, 1.15), gutter), onPressed: () {}),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Shelf(
-                header: const SectionHeader(title: 'Son dinlenen radyolar', accent: RedoxSeeds.gold),
-                children: [for (final r in content.radios) RadioTile(radio: r, width: card, onPressed: () {})],
-              ),
-              const SizedBox(height: 40),
-              Shelf(
-                header: const SectionHeader(title: 'Son izlenen filmler', accent: RedoxSeeds.amber),
-                children: [
-                  for (final f in content.films)
-                    MediaCard(
-                      title: f.title,
-                      subtitle: f.subtitle,
-                      width: _cardWidth(width, perRow(5, 3.3), gutter),
-                      artwork: ArtworkFallback(name: f.title, icon: RedoxIcons.film),
-                      onPressed: () {},
-                    ),
-                ],
-              ),
+              if (content.channels.isNotEmpty) ...[
+                const SizedBox(height: 40),
+                Shelf(
+                  header: content.fromHistory
+                      ? const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar')
+                      : const SectionHeader(
+                          title: 'Ulusal kanallar',
+                          subtitle: 'İzlediğin kanallar burada görünecek',
+                          accent: RedoxSeeds.amber,
+                        ),
+                  children: [
+                    for (final c in content.channels)
+                      ChannelCard(
+                        width: card,
+                        channelName: c.name,
+                        number: c.number,
+                        programTitle: c.programTitle ?? 'Yayın akışı bilgisi yok',
+                        timeRange: c.timeRange ?? c.category,
+                        genre: c.genre,
+                        progress: c.progress ?? 0,
+                        accent: c.accent,
+                        artwork: ChannelLogo(name: c.name, logoUrl: c.logoUrl),
+                        onPressed: () => onWatch?.call(c),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         );
