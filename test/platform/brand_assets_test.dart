@@ -55,7 +55,7 @@ void main() {
       expect(xml, contains('<monochrome android:drawable="@mipmap/ic_launcher_monochrome"'));
       final colors = File('$_res/values/colors.xml').readAsStringSync();
       expect(colors, contains('name="ic_launcher_background"'));
-      expect(colors, contains('<color name="redox_obsidian">#000000</color>'));
+      expect(colors, contains('<color name="redox_obsidian">#0B0B20</color>'));
     });
 
     testWidgets('işaret 66 dp güvenli dairenin içinde', (tester) async {

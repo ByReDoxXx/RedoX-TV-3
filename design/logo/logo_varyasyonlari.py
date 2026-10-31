@@ -454,8 +454,8 @@ def main():
         "<resources>\n"
         "    <!-- Logonun lacivert zemini (işaret kırpıntısının arka plan ortalaması). -->\n"
         f'    <color name="ic_launcher_background">#{bg[0]:02X}{bg[1]:02X}{bg[2]:02X}</color>\n'
-        "    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (saf siyah). -->\n"
-        '    <color name="redox_obsidian">#000000</color>\n'
+        "    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (logonun gece laciverti). -->\n"
+        '    <color name="redox_obsidian">#0B0B20</color>\n'
         "</resources>\n",
         encoding="utf-8",
     )

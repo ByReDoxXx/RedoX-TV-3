@@ -2,6 +2,6 @@
 <resources>
     <!-- Logonun lacivert zemini (işaret kırpıntısının arka plan ortalaması). -->
     <color name="ic_launcher_background">#222032</color>
-    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (saf siyah). -->
-    <color name="redox_obsidian">#000000</color>
+    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (logonun gece laciverti). -->
+    <color name="redox_obsidian">#0B0B20</color>
 </resources>

@@ -38,9 +38,9 @@ void main() {
       expect(contrast(_white, RedoxAccent.ember), greaterThanOrEqualTo(4.5));
     });
 
-    test('kor = amber paletinin beyazla 4.5:1 veren en açık tonu (T49)', () {
-      expect(RedoxAccent.ember, Color(RedoxTonal.secondary.get(49)));
-      expect(contrast(_white, Color(RedoxTonal.secondary.get(50))), lessThan(4.5));
+    test('kor = amber paletinin beyazla 4.5:1 veren en açık tonu (T50)', () {
+      expect(RedoxAccent.ember, Color(RedoxTonal.secondary.get(50)));
+      expect(contrast(_white, Color(RedoxTonal.secondary.get(51))), lessThan(4.5));
     });
 
     test('rozetler', () {
@@ -89,8 +89,8 @@ void main() {
       expect(contrast(_white, RedoxSeeds.amber), lessThan(3.0));
     });
 
-    test('sadakat şemasının amber kabı siyah izde yetmez; ısıl degradede tohum kullanılır', () {
-      expect(contrast(RedoxRoles.secondaryContainer, RedoxRoles.surfaceContainerLowest), lessThan(3.0));
+    test('ısıl degrade tohumlardır (logodaki alevin renkleri)', () {
+      expect(RedoxAccent.thermal, [RedoxSeeds.crimson, RedoxSeeds.amber, RedoxSeeds.gold]);
     });
 
     test('kızıl dolgu en yüksek kap izinde yetmez; iz bu yüzden obsidyen', () {

@@ -74,8 +74,9 @@ void main() {
       expect(RedoxRoles.surfaceContainerHigh, _tone(n, 17));
       expect(RedoxRoles.surfaceContainerHighest, _tone(n, 22));
       expect(RedoxRoles.surfaceBright, _tone(n, 24));
-      // Nötr tohum logonun saf siyahı: paletin T0'ı.
-      expect(RedoxSeeds.obsidian, _tone(n, 0));
+      // Nötr tohum logonun gece laciverti: tuval, en koyu yüzeyle (T4) aynı
+      // koyulukta; kaplar ondan ayrışır.
+      expect(Hct.fromInt(RedoxSeeds.obsidian.toARGB32()).tone, inInclusiveRange(0, 6));
     });
   });
 

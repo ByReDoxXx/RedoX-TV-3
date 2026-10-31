@@ -25,55 +25,53 @@ Görsel ilham: kullanıcının verdiği Stitch Anasayfa ekranı (`stitch_redox_t
 
 ## 2. Renk
 
-### Palet: Logo-2'den türetme (2026-10-31)
+### Palet: Logo-3'ten türetme (2026-11-01)
 
-Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyla aynı çizimdir (piksel hizalı, en iyi kayma 0,0); fark zemindedir: lacivert yerine saf siyah.
+Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve paletin ona göre güncellenmesini istedi ("güncelle ama beğenmezsen eskiye çevirirsin"). Yöntem Logo-2'dekiyle aynı. Önceki palet (Logo-2: `#D82131 #ED9650 #F6BD58 #000000`) git geçmişinde; geri dönmek tek işlemle olur.
 
-**Tohumlar logodan ölçüldü** (`RedoxSeeds`; 2048 px görsel, 1024 px'e ölçeklenip boğa ve halka bölgesinde):
+**Tohumlar logodan ölçüldü** (`RedoxSeeds`; 2000 px görsel, 1000 px'e ölçeklenip karo içinde):
 
 | Tohum | Değer | Ölçüm |
 |---|---|---|
-| Crimson Flame (primary) | `#D82131` | Kızıl aile (ton 340°–12°, doygunluk ≥ 0,55) içinde, iki kısıtı sağlayan piksellerin medyanı (aşağıda) |
-| Molten Amber (secondary) | `#ED9650` | Turuncu aile (12°–32°), parlak (V ≥ 0,85) piksellerin medyanı: kıvılcım ve parlama |
-| Incandescent Gold (tertiary) | `#F6BD58` | Altın aile (32°–58°), parlak piksellerin medyanı: halka ve "TV" |
-| Obsidian Void (nötr) | `#000000` | Logonun zemini (köşe ve kenar örnekleri `#000000`/`#010101`) |
+| Crimson Flame (primary) | `#D7232C` | Kızıl aile (ton 340°–12°, doygunluk ≥ 0,55) içinde, iki kısıtı sağlayan piksellerin medyanı (157 bin pikselden 19 bini) |
+| Molten Amber (secondary) | `#FC7422` | Turuncu aile (12°–32°), parlak (V ≥ 0,85) piksellerin medyanı: alevler |
+| Incandescent Gold (tertiary) | `#FBBE4D` | Altın aile (32°–58°), parlak piksellerin medyanı: halka ve "TV" |
+| Obsidian Void (nötr) | `#0B0B20` | Logonun zemini: koyu (V < 0,22), mavisi kırmızısından baskın piksellerin medyanı |
 
-**Kızıl için iki kısıt.** Logonun en sık kızılı `#D51931` kartta 3:1'in altında kalıyordu; en parlak kızılı `#E6313A` ise beyaz yazıyı 4,5:1'in altına düşürüyordu. Bu yüzden kızıl, şu iki koşulu birlikte sağlayan logo piksellerinin medyanıdır:
-- Beyaz düğme yazısı ≥ 4,5:1 olmalı.
-- Odak halkası kartta (`#1F1F1F`) ≥ 3:1 olmalı.
+**Kızıl için iki kısıt** (Logo-2'deki gibi): beyaz düğme yazısı ≥ 4,5:1 ve odak halkası kartta ≥ 3:1. Kart artık lacivert nötrün T12'si (`#1D1D33`); kısıt bu kartla ölçüldü. Logonun genel kızılı daha koyu (`#932027`), kısıtlı medyan Logo-2'ninkine çok yakın çıktı (`#D82131` → `#D7232C`).
 
 **Roller M3 sadakat (fidelity) şemasıyla hesaplanır** (`RedoxTonal`, `RedoxRoles`). Bu Stitch'in yöntemidir. Kanıt:
-- Eski tohumlar (`#E61638 #FF9E1B #FFD54F #0D0E11`) bu şemayla ilk DESIGN.md'nin 44 rolünü **birebir** üretti (0/44 fark).
+- İlk tohumlar (`#E61638 #FF9E1B #FFD54F #0D0E11`) bu şemayla ilk DESIGN.md'nin 44 rolünü **birebir** üretti (0/44 fark).
 - Yeni roller aynı hesapla üretildi ve DESIGN.md YAML'ına yazıldı.
 - `redox_roles_test.dart`, 44 rolün `RedoxTonal.scheme` ile eşleştiğini denetler.
 
-**Tuval saf siyah.** Scaffold zemini nötr tohumdur (`#000000`, paletin T0'ı).
-- M3'ün `surface-container-lowest` rolü T4 (`#0E0E0E`) olarak kalır.
-- Düzyazının "true-black OLED baselines" ilkesiyle ve logonun zeminiyle uyumludur.
+**Tuval gece laciverti.** Scaffold zemini nötr tohumdur (`#0B0B20`); yüzeyler bu tonda (kart `#1D1D33`, en yüksek kap `#333349`). Logo artık zeminiyle bütünleşir. `on-surface` hafif lacivert tonlu beyazdır (`#E2DFFD`).
 
-**Sonuçlar** (`redox_contrast_test.dart`):
+**Belirgin değişiklikler:**
+- İkincil kap (`secondary-container`) parlak turuncu oldu (`#ED6915`, yazısı koyu `#351100`). Logo-2'de koyu kahveydi (`#884500`). Gezinme rayının seçili göstergesi bu renktir: turuncu hap, koyu ikon.
+- Isıl degrade ve ilerleme dolguları daha canlı (alev turuncusu).
+
+**Sonuçlar** (`redox_contrast_test.dart`; hepsi geçiyor):
 
 | Çift | Oran |
 |---|---|
-| Beyaz / kızıl `#D82131` | 5,02:1 |
-| on-primary-container `#FFF0EF` / kızıl | 4,53:1 |
-| Kızıl odak halkası tuvalde / lowest'ta / kartta | 4,18 / 3,84 / 3,28:1 |
-| Siyah / amber (cam düğme odağı) | 9,08:1 |
-| Beyaz / amber | 2,31:1; çip ucu olamaz |
+| Beyaz / kızıl `#D7232C` | 5,04:1 |
+| on-primary-container `#FFF0EE` / kızıl | 4,55:1 |
+| Kızıl odak halkası tuvalde / lowest'ta / kartta | 3,85 / 3,82 / 3,27:1 |
+| Tuval / amber (cam düğme odağı) | 7,07:1 |
+| Beyaz / amber | 2,74:1; çip ucu olamaz |
+| Amber giriş kenarı en yüksek kapta | 4,48:1 |
 
 **Seçili çip ucu (kor).** Kullanıcının "Kor kalsın" kararı korunur: uç, amber paletinin beyazla 4,5:1'i sağlayan en açık tonudur.
-- Yeni palette yine T49'dur: `#AC6220`.
-- T49 4,64:1, T50 4,50:1'in altında (4,498).
+- Yeni palette T50: `#C75300` (4,50:1); T51 4,5:1'in altında.
 
-**Isıl degrade.** Sadakat şemasında amber kabı koyu çıkar (`#884500`): izde 2,66:1, yani 3:1'in altında.
-- **Karar:** Degrade tohumlarla çizilir: kızıl → amber `#ED9650` → altın `#F6BD58`.
-- İzde sırasıyla 3,84 / 8,35 / 11,34:1.
+**Isıl degrade.** Tohumlarla çizilir: kızıl → amber `#FC7422` → altın `#FBBE4D` (logodaki alevin renkleri). İzde sırasıyla 3,82 / 7,03 / 11,53:1.
 
-**Kızıl yazı kuralı.** Kızıl kartta 3,28:1 verir, bu yüzden küçük yazıda kullanılmaz.
+**Kızıl yazı kuralı.** Kızıl kartta 3,27:1 verir, bu yüzden küçük yazıda kullanılmaz.
 - Vurgulu metinlerde `primary`, `secondary`, `tertiary` rolleri kullanılır; kartta hepsi ≥ 4,5:1.
 
-**İlerleme izi.** Kızıl dolgu en yüksek kapta (`#353535`) 2,44:1 kalır.
-- **Karar:** İz `surface-container-lowest`'tır (`#0E0E0E`).
+**İlerleme izi.** Kızıl dolgu en yüksek kapta 3:1'in altında kalır.
+- **Karar:** İz `surface-container-lowest`'tır (`#0C0C21`).
 
 **Düzyazının yüzey merdiveni** (`#08090B #121418 #181A20 #22252C #2C3039`) hiçbir tohumdan türemez ve kullanılmaz (ilk sürümdeki "Çelişki 1" kararı değişmedi).
 
@@ -293,7 +291,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - İşaret, kaynak görselden ayrıldı: sıcaklık (kırmızı − mavi) maskesi + kenardan taşkın dolgu. Koyu dış çizgiler korunur.
 - **TV afişi:** "use an xhdpi resource with a size of 320 x 180 px. Text must be included in the image." Afişte işaret ve logonun kendi "REDOX TV" yazısı var.
 - **Android 12+ açılış ekranı:** varsayılan olarak başlatıcı simgesini gösterir. Zemin olarak tema `windowBackground`'ını kullanır, ama yalnızca tek renkse.
-  - Bu yüzden açılış ve pencere zemini obsidyen (`@color/redox_obsidian`, `#000000`) yapıldı.
+  - Bu yüzden açılış ve pencere zemini obsidyen (`@color/redox_obsidian`, gece laciverti `#0B0B20`) yapıldı.
   - Flutter'ın beyaz `launch_background` çizimleri kaldırıldı.
   - Android 12 öncesinde açılışta logo yok; yalnızca obsidyen zemin görünür.
 
@@ -307,7 +305,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 - TV başlatıcısında görünmek için iki bildirim gerekir: `LEANBACK_LAUNCHER` filtresi ve `android.hardware.touchscreen required="false"`. Bunlar ayrı TV APK'sı işine bırakıldı; afiş şimdiden tanımlı.
 - Afiş tek dillidir. Başka dil eklenirse her dil için ayrı afiş gerekir (TV belgesi).
 - Tek renk katmanda alevler ve kıvılcımlar da görünür.
-- **Palet Logo-3'e göre yeniden türetilmedi (karar bekliyor).** Logo-3'ten aynı yöntemle ölçülen: altın `#FCBF4D` (palet `#F6BD58`, neredeyse aynı), turuncu `#FC7521` (palet amber `#ED9650`; daha doygun alev turuncusu), kızılın genel medyanı `#932027` (palet `#D82131` kontrast kısıtlarıyla seçilmişti), zemin koyu lacivert `#0D1021` (tuval saf siyah `#000000`).
+- Palet Logo-3'ten türetildi (2. bölüm, "Palet: Logo-3'ten türetme").
 
 ## 7. Doğrulanmayanlar
 

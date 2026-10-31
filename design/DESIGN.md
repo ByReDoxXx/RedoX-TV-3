@@ -1,31 +1,31 @@
 ---
 name: RedoX TV Expressive
 colors:
-  surface: '#131313'
-  surface-dim: '#131313'
-  surface-bright: '#393939'
-  surface-container-lowest: '#0e0e0e'
-  surface-container-low: '#1b1b1b'
-  surface-container: '#1f1f1f'
-  surface-container-high: '#2a2a2a'
-  surface-container-highest: '#353535'
-  on-surface: '#e2e2e2'
+  surface: '#111126'
+  surface-dim: '#111126'
+  surface-bright: '#37374e'
+  surface-container-lowest: '#0c0c21'
+  surface-container-low: '#19192f'
+  surface-container: '#1d1d33'
+  surface-container-high: '#28283e'
+  surface-container-highest: '#333349'
+  on-surface: '#e2dffd'
   on-surface-variant: '#e5bdba'
-  inverse-surface: '#e2e2e2'
-  inverse-on-surface: '#303030'
-  outline: '#ac8886'
-  outline-variant: '#5c3f3e'
-  surface-tint: '#ffb3af'
-  primary: '#ffb3af'
-  on-primary: '#68000e'
-  primary-container: '#d82131'
-  on-primary-container: '#fff0ef'
-  inverse-primary: '#bf0323'
-  secondary: '#ffb781'
-  on-secondary: '#4e2500'
-  secondary-container: '#884500'
-  on-secondary-container: '#ffc093'
-  tertiary: '#f6bd58'
+  inverse-surface: '#e2dffd'
+  inverse-on-surface: '#2e2e45'
+  outline: '#ac8885'
+  outline-variant: '#5c403d'
+  surface-tint: '#ffb3ad'
+  primary: '#ffb3ad'
+  on-primary: '#68000a'
+  primary-container: '#d7232c'
+  on-primary-container: '#fff0ee'
+  inverse-primary: '#be081e'
+  secondary: '#ffb693'
+  on-secondary: '#562000'
+  secondary-container: '#ed6915'
+  on-secondary-container: '#351100'
+  tertiary: '#f9bc4b'
   on-tertiary: '#422c00'
   tertiary-container: '#936700'
   on-tertiary-container: '#fff2e2'
@@ -34,20 +34,20 @@ colors:
   error-container: '#93000a'
   on-error-container: '#ffdad6'
   primary-fixed: '#ffdad7'
-  primary-fixed-dim: '#ffb3af'
-  on-primary-fixed: '#410005'
-  on-primary-fixed-variant: '#930018'
-  secondary-fixed: '#ffdcc4'
-  secondary-fixed-dim: '#ffb781'
-  on-secondary-fixed: '#2f1400'
-  on-secondary-fixed-variant: '#703800'
-  tertiary-fixed: '#ffdeab'
-  tertiary-fixed-dim: '#f6bd58'
+  primary-fixed-dim: '#ffb3ad'
+  on-primary-fixed: '#410004'
+  on-primary-fixed-variant: '#930013'
+  secondary-fixed: '#ffdbcb'
+  secondary-fixed-dim: '#ffb693'
+  on-secondary-fixed: '#341000'
+  on-secondary-fixed-variant: '#7a3000'
+  tertiary-fixed: '#ffdeaa'
+  tertiary-fixed-dim: '#f9bc4b'
   on-tertiary-fixed: '#271900'
   on-tertiary-fixed-variant: '#5f4100'
-  background: '#131313'
-  on-background: '#e2e2e2'
-  surface-variant: '#353535'
+  background: '#111126'
+  on-background: '#e2dffd'
+  surface-variant: '#333349'
 typography:
   display-lg:
     fontFamily: Sora
@@ -171,10 +171,10 @@ The visual philosophy pairs **High-Contrast Cinematic Brutalism** with **M3 Expr
 The color system utilizes a combustion spectrum built over dark architectural surfaces. Contrast requirements honor both standard AA/AAA readability and the high luminosity wash inherent to 10-foot television hardware.
 
 ### Palette Architecture
-- **Primary (`#D82131` - Crimson Flame):** The core brand anchor. Used for critical interactive triggers, heroic focus states, playback scrobblers, and live status pulses.
-- **Secondary (`#ED9650` - Molten Amber):** High-energy companion accent. Denotes featured metadata, progress completion states, and active category switches.
-- **Tertiary (`#F6BD58` - Incandescent Gold):** Used sparingly for badges, ratings, VIP tiers, and thermal highlights within active gradient maps.
-- **Neutral Canvas (`#000000` - Obsidian Void):** An OLED-optimized base surface that eliminates edge blooming on high-nit displays while preserving absolute dynamic range.
+- **Primary (`#D7232C` - Crimson Flame):** The core brand anchor. Used for critical interactive triggers, heroic focus states, playback scrobblers, and live status pulses.
+- **Secondary (`#FC7422` - Molten Amber):** High-energy companion accent. Denotes featured metadata, progress completion states, and active category switches.
+- **Tertiary (`#FBBE4D` - Incandescent Gold):** Used sparingly for badges, ratings, VIP tiers, and thermal highlights within active gradient maps.
+- **Neutral Canvas (`#0B0B20` - Obsidian Void):** The logo's midnight navy. A near-black base that keeps OLED blacks deep while tinting every surface toward the brand.
 
 ### Tonal Surface Hierarchy (M3 Surface Containers)
 Depth is communicated through brightness stepping rather than pure blur:
@@ -232,7 +232,7 @@ Depth is achieved via luminosity gradation across the obsidian continuum:
 When an element receives input focus (via D-pad, keyboard navigation, or pointer hover):
 1. **Physical Elevation:** Scale increases dynamically between `1.04x` (desktop/tablet) and `1.08x` (TV) via spring physics.
 2. **Combustion Glow:** An multi-tiered outer aura deploys immediately:
-   - Primary Ring: Sharp 2px outer outline in `#D82131`.
+   - Primary Ring: Sharp 2px outer outline in `#D7232C`.
    - Secondary Aura: 0px 8px 32px `rgba(216, 33, 49, 0.40)`.
    - Tertiary Bloom: 0px 16px 64px `rgba(237, 150, 80, 0.20)`.
 3. **Resting Outlines:** Inactive containers utilize subtle ghost boundaries (`1px solid rgba(255, 255, 255, 0.08)`) to preserve definition against pure black canvas sections without heavy shadowing.
@@ -250,8 +250,8 @@ In alignment with Material Design 3 Expressive, shapes are soft, fluid, and inte
 ## Components
 
 ### Buttons
-- **Primary Combustive Button:** Pill-shaped, background filled with `#D82131`, typography set to `label-lg` in `#FFFFFF`. On TV/Keyboard focus, scales to `1.06x` and gains the primary flame aura.
-- **Secondary Glass Button:** Translucent container (`rgba(255, 255, 255, 0.10)`) with a 1px ghost border (`rgba(255, 255, 255, 0.15)`). On focus, transitions background to `#ED9650` with dark foreground text (`#000000`).
+- **Primary Combustive Button:** Pill-shaped, background filled with `#D7232C`, typography set to `label-lg` in `#FFFFFF`. On TV/Keyboard focus, scales to `1.06x` and gains the primary flame aura.
+- **Secondary Glass Button:** Translucent container (`rgba(255, 255, 255, 0.10)`) with a 1px ghost border (`rgba(255, 255, 255, 0.15)`). On focus, transitions background to `#FC7422` with dark foreground text (`#0B0B20`).
 - **Icon Action Buttons:** Circular pills (48px × 48px touch/pointer target, 56px × 56px on TV) positioned with centered vector iconography.
 
 ### Media Cards (Dynamic Fluid Cards)
@@ -261,17 +261,17 @@ In alignment with Material Design 3 Expressive, shapes are soft, fluid, and inte
 
 ### Chips & Pill Tags
 - Fully rounded pill containers.
-- **Filter Chips:** Inactive background `surface-container-high`; text in `body-sm`. Selected state shifts background to a linear gradient from `#D82131` to `#ED9650` with text in high-contrast white.
-- **Status / Live Badges:** Tiny pill tag using Incandescent Gold (`#F6BD58`) or Crimson Flame (`#D82131`) with an embedded pulsating dot indicator.
+- **Filter Chips:** Inactive background `surface-container-high`; text in `body-sm`. Selected state shifts background to a linear gradient from `#D7232C` to `#FC7422` with text in high-contrast white.
+- **Status / Live Badges:** Tiny pill tag using Incandescent Gold (`#FBBE4D`) or Crimson Flame (`#D7232C`) with an embedded pulsating dot indicator.
 
 ### Input Fields
 - `surface-container-highest` background fill with a resting 1px ghost border.
 - Floating label typography adheres to `label-md`.
-- Active focus displays a persistent 2px outline in `#ED9650` with a subtle amber surface wash (`rgba(237, 150, 80, 0.05)`).
+- Active focus displays a persistent 2px outline in `#FC7422` with a subtle amber surface wash (`rgba(252, 116, 34, 0.05)`).
 
 ### Selection Controls (Checkboxes & Radios)
-- **Checkboxes:** `rounded-xs` square toggle (4px corner radius). Checked state transitions to a solid `#D82131` fill with an internal white checkmark.
-- **Radio Buttons:** Concentric circles. Selected state renders a deep obsidian center surrounded by an active `#ED9650` ring.
+- **Checkboxes:** `rounded-xs` square toggle (4px corner radius). Checked state transitions to a solid `#D7232C` fill with an internal white checkmark.
+- **Radio Buttons:** Concentric circles. Selected state renders a deep obsidian center surrounded by an active `#FC7422` ring.
 
 ### TV Remote D-Pad Navigation Rails & Lists
 - Vertical and horizontal lists support virtualized scrolling.
