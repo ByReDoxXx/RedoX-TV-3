@@ -65,9 +65,10 @@ void main() {
       expect(t.bodySmall!.fontSize, 12);
     });
 
-    test('ölçüler: TV odak 1.08, ikon düğmesi 56, oluk 48; masaüstü 1.04, 48, 24', () {
+    // TV: ikon düğmesi 40 (Compose TV IconButton), oluk 16 (kullanıcı isteği).
+    test('ölçüler: TV odak 1.08, ikon düğmesi 40, oluk 16; masaüstü 1.04, 48, 24', () {
       final tv = RedoxTheme.dark().extension<RedoxMetrics>()!;
-      expect([tv.focusScale, tv.iconButtonSize, tv.gutter, tv.margin.left], [1.08, 56, 48, 64]);
+      expect([tv.focusScale, tv.iconButtonSize, tv.gutter, tv.margin.left], [1.08, 40, 16, 64]);
       final desk = RedoxTheme.dark(formFactor: FormFactor.desktop).extension<RedoxMetrics>()!;
       expect([desk.focusScale, desk.iconButtonSize, desk.gutter, desk.margin.left], [1.04, 48, 24, 40]);
     });

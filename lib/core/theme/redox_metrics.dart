@@ -20,7 +20,8 @@ class RedoxMetrics extends ThemeExtension<RedoxMetrics> {
     FormFactor.tv => const RedoxMetrics._(
       formFactor: FormFactor.tv,
       focusScale: RedoxElevation.focusScaleTv,
-      iconButtonSize: 56,
+      // Compose TV Material IconButton: 40 dp (kullanıcı isteği: düğmeler küçülsün).
+      iconButtonSize: 40,
       margin: EdgeInsets.symmetric(horizontal: RedoxSpace.marginTv, vertical: RedoxSpace.marginTvVertical),
       gutter: RedoxSpace.gutterTv,
     ),
@@ -45,7 +46,7 @@ class RedoxMetrics extends ThemeExtension<RedoxMetrics> {
   /// Odakta büyüme oranı (kartlar ve genel öğeler).
   final double focusScale;
 
-  /// Dairesel ikon düğmesi çapı: dokunma/işaretçi 48, TV 56.
+  /// Dairesel ikon düğmesi çapı: dokunma/işaretçi 48, TV 40.
   final double iconButtonSize;
 
   /// Dış kenar boşluğu (TV'de taşma güvenli alan).
@@ -55,11 +56,9 @@ class RedoxMetrics extends ThemeExtension<RedoxMetrics> {
   final double gutter;
 
   @override
-  RedoxMetrics copyWith({FormFactor? formFactor}) =>
-      formFactor == null ? this : RedoxMetrics.of(formFactor);
+  RedoxMetrics copyWith({FormFactor? formFactor}) => formFactor == null ? this : RedoxMetrics.of(formFactor);
 
   /// Biçimler arası ara değer anlamsızdır; yarı noktada geçilir.
   @override
-  RedoxMetrics lerp(RedoxMetrics? other, double t) =>
-      other == null || t < 0.5 ? this : other;
+  RedoxMetrics lerp(RedoxMetrics? other, double t) => other == null || t < 0.5 ? this : other;
 }

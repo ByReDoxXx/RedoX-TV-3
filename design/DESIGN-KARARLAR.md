@@ -130,20 +130,43 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Açık rayda ana öğeler kaydırılır (TV'de 9 × 56 dp sığmaz). Kaydırma alanı keser; odak halkası için 4 dp pay bırakılır.
   - Kanıt: `test/core/ui/nav_rail_test.dart` (konumlar, gösterge ölçüsü ve rengi, menü düğmesi).
 - **Telefon alt menüsü (kullanıcı isteği, 2026-10-31).** Telefonda ray yoktur. Ray 411 dp ekranın dörtte birini alıyordu; emülatörde kartlar ve yazılar kesildi. Yerine alt menü gelir.
-  - Sıra: TV · Radyo · **Anasayfa** · Film · Dizi · Favori · Kumanda. Kumanda kullanıcı isteğiyle sona alındı; Anasayfa bu yüzden ortanın bir yuva solundadır.
-    - M3 en fazla 5 öğe önerir. 7 öğe kullanıcı kararıdır.
-    - 360 dp'de yuva 51 dp olur. Gösterge yuvaya sığacak kadar daralır (en az 40 dp); uzun etiket küçülür.
+  - Sıra: TV · Radyo · Film · Dizi · Favori. Beş öğe (M3 sınırı).
+    - Anasayfa çubukta yoktur; başlıktaki logoya dokununca gidilir (kullanıcı isteği). Anasayfadayken hiçbir öğe seçili değildir.
+    - Kumanda çubuktan alındı, başlıkta aramanın yanında (kullanıcı isteği).
+    - Önceki denemeler: ortada kızıl yuvarlak Anasayfa düğmesi ve 7 öğe. Kullanıcı isteğiyle kaldırıldı.
+    - 360 dp'de yuva 72 dp olur; gösterge 56 dp sığar.
   - Ölçüler M3E kısa gezinme çubuğundan alındı: 64 dp, `surfaceContainer`, gösterge 56 × 32 hap, üst 6 dp, ikon–etiket arası 4 dp.
-  - **Anasayfa** 56 dp kızıl yuvarlak düğmedir; FAB rolleri `primaryContainer` / `onPrimaryContainer` kullanılır.
-    - Alt kenarı göstergelerle hizalıdır; üstü çubuktan 18 dp taşar.
-    - Etiketi öteki etiketlerle aynı satırdadır.
-    - Taşan kısmına da dokunulabilir: çubuk yüksekliği taşma payını kapsar, payın geri kalanı dokunuşu içeriğe geçirir.
   - 2x2 Ekran (eski adı "Bölünmüş ekran"; kullanıcı isteğiyle değişti), Kaynaklar ve Ayarlar alt menüye sığmaz. Başlıktaki "Diğer" düğmesiyle açılan M3 modal alt sayfadadırlar.
-  - Telefon başlığında saat ve profil yoktur: emülatörde ekran dışına taşıyordu, saat zaten durum çubuğunda.
+  - Telefon başlığı: logo (Anasayfa) · Kumanda · Arama · Diğer. Saat ve profil yoktur: emülatörde ekran dışına taşıyordu, saat zaten durum çubuğunda.
   - Raflar telefonda kesirli kart sayısıyla gösterilir (2,3 / 1,15 / 3,3). Sağda kartın ucu görünür, bu da rafın kaydığını belli eder.
-  - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: ortalama, taşma, taşan kısma dokunma) ve `home_page_test.dart` (telefonda taşma yok).
-- **Hikâye aralığı:** yuva = halka + 36 dp; halkalar arasında 36 dp boşluk kalır (kullanıcı isteği; önceden 48 dp). En uzun etiket ("Çoklu ekran", TV'de ~105 dp) yuvaya sığar.
-- **Arama kutusu saate kadar uzanır (kullanıcı isteği):** TV, tablet ve masaüstünde arama ile saat arasında 16 dp boşluk kalır. Kanıt: `home_page_test.dart`.
+  - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: eşit yuva, taşma) ve `home_page_test.dart` (telefonda taşma yok; Kumanda ve logo başlıkta).
+- **Hikâye aralığı (kullanıcı isteği):** yuva = halka + 28 dp; halkalar arasında 28 dp boşluk kalır (48 → 36 → 28).
+  - 20 dp denendi: emülatörde yan yana etiketler (~5 dp) birbirine değdi.
+  - Etiketin iki yanında 4 dp pay vardır. Yuvaya sığmayan etiket ("Çoklu ekran", "QR kaynak") kesilmez, iki satıra iner. Satır üste hizalıdır, halkalar aynı hizada kalır.
+- **TV raf aralığı (kullanıcı isteği):** kartlar arası 48 → 16 dp. Odaktaki kart 1,08 büyür ve 4 dp halka alır; 16 dp'de komşuya değmez.
+- **Düğmeler küçüldü (kullanıcı isteği):**
+  - Hap düğmeler 48 → 40 dp yükseklikte, yan boşluk 24 → 16 dp. Compose TV Material düğmesi ve M3 ortak düğmeler 40 dp'dir. Dokunmatikte isabet alanı 48 dp kalır.
+  - TV ikon düğmesi 56 → 40 dp (Compose TV IconButton).
+- **Başlık sırası (kullanıcı isteği):** logo · arama · profil · saat. Arama kutusu profile kadar uzanır (16 dp boşluk); saat en sağdadır. Kanıt: `home_page_test.dart`.
+- **Arama kutusu iki kiplidir (TV emülatöründe görülen sorunlar üzerine):**
+  - Sorunlar:
+    - D-pad kutunun üstünden geçerken klavye kendiliğinden açılıyordu.
+    - Tek satırlı alan sol/sağ tuşlarını tutuyordu.
+    - Geri ilk basışta klavyeyi, ikincide uygulamayı kapatıyordu.
+  - **Dinlenme kipi:** kutu odaklanabilir bir düğmedir; klavye açılmaz. **Yazma kipi:** OK (veya dokunma) ile açılır ve klavye gelir.
+  - **Yazmayı bitirme:** klavyenin onay tuşu, Geri veya Esc yazmayı bitirir; odak kutuya döner, yazılan kalır.
+  - TV'de Geri'nin ilk basışı klavyeyi kapatır (Gboard Geri'yi kendisi alır). İkinci basış yazmayı bitirir. Gboard TV'de ekran payı bildirmediği için klavyenin kapanması algılanamaz.
+  - **Teknik not:** Android Geri'yi hem tuş hem "pop" olarak iletir. Tuşta yakalamak pop'u durdurmaz; emülatörde ikisi birden işledi.
+    - Flutter 3.47'de `didPopRoute` gözlemcileri kayıt sırasıyla sorulur ve Navigator önce gelir.
+    - Bu yüzden yazma kipindeki kutu, kök sayfa koruyucusuna (`DoubleBackToExit`) Geri işleyicisi olarak kaydolur.
+- **Anasayfada Geri (kullanıcı isteği: doğrudan çıkmasın):** ilk basışta "Çıkmak için tekrar Geri'ye basın" uyarısı çıkar. 2 sn içindeki ikinci basış uygulamadan çıkar.
+  - Kanıt: `test/core/ui/header_search_test.dart` ve TV emülatörü. Sırasıyla doğrulandı:
+    - kutuya gelince klavye kapalı;
+    - OK ile klavye açılıyor; "qw" yazıldı;
+    - Geri: klavye kapanıyor;
+    - Geri: yazma bitiyor, uyarı çıkmıyor;
+    - Geri: uyarı çıkıyor;
+    - iki hızlı Geri: uygulamadan çıkılıyor.
 - **TV'de kumanda ipucu şeridi yok (kullanıcı isteği):** Altta "Gezin · OK Seç · Geri" şeridi denendi, sonra kaldırıldı. Kaydırma alanı ekranın altına kadar iner; alttaki bölüm başlığının ucu görünür, bu da sayfanın kaydığını belli eder. Düğmedeki "OK" tuş ipucu durur.
 - **TV'de odak hep görünür:** Android'in varsayılan "touch" vurgu kipinde odak halkası ilk tuşa kadar gizliydi (emülatörde görüldü). TV'de `FocusHighlightStrategy.alwaysTraditional` kullanılır (`lib/main.dart`). Kanıt: emülatör, açılışta "Canlı yayına gir" halkalı; D-pad sol, ray öğesini açar.
 - **Ray açılış eğrisi:** spec `cubic-bezier(0.2, 0, 0, 1)`; süre spec'te yok, M3 `medium4` = 400 ms seçildi.

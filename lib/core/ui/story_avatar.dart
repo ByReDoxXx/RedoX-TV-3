@@ -26,10 +26,14 @@ class StoryAvatar extends StatelessWidget {
   static const _ring = 3.0;
   static const _gap = 3.0;
 
-  /// Yuva = halka + bu pay; halkalar arası boşluk da budur. 48'den 36'ya
-  /// indirildi (kullanıcı isteği). En uzun etiket "Çoklu ekran" TV'de ~105 dp,
-  /// 108 dp yuvaya kesilmeden sığar; daha uzunu "…" ile kısalır.
-  static const slotExtra = 36.0;
+  /// Yuva = halka + bu pay; halkalar arası boşluk da budur. Kullanıcı isteğiyle
+  /// 48 → 36 → 28'e indi. 20'de yan yana etiketler (~5 dp) birbirine
+  /// değiyordu (emülatör). Etiketin iki yanında [labelInset] pay kalır:
+  /// komşu etiketler arası en az 8 dp. Yuvaya sığmayan etiket ("Çoklu ekran",
+  /// TV'de ~105 dp) kesilmez, iki satıra iner; daha uzunu "…" ile kısalır.
+  static const slotExtra = 28.0;
+  static const labelInset = 4.0;
+  static const labelLines = 2;
 
   @override
   Widget build(BuildContext context) {
@@ -58,16 +62,11 @@ class StoryAvatar extends StatelessWidget {
                     color: seen ? RedoxRoles.outlineVariant : null,
                     gradient: seen
                         ? null
-                        : const SweepGradient(
-                            colors: [...RedoxAccent.thermal, RedoxRoles.primaryContainer],
-                          ),
+                        : const SweepGradient(colors: [...RedoxAccent.thermal, RedoxRoles.primaryContainer]),
                   ),
                   child: Container(
                     padding: const EdgeInsets.all(_gap),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: RedoxRoles.surfaceContainerLowest,
-                    ),
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: RedoxRoles.surfaceContainerLowest),
                     child: ClipOval(child: child),
                   ),
                 ),
@@ -75,12 +74,15 @@ class StoryAvatar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: style.copyWith(color: RedoxRoles.onSurface),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: labelInset),
+            child: Text(
+              label,
+              style: style.copyWith(color: RedoxRoles.onSurface),
+              maxLines: labelLines,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),

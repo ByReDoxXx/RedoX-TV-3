@@ -16,24 +16,18 @@ abstract final class AppDestinations {
     NavRailItem(RedoxIcons.sources, 'Kaynaklar'),
   ];
 
-  static const footer = [
-    NavRailItem(RedoxIcons.settings, 'Ayarlar'),
-  ];
+  static const footer = [NavRailItem(RedoxIcons.settings, 'Ayarlar')];
 
-  /// Telefon alt menüsü (kullanıcı isteği): Anasayfa kırmızı yuvarlak düğme,
-  /// Kumanda en sonda. Etiketler 360 dp genişlikte sığsın diye kısadır.
+  /// Telefon alt menüsü (kullanıcı isteği): Anasayfa yok (başlıktaki logo
+  /// Anasayfa'ya götürür), Kumanda başlıkta aramanın yanında. Beş öğe (M3
+  /// sınırı); etiketler 360 dp'de sığsın diye kısa.
   static const phoneBar = [
     NavRailItem(RedoxIcons.television, 'TV'),
     NavRailItem(RedoxIcons.radio, 'Radyo'),
-    NavRailItem(RedoxIcons.home, 'Anasayfa'),
     NavRailItem(RedoxIcons.film, 'Film'),
     NavRailItem(RedoxIcons.series, 'Dizi'),
     NavRailItem(RedoxIcons.favorites, 'Favori'),
-    NavRailItem(RedoxIcons.remote, 'Kumanda'),
   ];
-
-  /// Alt menüde kırmızı düğme olan (Anasayfa) öğenin dizini.
-  static const phoneBarHome = 2;
 
   /// Telefonda alt menüye sığmayanlar: başlıktaki "Diğer" düğmesiyle açılır.
   static const phoneMore = [

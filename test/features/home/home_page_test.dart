@@ -8,6 +8,7 @@ import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_colors.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/bottom_nav_bar.dart';
+import 'package:redox_tv/core/ui/header_search.dart';
 import 'package:redox_tv/core/ui/nav_rail.dart';
 import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/ui/redox_icon.dart';
@@ -141,6 +142,9 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(RedoxNavRail), findsNothing);
     expect(find.byType(RedoxBottomBar), findsOneWidget);
+    // Kumanda başlıkta, logo Anasayfa düğmesi (kullanıcı isteği).
+    expect(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel('Kumanda')), findsOneWidget);
+    expect(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel('Anasayfa')), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('Diğer'));
     await tester.pump(const Duration(milliseconds: 600));
@@ -149,7 +153,7 @@ void main() {
     }
   });
 
-  testWidgets('tablet: arama kutusu saate kadar uzanır', (tester) async {
+  testWidgets('tablet: arama kutusu profile kadar uzanır; saat en sağda', (tester) async {
     await loadSora(tester);
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
@@ -164,12 +168,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(tester.takeException(), isNull);
 
-    final search = tester.getRect(find.byType(TextField));
-    final clockIcon = tester.getRect(
-      find.byWidgetPredicate((w) => w is RedoxIcon && w.icon == RedoxIcons.clock).first,
-    );
-    // Arama ile saat hapı arasında 16 dp; hap kenarı 1 + iç boşluğu 14 dp.
-    expect(clockIcon.left - 15 - search.right, closeTo(16, 0.01));
+    RedoxIcons iconOf(Widget w) => (w as RedoxIcon).icon;
+    Rect iconRect(RedoxIcons icon) =>
+        tester.getRect(find.byWidgetPredicate((w) => w is RedoxIcon && iconOf(w) == icon).first);
+    final search = tester.getRect(find.byType(HeaderSearch));
+    final profileIcon = iconRect(RedoxIcons.profile);
+    final clockIcon = iconRect(RedoxIcons.clock);
+    // Arama ile profil hapı arasında 16 dp. Profil ikonu hapın içinde:
+    // kenar 1 + iç boşluk 4 + (32 - 20) / 2 = 11 dp.
+    expect(profileIcon.left - 11 - search.right, closeTo(16, 0.01));
+    expect(clockIcon.left, greaterThan(profileIcon.right));
 
     // Vitrin içerik genişliğinin tamamını kaplar (düğmeler Wrap'te olsa da).
     expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(HomeHeader)).width);

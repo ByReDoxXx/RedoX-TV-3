@@ -5,6 +5,7 @@ import 'redox_colors.dart';
 import 'redox_elevation.dart';
 import 'redox_metrics.dart';
 import 'redox_shapes.dart';
+import 'redox_spacing.dart';
 import 'redox_type.dart';
 
 /// "RedoX TV Expressive" koyu teması (DESIGN.md). Yalnızca koyu tema vardır.
@@ -59,8 +60,7 @@ abstract final class RedoxTheme {
     scrim: Colors.black,
   );
 
-  static bool _focusLike(Set<WidgetState> s) =>
-      s.contains(WidgetState.focused) || s.contains(WidgetState.hovered);
+  static bool _focusLike(Set<WidgetState> s) => s.contains(WidgetState.focused) || s.contains(WidgetState.hovered);
 
   static ThemeData dark({FormFactor formFactor = FormFactor.tv}) {
     final text = RedoxType.textTheme(formFactor);
@@ -92,8 +92,11 @@ abstract final class RedoxTheme {
           foregroundColor: RedoxRoles.onPrimaryContainer,
           shape: const StadiumBorder(),
           textStyle: text.labelLarge,
-          minimumSize: const Size(64, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          // 40 dp kap (kullanıcı isteği: düğmeler küçülsün). Compose TV
+          // Material ButtonDefaults ve M3 ortak düğme yüksekliği 40 dp;
+          // dokunmatikte isabet alanı 48 dp kalır (MaterialTapTargetSize.padded).
+          minimumSize: const Size(64, RedoxButtonSize.height),
+          padding: const EdgeInsets.symmetric(horizontal: RedoxButtonSize.paddingX),
         ),
       ),
       // İkincil "Glass" düğme: %10 beyaz dolgu + %15 kenar; odakta amber, koyu yazı.
@@ -105,17 +108,15 @@ abstract final class RedoxTheme {
           foregroundColor: WidgetStateProperty.resolveWith(
             (s) => _focusLike(s) ? RedoxSeeds.obsidian : RedoxRoles.onSurface,
           ),
-          iconColor: WidgetStateProperty.resolveWith(
-            (s) => _focusLike(s) ? RedoxSeeds.obsidian : RedoxRoles.secondary,
-          ),
+          iconColor: WidgetStateProperty.resolveWith((s) => _focusLike(s) ? RedoxSeeds.obsidian : RedoxRoles.secondary),
           side: WidgetStateProperty.resolveWith(
             (s) => _focusLike(s) ? BorderSide.none : const BorderSide(color: RedoxAccent.glassBorder),
           ),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           shape: const WidgetStatePropertyAll(StadiumBorder()),
           textStyle: WidgetStatePropertyAll(text.labelLarge),
-          minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
-          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 24)),
+          minimumSize: const WidgetStatePropertyAll(Size(64, RedoxButtonSize.height)),
+          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: RedoxButtonSize.paddingX)),
         ),
       ),
       checkboxTheme: CheckboxThemeData(
