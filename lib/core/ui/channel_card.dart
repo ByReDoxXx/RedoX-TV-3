@@ -37,7 +37,11 @@ class ChannelCard extends StatelessWidget {
     this.width = 200,
     this.onPressed,
     this.focused,
+    this.next,
   });
+
+  /// Sonraki program ("Sonraki: 22:30 Maç Sonu" satırı); null ise satır yok.
+  final String? next;
 
   final String channelName;
   final String programTitle;
@@ -58,12 +62,13 @@ class ChannelCard extends StatelessWidget {
 
   static const _infoPadding = EdgeInsets.fromLTRB(12, 10, 12, 12);
   static const _progressHeight = 6.0;
+  static const _nextGap = 8.0;
 
   /// Kartın [width] genişlikteki yüksekliği: 16:9 görsel + bilgi bloğu. Izgara
   /// hücresi (SliverGrid mainAxisExtent) bununla boyutlanır. Satır yükseklikleri
   /// tema yazılarından (boyut × satır oranı, yazı ölçeği dahil) hesaplanır;
   /// yuvarlama payı için yukarı yuvarlanır.
-  static double heightFor(BuildContext context, double width) {
+  static double heightFor(BuildContext context, double width, {bool withNext = false}) {
     final t = Theme.of(context).textTheme;
     final scaler = MediaQuery.textScalerOf(context);
     double line(TextStyle s) => scaler.scale(s.fontSize!) * (s.height ?? 1.2);
@@ -75,7 +80,8 @@ class ChannelCard extends StatelessWidget {
         2 +
         line(t.bodySmall!) +
         10 +
-        _progressHeight;
+        _progressHeight +
+        (withNext ? _nextGap + line(t.bodySmall!) : 0);
     return (width * 9 / 16 + info).ceilToDouble();
   }
 
@@ -148,6 +154,18 @@ class ChannelCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       RedoxProgressBar(value: progress, color: accent.fill, height: _progressHeight),
+                      if (next != null) ...[
+                        const SizedBox(height: _nextGap),
+                        Text(
+                          'Sonraki: $next',
+                          style: t.bodySmall!.copyWith(
+                            color: RedoxRoles.onSurfaceVariant,
+                            fontFeatures: RedoxType.tabular,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),

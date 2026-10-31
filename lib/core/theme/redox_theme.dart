@@ -73,6 +73,10 @@ abstract final class RedoxTheme {
       // M3'ün surface-container-lowest'ı (T4) bir kademe üstte kalır.
       scaffoldBackgroundColor: RedoxSeeds.obsidian,
       extensions: [RedoxMetrics.of(formFactor)],
+      // TV'de dokunma yok: 40 dp düğmeler 48 dp dokunma alanına büyütülmez.
+      materialTapTargetSize: formFactor == FormFactor.tv
+          ? MaterialTapTargetSize.shrinkWrap
+          : MaterialTapTargetSize.padded,
       cardTheme: CardThemeData(
         color: RedoxRoles.surfaceContainer,
         elevation: 0,

@@ -24,6 +24,7 @@ class TvContent {
         timeRange: '20:00 – 22:30',
         genre: 'Dram',
         progress: 0.3,
+        next: '22:30 Gece Haberleri',
         accent: CardAccent.gold,
       ),
       LiveChannel(
@@ -34,6 +35,7 @@ class TvContent {
         timeRange: '20:15 – 22:00',
         genre: 'Eğlence',
         progress: 0.45,
+        next: '22:00 Talk Show',
       ),
       LiveChannel(
         name: 'ULUSAL 3 HD',
@@ -43,6 +45,7 @@ class TvContent {
         timeRange: '20:00 – 22:15',
         genre: 'Dram',
         progress: 0.35,
+        next: '22:15 Belgesel Kuşağı',
         accent: CardAccent.amber,
       ),
       LiveChannel(
@@ -53,6 +56,7 @@ class TvContent {
         timeRange: '20:00 – 21:00',
         genre: 'Haber',
         progress: 0.75,
+        next: '21:00 Spor Bülteni',
         live: true,
       ),
       LiveChannel(
@@ -63,6 +67,7 @@ class TvContent {
         timeRange: '20:30 – 22:45',
         genre: 'Film',
         progress: 0.12,
+        next: '22:45 Gece Kuşağı',
         accent: CardAccent.gold,
       ),
       LiveChannel(
@@ -73,6 +78,7 @@ class TvContent {
         timeRange: '20:00 – 21:00',
         genre: 'Haber',
         progress: 0.75,
+        next: '21:00 Enine Boyuna',
         accent: CardAccent.amber,
         live: true,
       ),
@@ -84,6 +90,7 @@ class TvContent {
         timeRange: '20:30 – 21:30',
         genre: 'Tartışma',
         progress: 0.25,
+        next: '21:30 Dünya Gündemi',
       ),
       LiveChannel(
         name: 'EKONOMİ TV',
@@ -93,6 +100,7 @@ class TvContent {
         timeRange: '20:00 – 20:45',
         genre: 'Ekonomi',
         progress: 0.9,
+        next: '20:45 Borsa Özeti',
         accent: CardAccent.gold,
       ),
       LiveChannel(
@@ -103,6 +111,7 @@ class TvContent {
         timeRange: '20:45 – 21:15',
         genre: 'Haber',
         progress: 0.05,
+        next: '21:15 Bölge Raporu',
         accent: CardAccent.amber,
       ),
       LiveChannel(
@@ -113,6 +122,7 @@ class TvContent {
         timeRange: '19:45 – 22:00',
         genre: 'Futbol',
         progress: 0.74,
+        next: '22:00 Maç Sonu',
         live: true,
       ),
       LiveChannel(
@@ -123,6 +133,7 @@ class TvContent {
         timeRange: '20:30 – 22:30',
         genre: 'Basketbol',
         progress: 0.15,
+        next: '22:30 Haftanın Özeti',
         live: true,
       ),
       LiveChannel(
@@ -133,6 +144,7 @@ class TvContent {
         timeRange: '20:00 – 21:00',
         genre: 'Futbol',
         progress: 0.75,
+        next: '21:00 Canlı Maç',
         accent: CardAccent.amber,
       ),
       LiveChannel(
@@ -143,6 +155,7 @@ class TvContent {
         timeRange: '19:00 – 21:30',
         genre: 'Tenis',
         progress: 0.7,
+        next: '21:30 Tenis Analiz',
         accent: CardAccent.gold,
         live: true,
       ),
@@ -154,6 +167,7 @@ class TvContent {
         timeRange: '20:30 – 21:45',
         genre: 'Bilim',
         progress: 0.2,
+        next: '21:45 Gezegenimiz',
         accent: CardAccent.gold,
       ),
       LiveChannel(
@@ -164,6 +178,7 @@ class TvContent {
         timeRange: '20:00 – 21:00',
         genre: 'Doğa',
         progress: 0.75,
+        next: '21:00 Vahşi Afrika',
         accent: CardAccent.amber,
       ),
       LiveChannel(
@@ -174,6 +189,7 @@ class TvContent {
         timeRange: '20:15 – 21:15',
         genre: 'Tarih',
         progress: 0.5,
+        next: '21:15 Kayıp Uygarlıklar',
       ),
       LiveChannel(
         name: 'MÜZİK HİT',
@@ -183,6 +199,7 @@ class TvContent {
         timeRange: '20:00 – 22:00',
         genre: 'Pop',
         progress: 0.38,
+        next: '22:00 Gece Listesi',
         accent: CardAccent.amber,
       ),
       LiveChannel(
@@ -193,6 +210,7 @@ class TvContent {
         timeRange: '20:30 – 22:00',
         genre: 'Halk müziği',
         progress: 0.17,
+        next: '22:00 Ezgiler',
         accent: CardAccent.gold,
       ),
       LiveChannel(
@@ -203,6 +221,7 @@ class TvContent {
         timeRange: '20:00 – 20:30',
         genre: 'Çizgi film',
         progress: 0.9,
+        next: '20:30 Robot Dostlar',
       ),
       LiveChannel(
         name: 'MİNİK KANAL',
@@ -212,6 +231,7 @@ class TvContent {
         timeRange: '20:15 – 20:45',
         genre: 'Çocuk',
         progress: 0.5,
+        next: '20:45 Uyku Masalı',
         accent: CardAccent.amber,
       ),
     ],

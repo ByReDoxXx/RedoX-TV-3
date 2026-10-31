@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/redox_colors.dart';
 import '../theme/redox_shapes.dart';
+import '../theme/redox_type.dart';
 import 'focus_glow.dart';
 
 /// Filtre çipi (DESIGN.md "Filter Chips"). Boşta en yüksek-1 kap; seçili kızıl
@@ -14,7 +15,11 @@ class CategoryChip extends StatelessWidget {
     this.selected = false,
     this.onPressed,
     this.focused,
+    this.count,
   });
+
+  /// Öğe sayısı: etiketin yanında küçük hap ("Spor 4").
+  final int? count;
 
   final String label;
   final bool selected;
@@ -45,11 +50,36 @@ class CategoryChip extends StatelessWidget {
             hoverColor: Colors.transparent,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              child: Text(
-                label,
-                style: style.copyWith(
-                  color: selected ? Colors.white : RedoxRoles.onSurfaceVariant,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: style.copyWith(
+                      color: selected ? Colors.white : RedoxRoles.onSurfaceVariant,
+                    ),
+                  ),
+                  if (count != null) ...[
+                    const SizedBox(width: 8),
+                    // Sayı hapı: seçiliyken koyu perde, değilken bir ton yüksek kap.
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? RedoxSeeds.obsidian.withValues(alpha: 0.3)
+                            : RedoxRoles.surfaceContainerHighest,
+                        borderRadius: radius,
+                      ),
+                      child: Text(
+                        '$count',
+                        style: style.copyWith(
+                          color: selected ? Colors.white : RedoxRoles.onSurfaceVariant,
+                          fontFeatures: RedoxType.tabular,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),

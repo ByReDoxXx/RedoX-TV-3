@@ -14,7 +14,11 @@ class LiveChannel {
     required this.progress,
     this.accent = CardAccent.crimson,
     this.live = false,
+    this.next,
   });
+
+  /// Sonraki program, örn. "22:30 Maç Özetleri".
+  final String? next;
 
   final String name;
 
