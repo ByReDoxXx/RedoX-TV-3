@@ -7,7 +7,6 @@ import '../../../core/ui/icon_action_button.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../../core/ui/redox_progress_bar.dart';
-import '../../../core/ui/remote_hints.dart';
 import '../../../core/ui/segmented_toggle.dart';
 import '../../../core/ui/status_badge.dart';
 import '../widgets/section_frame.dart';
@@ -66,8 +65,6 @@ class ComponentSection extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text('Seçili: kızıl – kor #A86500, beyaz yazı her noktada >= 4,5:1.', style: label),
-          const GroupLabel('Kumanda ipuçları (TV, ekranın altında)'),
-          const RemoteHintBar(hints: RemoteHintBar.browse),
           const GroupLabel('Rozetler ve ilerleme'),
           const Wrap(
             spacing: 12,

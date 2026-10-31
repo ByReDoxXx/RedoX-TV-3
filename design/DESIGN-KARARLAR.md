@@ -124,6 +124,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - TV'de daralmış ray yalnızca ikondur; etiketler ray odakla açılınca görünür.
   - **Menü düğmesi** (M3E'de isteğe bağlı) TV dışında gösterilir. Dokunmatikte rayı açar ve açık tutar; TV'de açma odakla olur.
   - **Odaktaki öğe açılır (kullanıcı isteği):** odak (D-pad) veya fare üstündeki öğe sağa doğru açılıp adını gösterir; ayrılınca kapanır. Ray daralmış kalır, hap içeriğin üstüne taşar. Seçili değilse hap `surfaceContainerHighest` zeminle yüzer. Bütün ray menü düğmesiyle açılır.
+  - **Raya girişte seçili öğe (kullanıcı isteği):** D-pad ile raya dışarıdan girilince odak en yakın öğeye değil, seçili bölüme gider. Örneğin vitrin düğmesinden sola basınca Kaynaklar yerine Anasayfa odaklanır. Ray içinde yukarı/aşağı geçişler değişmez. Kanıt: `home_page_test.dart` (sol → Anasayfa, aşağı → Televizyon, sağ → içerik) ve TV emülatörü.
   - Açık hapın 96 dp dışında kalan kısmı fareyle tıklanmaz (Flutter isabet testi rayın sınırında biter); ikon alanı tıklanır, TV'de seçim OK tuşuyladır.
   - Seçili öğe dinlenirken parlamaz; parıltı ve halka yalnızca odaktadır (halka ölçeği 1, büyüme yok).
   - Açık rayda ana öğeler kaydırılır (TV'de 9 × 56 dp sığmaz). Kaydırma alanı keser; odak halkası için 4 dp pay bırakılır.
@@ -143,6 +144,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: ortalama, taşma, taşan kısma dokunma) ve `home_page_test.dart` (telefonda taşma yok).
 - **Hikâye aralığı:** yuva = halka + 36 dp; halkalar arasında 36 dp boşluk kalır (kullanıcı isteği; önceden 48 dp). En uzun etiket ("Çoklu ekran", TV'de ~105 dp) yuvaya sığar.
 - **Arama kutusu saate kadar uzanır (kullanıcı isteği):** TV, tablet ve masaüstünde arama ile saat arasında 16 dp boşluk kalır. Kanıt: `home_page_test.dart`.
+- **TV'de kumanda ipucu şeridi yok (kullanıcı isteği):** Altta "Gezin · OK Seç · Geri" şeridi denendi, sonra kaldırıldı. Kaydırma alanı ekranın altına kadar iner; alttaki bölüm başlığının ucu görünür, bu da sayfanın kaydığını belli eder. Düğmedeki "OK" tuş ipucu durur.
 - **TV'de odak hep görünür:** Android'in varsayılan "touch" vurgu kipinde odak halkası ilk tuşa kadar gizliydi (emülatörde görüldü). TV'de `FocusHighlightStrategy.alwaysTraditional` kullanılır (`lib/main.dart`). Kanıt: emülatör, açılışta "Canlı yayına gir" halkalı; D-pad sol, ray öğesini açar.
 - **Ray açılış eğrisi:** spec `cubic-bezier(0.2, 0, 0, 1)`; süre spec'te yok, M3 `medium4` = 400 ms seçildi.
 - **Radyo düğmesi:** "obsidyen merkez, amber halka". Seçili radyo düğmesinin içi obsidyen, halka ve noktası amberdir.

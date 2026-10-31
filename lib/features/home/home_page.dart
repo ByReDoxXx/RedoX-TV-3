@@ -11,7 +11,6 @@ import '../../core/ui/channel_card.dart';
 import '../../core/ui/media_card.dart';
 import '../../core/ui/nav_rail.dart';
 import '../../core/ui/redox_icon.dart';
-import '../../core/ui/remote_hints.dart';
 import '../../core/ui/section_header.dart';
 import '../../core/ui/shelf.dart';
 import '../../core/ui/status_badge.dart';
@@ -48,11 +47,6 @@ class HomePage extends StatelessWidget {
     final left = phone ? m.left : RedoxNavRail.collapsedWidth + 24;
     // Telefonda raf başına görünen kart: dört kart sığmaz, yazılar kesilir.
     double perRow(double wide, double narrow) => phone ? narrow : wide;
-    // TV: altta sabit kumanda şeridi. Kaydırma alanı şeridin üstünde biter;
-    // içerik şeridin altına girmez (odaktaki öğe kendiliğinden görünür kayar).
-    final tv = metrics.formFactor == FormFactor.tv;
-    const hintHeight = 32.0;
-    final contentBottom = tv ? hintHeight + m.bottom : 0.0;
     return Scaffold(
       // Alt menünün kızıl düğmesi çubuktan taşar; içerik çubuğun arkasına
       // uzanır, Scaffold gövdenin alt boşluğunu çubuk kadar artırır.
@@ -70,109 +64,95 @@ class HomePage extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: contentBottom),
-            child: LayoutBuilder(
-              builder: (context, box) {
-                final width = box.maxWidth - left - m.right;
-                final card = _cardWidth(width, perRow(4, 2.3), gutter);
-                // Durum çubuğu ve (telefonda) alt menü payı.
-                final safe = MediaQuery.paddingOf(context);
-                return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(left, m.top + safe.top, m.right, tv ? 8 : m.bottom + safe.bottom),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      HomeHeader(
-                        clock: content.clock,
-                        profileName: content.profileName,
-                        onMore: () => showMoreSheet(context, items: AppDestinations.phoneMore),
-                      ),
-                      const SizedBox(height: 12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        clipBehavior: Clip.none,
-                        child: Row(
-                          children: [
-                            for (final s in content.stories)
-                              StoryAvatar(
-                                label: s.label,
-                                seen: s.seen,
-                                onPressed: () {},
-                                child: ArtworkFallback(name: s.label, icon: s.icon),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      HeroBanner(hero: content.hero, primaryFocused: previewFocus ? true : null),
-                      const SizedBox(height: 40),
-                      Shelf(
-                        header: const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar'),
+          LayoutBuilder(
+            builder: (context, box) {
+              final width = box.maxWidth - left - m.right;
+              final card = _cardWidth(width, perRow(4, 2.3), gutter);
+              // Durum çubuğu ve (telefonda) alt menü payı.
+              final safe = MediaQuery.paddingOf(context);
+              return SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(left, m.top + safe.top, m.right, m.bottom + safe.bottom),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    HomeHeader(
+                      clock: content.clock,
+                      profileName: content.profileName,
+                      onMore: () => showMoreSheet(context, items: AppDestinations.phoneMore),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      child: Row(
                         children: [
-                          for (final c in content.channels)
-                            ChannelCard(
-                              width: card,
-                              channelName: c.name,
-                              number: c.number,
-                              programTitle: c.programTitle,
-                              timeRange: c.timeRange,
-                              progress: c.progress,
-                              accent: c.accent,
-                              badge: c.live ? const StatusBadge(label: 'CANLI', pulse: true) : null,
-                              artwork: ArtworkFallback(name: c.name, icon: RedoxIcons.television),
+                          for (final s in content.stories)
+                            StoryAvatar(
+                              label: s.label,
+                              seen: s.seen,
                               onPressed: () {},
+                              child: ArtworkFallback(name: s.label, icon: s.icon),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 40),
-                      Shelf(
-                        header: const SectionHeader(
-                          title: 'İzlemeye devam et',
-                          subtitle: 'Yarım kalan dizi ve filmler',
-                          accent: RedoxSeeds.amber,
-                        ),
-                        children: [
-                          for (final c in content.continueItems)
-                            ContinueCard(item: c, width: _cardWidth(width, perRow(2, 1.15), gutter), onPressed: () {}),
-                        ],
+                    ),
+                    const SizedBox(height: 8),
+                    HeroBanner(hero: content.hero, primaryFocused: previewFocus ? true : null),
+                    const SizedBox(height: 40),
+                    Shelf(
+                      header: const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar'),
+                      children: [
+                        for (final c in content.channels)
+                          ChannelCard(
+                            width: card,
+                            channelName: c.name,
+                            number: c.number,
+                            programTitle: c.programTitle,
+                            timeRange: c.timeRange,
+                            progress: c.progress,
+                            accent: c.accent,
+                            badge: c.live ? const StatusBadge(label: 'CANLI', pulse: true) : null,
+                            artwork: ArtworkFallback(name: c.name, icon: RedoxIcons.television),
+                            onPressed: () {},
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+                    Shelf(
+                      header: const SectionHeader(
+                        title: 'İzlemeye devam et',
+                        subtitle: 'Yarım kalan dizi ve filmler',
+                        accent: RedoxSeeds.amber,
                       ),
-                      const SizedBox(height: 40),
-                      Shelf(
-                        header: const SectionHeader(title: 'Son dinlenen radyolar', accent: RedoxSeeds.gold),
-                        children: [for (final r in content.radios) RadioTile(radio: r, width: card, onPressed: () {})],
-                      ),
-                      const SizedBox(height: 40),
-                      Shelf(
-                        header: const SectionHeader(title: 'Son izlenen filmler', accent: RedoxSeeds.amber),
-                        children: [
-                          for (final f in content.films)
-                            MediaCard(
-                              title: f.title,
-                              subtitle: f.subtitle,
-                              width: _cardWidth(width, perRow(5, 3.3), gutter),
-                              artwork: ArtworkFallback(name: f.title, icon: RedoxIcons.film),
-                              onPressed: () {},
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                      children: [
+                        for (final c in content.continueItems)
+                          ContinueCard(item: c, width: _cardWidth(width, perRow(2, 1.15), gutter), onPressed: () {}),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+                    Shelf(
+                      header: const SectionHeader(title: 'Son dinlenen radyolar', accent: RedoxSeeds.gold),
+                      children: [for (final r in content.radios) RadioTile(radio: r, width: card, onPressed: () {})],
+                    ),
+                    const SizedBox(height: 40),
+                    Shelf(
+                      header: const SectionHeader(title: 'Son izlenen filmler', accent: RedoxSeeds.amber),
+                      children: [
+                        for (final f in content.films)
+                          MediaCard(
+                            title: f.title,
+                            subtitle: f.subtitle,
+                            width: _cardWidth(width, perRow(5, 3.3), gutter),
+                            artwork: ArtworkFallback(name: f.title, icon: RedoxIcons.film),
+                            onPressed: () {},
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-          if (tv)
-            Positioned(
-              left: left,
-              right: m.right,
-              bottom: m.bottom,
-              height: hintHeight,
-              child: const Align(
-                alignment: Alignment.centerRight,
-                child: RemoteHintBar(hints: RemoteHintBar.browse),
-              ),
-            ),
           if (!phone)
             Positioned(
               left: 0,

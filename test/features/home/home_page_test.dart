@@ -175,7 +175,7 @@ void main() {
     expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(HomeHeader)).width);
   });
 
-  testWidgets('D-pad: açılışta vitrin düğmesi odakta, sola basınca odak menüye geçer', (tester) async {
+  testWidgets('D-pad: açılışta vitrin düğmesi odakta; sol seçili menü öğesine (Anasayfa) gider', (tester) async {
     await loadSora(tester);
     tester.view.physicalSize = const Size(960, 540);
     tester.view.devicePixelRatio = 1;
@@ -188,9 +188,29 @@ void main() {
     bool focusInside<T extends Widget>() =>
         FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<T>() != null;
 
+    // Odaktaki menü öğesinin adı (öğe Semantics etiketi).
+    String? focusedRailLabel() {
+      final context = FocusManager.instance.primaryFocus?.context;
+      if (context?.findAncestorWidgetOfExactType<RedoxNavRail>() == null) return null;
+      return context!.findAncestorWidgetOfExactType<Semantics>()?.properties.label;
+    }
+
+    Future<void> press(LogicalKeyboardKey key) async {
+      await tester.sendKeyEvent(key);
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
     expect(focusInside<PrimaryButton>(), isTrue);
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(focusInside<RedoxNavRail>(), isTrue);
+    // Vitrin düğmesinin solundaki en yakın öğe Kaynaklar'dır; odak yine de
+    // seçili bölüme (Anasayfa) gider.
+    await press(LogicalKeyboardKey.arrowLeft);
+    expect(focusedRailLabel(), 'Anasayfa');
+    // Ray içinde aşağı: yönlendirme yok, bir sonraki öğe.
+    await press(LogicalKeyboardKey.arrowDown);
+    expect(focusedRailLabel(), 'Televizyon');
+    // Sağ: odak içeriğe döner.
+    await press(LogicalKeyboardKey.arrowRight);
+    expect(focusInside<RedoxNavRail>(), isFalse);
+    expect(FocusManager.instance.primaryFocus?.context, isNotNull);
   });
 }

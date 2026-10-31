@@ -90,9 +90,38 @@ const double _ringRoom = 4;
 class _RedoxNavRailState extends State<RedoxNavRail> {
   bool _pinned = false;
 
+  /// Öğe başına odak düğümü (ana öğeler, sonra alt bölüm).
+  final List<FocusNode> _nodes = [];
+
   /// Bütün ray yalnızca menü düğmesiyle (veya dışarıdan) açılır. Odak ya da
   /// fare üstü yalnızca o öğeyi sağa açar (kullanıcı isteği, 2026-10-31).
   bool get _expanded => widget.expanded ?? _pinned;
+
+  @override
+  void dispose() {
+    for (final n in _nodes) {
+      n.dispose();
+    }
+    super.dispose();
+  }
+
+  FocusNode _node(int index) {
+    while (_nodes.length <= index) {
+      _nodes.add(FocusNode(debugLabel: 'RedoxNavRail ${_nodes.length}'));
+    }
+    return _nodes[index];
+  }
+
+  /// Odak raya dışarıdan girince (D-pad) en yakın öğeye değil seçili öğeye
+  /// gider: TV'de gezinme menüsüne girişte geçerli bölüm odaklanır
+  /// (kullanıcı isteği). Ray içindeki yukarı/aşağı geçişler etkilenmez.
+  void _onRailFocus(bool hasFocus) {
+    if (!hasFocus) return;
+    final selected = widget.selectedIndex;
+    if (selected < 0 || selected >= widget.items.length + widget.footer.length) return;
+    final target = _node(selected);
+    if (!target.hasPrimaryFocus) target.requestFocus();
+  }
 
   Duration get _duration => MediaQuery.maybeDisableAnimationsOf(context) == true ? Duration.zero : M3EMotion.medium4;
 
@@ -104,6 +133,17 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
     final t = Theme.of(context).textTheme;
     final collapsedLabel = t.labelMedium!;
     final count = widget.items.length + widget.footer.length;
+    // Kendisi odak almaz; yalnızca odağın raya girişini izler.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      includeSemantics: false,
+      onFocusChange: _onRailFocus,
+      child: _rail(expanded, menuButton, collapsedLabel, count),
+    );
+  }
+
+  Widget _rail(bool expanded, bool menuButton, TextStyle collapsedLabel, int count) {
     return AnimatedContainer(
       duration: _duration,
       curve: M3EMotion.standard,
@@ -220,6 +260,7 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
             shape: const StadiumBorder(),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
+              focusNode: _node(index),
               onTap: widget.onSelected == null ? null : () => widget.onSelected!(index),
               customBorder: const StadiumBorder(),
               // M3 durum katmanı opaklıkları: üstüne gelme %8, odak ve basma %10.
