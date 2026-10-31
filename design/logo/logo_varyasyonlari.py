@@ -6,12 +6,13 @@ burada durur. Depo kökünden çalıştırılır:
     python -I design/logo/logo_varyasyonlari.py
 
 Girdiler:
-    assets/brand/redox-logo-source.jpg   kullanıcının logosu (Logo-2, siyah zemin;
-                                         2048 px, 2000 px'e ölçeklenerek ölçülür)
-    assets/brand/redox-logo.svg          izlenmiş vektör (1000 birim). Geometri
-                                         ilk logodan izlendi; Logo-2 aynı çizimdir
-                                         (piksel hizalı), bu yüzden her yolun rengi
-                                         Logo-2'den yeniden örneklenir.
+    assets/brand/redox-logo-source.jpg   kullanıcının logosu (Logo-3: alevli boğa,
+                                         koyu lacivert zemin, beyaz köşeler; 2000 px)
+    assets/brand/redox-logo.svg          izlenmiş vektör (1000 birim): kaynağın
+                                         1000 px'e küçültülmüş hâli VTracer 0.6.12
+                                         ile izlenir (renkli, katmanlı, spline;
+                                         path_precision 3). Her yolun rengi
+                                         kaynaktan yeniden örneklenir.
 
 Ölçüler ve gerekçeleri: design/DESIGN-KARARLAR.md, "Logo" bölümü.
 """
@@ -27,10 +28,12 @@ SRC_JPG = ROOT / "assets/brand/redox-logo-source.jpg"
 SRC_SVG = ROOT / "assets/brand/redox-logo.svg"
 RES = ROOT / "android/app/src/main/res"
 
-# Kaynak (2000 px) üzerinde ölçülen geometri. Boynuz ucu y=156, çene ve halka
-# altı y=1518, yazı y=1534'te başlar; kırpma iki bandın arasında (1526) biter.
-MARK_BOX = (295, 116, 1705, 1526)  # kare, 1410 px; yazı dışarıda kalır
-WORD_BOX = (300, 1530, 1720, 1750)  # "RedoX TV" yazısı
+# Kaynak (2000 px) üzerinde ölçülen geometri (sıcak piksel satırları): alev
+# ucu y=125, çene y=1482, yazı y=1490'da başlar (X'in alevi yukarı uzanır);
+# kırpma iki bandın arasında (1486) biter. Kenardaki alev ve duman uçları
+# (x 288–306, 1688–1715) kesilir.
+MARK_BOX = (306, 104, 1688, 1486)  # kare, 1382 px; yazı dışarıda kalır
+WORD_BOX = (300, 1488, 1720, 1812)  # "REDOX TV" yazısı
 TILE_RADIUS = 0.22  # karo köşe yarıçapı / kenar
 
 # Android ölçüleri (developer.android.com, doğrulandı):
@@ -451,7 +454,7 @@ def main():
         "<resources>\n"
         "    <!-- Logonun lacivert zemini (işaret kırpıntısının arka plan ortalaması). -->\n"
         f'    <color name="ic_launcher_background">#{bg[0]:02X}{bg[1]:02X}{bg[2]:02X}</color>\n'
-        "    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (Logo-2'nin siyah zemini). -->\n"
+        "    <!-- Uygulama tuvali: DESIGN.md nötr tohumu (saf siyah). -->\n"
         '    <color name="redox_obsidian">#000000</color>\n'
         "</resources>\n",
         encoding="utf-8",

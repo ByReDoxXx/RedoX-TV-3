@@ -266,9 +266,9 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 
 ## 6. Logo
 
-**Kaynak:** kullanıcının Logo-2'si (siyah zemin), `assets/brand/redox-logo-source.jpg` (2048 px; ölçüm 2000 px ölçekte).
-- `redox-logo.svg`'nin geometrisi ilk logodan VTracer ile izlendi. Logo-2 aynı çizimdir (piksel hizalı), bu yüzden her yolun rengi Logo-2'de görünen alanının medyanıyla yeniden boyandı.
-- **Beyaz köşeler saydam:** tam logo, kaynaktaki karo sınırıyla kesilir (927 noktalı yol; köşelerde beyazın bittiği yerden 2 birim içeride). Kenardaki 23 beyaz kalıntı böylece görünmez. İşaret, simgeler ve afiş karo içinden kırpıldığı için beyaz içermez.
+**Kaynak:** kullanıcının Logo-3'ü (alevli boğa, koyu lacivert zemin; kullanıcı isteği, 2026-11-01: "yeni logomuz"), `assets/brand/redox-logo-source.jpg` (2000 px). Önceki logolar (Logo-1, Logo-2: geometrik kızıl boğa, siyah zemin) git geçmişinde.
+- `redox-logo.svg`: kaynağın 1000 px'e küçültülmüş hâli VTracer 0.6.12 ile yeniden izlendi (renkli, katmanlı, spline; 2339 yol, ~1,07 MB; Logo-2'de ~0,83 MB). Her yolun rengi kaynakta görünen alanının medyanıyla yeniden boyanır.
+- **Beyaz köşeler saydam:** tam logo, kaynaktaki karo sınırıyla kesilir (920 noktalı yol; köşelerde beyazın bittiği yerden 2 birim içeride). Kenardaki beyaz kalıntılar böylece görünmez. İşaret, simgeler ve afiş karo içinden kırpıldığı için beyaz içermez.
 - Varyasyonlar `design/logo/logo_varyasyonlari.py` ile üretilir.
 - Ölçüleri `test/platform/brand_assets_test.dart` denetler.
 
@@ -278,20 +278,20 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 | İşaret (yazısız karo) | `assets/brand/redox-mark.svg` | 64 dp ve altı; Anasayfa başlığında 44 dp |
 | Metin markası | `BrandWordmark` (Sora 800) | Metin olarak marka adı |
 | Android eski simge | `mipmap-*/ic_launcher.png`, 48 dp | API 24–25 |
-| Android uyarlanabilir simge | `mipmap-anydpi-v26/ic_launcher.xml`; ön ve tek renk katman 108 dp; zemin `#0B0203` (logonun siyah zemininin ortalaması) | API 26+; temalı simge API 33+ |
+| Android uyarlanabilir simge | `mipmap-anydpi-v26/ic_launcher.xml`; ön ve tek renk katman 108 dp; zemin `#222032` (işaret kırpıntısının lacivert zemin ortalaması) | API 26+; temalı simge API 33+ |
 | Android TV afişi | `drawable-xhdpi/banner.png`, 320×180 px | `android:banner` |
 | Windows | `windows/runner/resources/app_icon.ico`, 16–256 px, 10 boyut | Exe ve pencere |
 
 **Geometri (kaynak px):**
-- Boynuz ucu y=156, çene ve halka altı y=1518; yazı y=1534'te başlar.
-- İşaret kutusu x 295–1705, y 116–1526 (1410 px kare). Yazı kutunun dışında kalır.
+- Alev ucu y=125, çene y=1482; yazı y=1490'da başlar (X harfinin alevi yukarı uzanır).
+- İşaret kutusu x 306–1688, y 104–1486 (1382 px kare). Yazı kutunun dışında kalır; kenardaki alev ve duman uçları (x 288–306, 1688–1715) kesilir.
 - Köşe yarıçapı kenarın %22'si.
 
 **Android kaynakları** (developer.android.com, 2026-10-31'de okundu):
 - **Uyarlanabilir simge:** "Size all layers to 108x108 dp". Güvenli alan 66 dp; logo 48–66 dp olmalı.
-  - İşaret, en uzak opak pikseli 33 dp yarıçapta kalacak biçimde ölçeklendi. Sonuç: 55,5 × 54,8 dp kutu.
+  - İşaret, en uzak opak pikseli 33 dp yarıçapta kalacak biçimde ölçeklendi. Sonuç: 56,8 × 55,8 dp kutu. Konu maskesi alev, kıvılcım ve duman yüzünden kenarda tırtıklı; koyu zeminde ve daire maskede görünmüyor (önizleyerek bakıldı), boynun ucu hafif kesik.
   - İşaret, kaynak görselden ayrıldı: sıcaklık (kırmızı − mavi) maskesi + kenardan taşkın dolgu. Koyu dış çizgiler korunur.
-- **TV afişi:** "use an xhdpi resource with a size of 320 x 180 px. Text must be included in the image." Afişte işaret ve logonun kendi "RedoX TV" yazısı var.
+- **TV afişi:** "use an xhdpi resource with a size of 320 x 180 px. Text must be included in the image." Afişte işaret ve logonun kendi "REDOX TV" yazısı var.
 - **Android 12+ açılış ekranı:** varsayılan olarak başlatıcı simgesini gösterir. Zemin olarak tema `windowBackground`'ını kullanır, ama yalnızca tek renkse.
   - Bu yüzden açılış ve pencere zemini obsidyen (`@color/redox_obsidian`, `#000000`) yapıldı.
   - Flutter'ın beyaz `launch_background` çizimleri kaldırıldı.
@@ -306,7 +306,8 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 - Linux masaüstü simgesi yok. Flutter Linux şablonu simge ayarlamaz; simge paketlemede `.desktop` dosyasıyla verilir.
 - TV başlatıcısında görünmek için iki bildirim gerekir: `LEANBACK_LAUNCHER` filtresi ve `android.hardware.touchscreen required="false"`. Bunlar ayrı TV APK'sı işine bırakıldı; afiş şimdiden tanımlı.
 - Afiş tek dillidir. Başka dil eklenirse her dil için ayrı afiş gerekir (TV belgesi).
-- Tek renk katmanda kıvılcım ve ışın çizgileri de görünür.
+- Tek renk katmanda alevler ve kıvılcımlar da görünür.
+- **Palet Logo-3'e göre yeniden türetilmedi (karar bekliyor).** Logo-3'ten aynı yöntemle ölçülen: altın `#FCBF4D` (palet `#F6BD58`, neredeyse aynı), turuncu `#FC7521` (palet amber `#ED9650`; daha doygun alev turuncusu), kızılın genel medyanı `#932027` (palet `#D82131` kontrast kısıtlarıyla seçilmişti), zemin koyu lacivert `#0D1021` (tuval saf siyah `#000000`).
 
 ## 7. Doğrulanmayanlar
 
