@@ -10,6 +10,7 @@ import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/artwork_fallback.dart';
+import '../../core/ui/center_on_focus.dart';
 import '../../core/ui/channel_card.dart';
 import '../../core/ui/channel_logo.dart';
 import '../../core/ui/redox_icon.dart';
@@ -127,17 +128,21 @@ class HomePage extends StatelessWidget {
                         ),
                   children: [
                     for (final c in content.channels)
-                      ChannelCard(
-                        width: card,
-                        channelName: c.name,
-                        number: c.number,
-                        programTitle: c.programTitle ?? 'Yayın akışı bilgisi yok',
-                        timeRange: c.timeRange ?? c.category,
-                        genre: c.genre,
-                        progress: c.progress ?? 0,
-                        accent: c.accent,
-                        artwork: ChannelLogo(name: c.name, logoUrl: c.logoUrl),
-                        onPressed: () => onWatch?.call(c),
+                      // D-pad odağında kart ortalanır: ekranın alt kenarında
+                      // halkası kesiliyordu (gerçek TV'de görüldü).
+                      CenterOnFocus(
+                        child: ChannelCard(
+                          width: card,
+                          channelName: c.name,
+                          number: c.number,
+                          programTitle: c.programTitle ?? 'Yayın akışı bilgisi yok',
+                          timeRange: c.timeRange ?? c.category,
+                          genre: c.genre,
+                          progress: c.progress ?? 0,
+                          accent: c.accent,
+                          artwork: ChannelLogo(name: c.name, logoUrl: c.logoUrl),
+                          onPressed: () => onWatch?.call(c),
+                        ),
                       ),
                   ],
                 ),
