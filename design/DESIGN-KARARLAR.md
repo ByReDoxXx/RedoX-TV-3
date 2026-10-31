@@ -129,7 +129,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Açık rayda ana öğeler kaydırılır (TV'de 9 × 56 dp sığmaz). Kaydırma alanı keser; odak halkası için 4 dp pay bırakılır.
   - Kanıt: `test/core/ui/nav_rail_test.dart` (konumlar, gösterge ölçüsü ve rengi, menü düğmesi).
 - **Telefon alt menüsü (kullanıcı isteği, 2026-10-31).** Telefonda ray yoktur. Ray 411 dp ekranın dörtte birini alıyordu; emülatörde kartlar ve yazılar kesildi. Yerine alt menü gelir.
-  - Sıra: Kumanda · TV · Radyo · **Anasayfa** · Film · Dizi · Favori. Yedi öğe olduğu için Anasayfa tam ortadadır.
+  - Sıra: TV · Radyo · **Anasayfa** · Film · Dizi · Favori · Kumanda. Kumanda kullanıcı isteğiyle sona alındı; Anasayfa bu yüzden ortanın bir yuva solundadır.
     - M3 en fazla 5 öğe önerir. 7 öğe kullanıcı kararıdır.
     - 360 dp'de yuva 51 dp olur. Gösterge yuvaya sığacak kadar daralır (en az 40 dp); uzun etiket küçülür.
   - Ölçüler M3E kısa gezinme çubuğundan alındı: 64 dp, `surfaceContainer`, gösterge 56 × 32 hap, üst 6 dp, ikon–etiket arası 4 dp.
@@ -137,10 +137,11 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - Alt kenarı göstergelerle hizalıdır; üstü çubuktan 18 dp taşar.
     - Etiketi öteki etiketlerle aynı satırdadır.
     - Taşan kısmına da dokunulabilir: çubuk yüksekliği taşma payını kapsar, payın geri kalanı dokunuşu içeriğe geçirir.
-  - Bölünmüş ekran, Kaynaklar ve Ayarlar alt menüye sığmaz. Başlıktaki "Diğer" düğmesiyle açılan M3 modal alt sayfadadırlar.
+  - 2x2 Ekran (eski adı "Bölünmüş ekran"; kullanıcı isteğiyle değişti), Kaynaklar ve Ayarlar alt menüye sığmaz. Başlıktaki "Diğer" düğmesiyle açılan M3 modal alt sayfadadırlar.
   - Telefon başlığında saat ve profil yoktur: emülatörde ekran dışına taşıyordu, saat zaten durum çubuğunda.
   - Raflar telefonda kesirli kart sayısıyla gösterilir (2,3 / 1,15 / 3,3). Sağda kartın ucu görünür, bu da rafın kaydığını belli eder.
   - Kanıt: `test/core/ui/bottom_nav_bar_test.dart` (360 ve 411 dp: ortalama, taşma, taşan kısma dokunma) ve `home_page_test.dart` (telefonda taşma yok).
+- **Hikâye aralığı:** yuva = halka + 36 dp; halkalar arasında 36 dp boşluk kalır (kullanıcı isteği; önceden 48 dp). En uzun etiket ("Çoklu ekran", TV'de ~105 dp) yuvaya sığar.
 - **Arama kutusu saate kadar uzanır (kullanıcı isteği):** TV, tablet ve masaüstünde arama ile saat arasında 16 dp boşluk kalır. Kanıt: `home_page_test.dart`.
 - **TV'de odak hep görünür:** Android'in varsayılan "touch" vurgu kipinde odak halkası ilk tuşa kadar gizliydi (emülatörde görüldü). TV'de `FocusHighlightStrategy.alwaysTraditional` kullanılır (`lib/main.dart`). Kanıt: emülatör, açılışta "Canlı yayına gir" halkalı; D-pad sol, ray öğesini açar.
 - **Ray açılış eğrisi:** spec `cubic-bezier(0.2, 0, 0, 1)`; süre spec'te yok, M3 `medium4` = 400 ms seçildi.

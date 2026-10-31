@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
@@ -44,6 +45,8 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Şampiyonlar Ligi — Çeyrek Final'), findsOneWidget);
+      // Hikâye yuvası daraltıldı; en uzun etiket yine kesilmeden sığar.
+      expect(tester.renderObject<RenderParagraph>(find.text('Çoklu ekran')).didExceedMaxLines, isFalse);
       await maybeSnapshot(tester, key, 'build/home/anasayfa-4k.png', pixelRatio: 4);
     }),
   );

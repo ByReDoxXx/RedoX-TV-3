@@ -22,7 +22,7 @@ Widget _bar(ValueChanged<int> onSelected) => MaterialApp(
 
 void main() {
   for (final width in [360.0, 411.0]) {
-    testWidgets('$width dp: yedi öğe taşmasız, Anasayfa tam ortada ve çubuktan taşar', (tester) async {
+    testWidgets('$width dp: yedi öğe taşmasız, Anasayfa kendi yuvasında ve çubuktan taşar', (tester) async {
       await loadSora(tester);
       tester.view.physicalSize = Size(width, 800);
       tester.view.devicePixelRatio = 1;
@@ -37,17 +37,20 @@ void main() {
         expect(find.text(item.label), findsOneWidget, reason: item.label);
       }
       final home = tester.getRect(find.bySemanticsLabel('Anasayfa'));
-      expect(home.center.dx, closeTo(width / 2, 0.01));
-      expect(home.width, RedoxBottomBar.centerSize);
+      // Düğme yuvasının ortasında: (dizin + 0,5) yuva genişliği.
+      final slot = width / AppDestinations.phoneBar.length;
+      expect(home.center.dx, closeTo(slot * (AppDestinations.phoneBarHome + 0.5), 0.01));
+      expect(AppDestinations.phoneBar.last.label, 'Kumanda');
+      expect(home.width, closeTo(RedoxBottomBar.centerSize, 0.01));
       // Çubuğun üst kenarı: ekran altı - 64. Düğme alt kenarı gösterge altında.
       const barTop = 800 - RedoxBottomBar.barHeight;
       expect(home.top, closeTo(barTop - RedoxBottomBar.lift, 0.01));
       expect(home.bottom, closeTo(barTop + RedoxBottomBar.topSpace + RedoxBottomBar.indicatorHeight, 0.01));
 
       // Düğmenin çubuktan taşan üst kısmına da dokunulabilir.
-      await tester.tapAt(Offset(width / 2, home.top + 4));
+      await tester.tapAt(Offset(home.center.dx, home.top + 4));
       await tester.tap(find.bySemanticsLabel('Kumanda'));
-      expect(taps, [AppDestinations.phoneBarHome, 0]);
+      expect(taps, [AppDestinations.phoneBarHome, AppDestinations.phoneBar.length - 1]);
     });
   }
 }

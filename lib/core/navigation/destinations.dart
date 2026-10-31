@@ -12,7 +12,7 @@ abstract final class AppDestinations {
     NavRailItem(RedoxIcons.film, 'Film'),
     NavRailItem(RedoxIcons.series, 'Dizi'),
     NavRailItem(RedoxIcons.favorites, 'Favoriler'),
-    NavRailItem(RedoxIcons.splitScreen, 'Bölünmüş ekran'),
+    NavRailItem(RedoxIcons.splitScreen, '2x2 Ekran'),
     NavRailItem(RedoxIcons.sources, 'Kaynaklar'),
   ];
 
@@ -20,24 +20,24 @@ abstract final class AppDestinations {
     NavRailItem(RedoxIcons.settings, 'Ayarlar'),
   ];
 
-  /// Telefon alt menüsü (kullanıcı isteği): Anasayfa ortada kırmızı düğme,
-  /// iki yanda üçer bölüm. Etiketler 360 dp genişlikte sığsın diye kısadır.
+  /// Telefon alt menüsü (kullanıcı isteği): Anasayfa kırmızı yuvarlak düğme,
+  /// Kumanda en sonda. Etiketler 360 dp genişlikte sığsın diye kısadır.
   static const phoneBar = [
-    NavRailItem(RedoxIcons.remote, 'Kumanda'),
     NavRailItem(RedoxIcons.television, 'TV'),
     NavRailItem(RedoxIcons.radio, 'Radyo'),
     NavRailItem(RedoxIcons.home, 'Anasayfa'),
     NavRailItem(RedoxIcons.film, 'Film'),
     NavRailItem(RedoxIcons.series, 'Dizi'),
     NavRailItem(RedoxIcons.favorites, 'Favori'),
+    NavRailItem(RedoxIcons.remote, 'Kumanda'),
   ];
 
-  /// Alt menüde ortadaki (Anasayfa) öğenin dizini.
-  static const phoneBarHome = 3;
+  /// Alt menüde kırmızı düğme olan (Anasayfa) öğenin dizini.
+  static const phoneBarHome = 2;
 
   /// Telefonda alt menüye sığmayanlar: başlıktaki "Diğer" düğmesiyle açılır.
   static const phoneMore = [
-    NavRailItem(RedoxIcons.splitScreen, 'Bölünmüş ekran'),
+    NavRailItem(RedoxIcons.splitScreen, '2x2 Ekran'),
     NavRailItem(RedoxIcons.sources, 'Kaynaklar'),
     NavRailItem(RedoxIcons.settings, 'Ayarlar'),
   ];

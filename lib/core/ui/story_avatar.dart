@@ -26,11 +26,16 @@ class StoryAvatar extends StatelessWidget {
   static const _ring = 3.0;
   static const _gap = 3.0;
 
+  /// Yuva = halka + bu pay; halkalar arası boşluk da budur. 48'den 36'ya
+  /// indirildi (kullanıcı isteği). En uzun etiket "Çoklu ekran" TV'de ~105 dp,
+  /// 108 dp yuvaya kesilmeden sığar; daha uzunu "…" ile kısalır.
+  static const slotExtra = 36.0;
+
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelMedium!;
     return SizedBox(
-      width: diameter + 48,
+      width: diameter + slotExtra,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
