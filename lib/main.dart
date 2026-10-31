@@ -5,6 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
+import 'core/content/channel_source.dart';
+import 'core/content/data_pack.dart';
+import 'core/content/epg_source.dart';
+import 'core/content/live_channel.dart';
 import 'core/layout/form_factor.dart';
 import 'features/tv/tv_content.dart';
 import 'features/tv/tv_guide_controller.dart';
@@ -18,9 +22,18 @@ Future<void> main() async {
   if (FormFactor.current == FormFactor.tv) {
     FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
   }
-  // Yerleşik Türkçe kanal listesi (şifresiz; numara/sıra eski sürümden).
-  final tv = TvGuideController(TvContent.fromM3u(await rootBundle.loadString('assets/channels/tr.m3u')));
-  // Yayın akışı arkada iner; gelene kadar kanallar akışsız görünür.
+  // Kanal listesi ve yayın akışı şifreli paketlerdir (DataPack). Uygulamadaki
+  // kopya açılışta okunur; güncel liste ve akış arkada iner.
+  final pack = DataPack.app();
+  final embedded = await ChannelSource.open(
+    (await rootBundle.load(ChannelSource.asset)).buffer.asUint8List(),
+    pack,
+  ).catchError((Object _) => const <LiveChannel>[]);
+  final tv = TvGuideController(
+    TvContent(channels: embedded),
+    load: () => EpgSource.load(pack),
+    loadChannels: () => ChannelSource.download(pack),
+  );
   unawaited(tv.start());
   runApp(RedoxApp(tv: tv));
 }

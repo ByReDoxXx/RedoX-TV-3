@@ -2,22 +2,29 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../core/content/epg_source.dart';
+import '../../core/content/live_channel.dart';
 import '../../core/content/xmltv.dart';
 import 'tv_content.dart';
 
-/// Televizyon içeriğini canlı tutar: yayın akışını açılışta ve [refresh]
-/// aralıkla indirir, kanalların "şimdi" bilgisini her dakika başında yeniler.
-/// İndirme başarısız olursa eldeki akış (ya da akışsız liste) kalır.
+/// Televizyon içeriğini canlı tutar: güncel kanal listesini açılışta, yayın
+/// akışını açılışta ve [refresh] aralıkla indirir; kanalların "şimdi"
+/// bilgisini her dakika başında yeniler. İndirme başarısız olursa eldeki liste
+/// ve akış kalır.
 class TvGuideController extends ValueNotifier<TvContent> {
   TvGuideController(
     super.value, {
-    this.load = EpgSource.load,
+    required this.load,
+    this.loadChannels,
     this.clock = DateTime.now,
     this.refresh = const Duration(hours: 6),
   });
 
+  /// Yayın akışı (EpgSource.load).
   final Future<EpgGuide> Function() load;
+
+  /// Güncel kanal listesi (ChannelSource.download); null dönerse eldeki kalır.
+  final Future<List<LiveChannel>?> Function()? loadChannels;
+
   final DateTime Function() clock;
   final Duration refresh;
 
@@ -26,12 +33,19 @@ class TvGuideController extends ValueNotifier<TvContent> {
   Timer? _reload;
   bool _disposed = false;
 
-  /// Saati ve akışı başlatır. İlk indirme bitince döner (testler bekleyebilir).
-  Future<void> start() {
+  /// Saati, kanal listesini ve akışı başlatır. İlk indirmeler bitince döner
+  /// (testler bekleyebilir).
+  Future<void> start() async {
     _apply();
     _scheduleMinute();
     _reload = Timer.periodic(refresh, (_) => unawaited(_fetch()));
-    return _fetch();
+    await Future.wait([_fetchChannels(), _fetch()]);
+  }
+
+  Future<void> _fetchChannels() async {
+    final channels = await loadChannels?.call();
+    if (_disposed || channels == null || channels.isEmpty) return;
+    value = TvContent(channels: channels).withGuide(_guide, clock());
   }
 
   /// Sonraki dakika başında yenile, sonra her dakika (başlık saati kaymasın).

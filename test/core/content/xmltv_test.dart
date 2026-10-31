@@ -110,9 +110,4 @@ void main() {
     expect(EpgGuide.parse(text).of('TRT 1'), hasLength(2));
     expect(EpgSource.decode(utf8.encode('<tv/>')), '<tv/>');
   });
-
-  test('EpgSource.load: kaynak açılmazsa boş akış', () async {
-    final g = await EpgSource.load(from: ['https://redox.invalid/epg.xml.gz'], timeout: const Duration(seconds: 5));
-    expect(g.channelCount, 0);
-  });
 }

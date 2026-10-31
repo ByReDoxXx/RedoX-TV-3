@@ -1,0 +1,9 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="redox-6" tvg-chno="6" tvg-logo="https://example.invalid/trt1.png" group-title="Ulusal",TRT 1
+https://example.invalid/trt1-a.m3u8
+#EXTINF:-1 tvg-id="redox-6" tvg-chno="6" group-title="Ulusal",TRT 1
+https://example.invalid/trt1-b.m3u8
+#EXTINF:-1 tvg-id="redox-3" tvg-chno="3" group-title="Spor",TRT Spor
+https://example.invalid/spor.m3u8
+#EXTINF:-1 tvg-id="redox-x" group-title="Yerel",Numarasız TV
+https://example.invalid/yerel.m3u8

@@ -20,6 +20,8 @@ dependencies:
   media_kit_libs_video: 1.0.7
   # Yayın akışı (XMLTV) çözümü. flutter_svg zaten bu sürümü kullanıyor.
   xml: 7.0.1
+  # Şifreli veri paketleri: AES-256-GCM çözme, Ed25519 imza doğrulama.
+  cryptography: 2.9.0
 
 dev_dependencies:
   flutter_test:
@@ -33,7 +35,8 @@ flutter:
     - assets/brand/redox-logo.svg
     - assets/brand/redox-mark.svg
     - assets/icons/
-    - assets/channels/
+    # Şifreli kanal listesi (DataPack). Kaynak tr.m3u uygulamaya konmaz.
+    - assets/channels/channels.bin
 
   fonts:
     # Değişken yazı tipi (OFL), tek eksen: wght 100–800. FontWeight -> wght.

@@ -28,7 +28,8 @@ EpgGuide _guide() {
 }
 
 /// Kanalı adıyla bulur (ayrıştırıcı numaraya göre sıralar).
-LiveChannel Function(String) _named(TvContent tv) => (name) => tv.channels.firstWhere((c) => c.name == name);
+LiveChannel Function(String) _named(TvContent tv) =>
+    (name) => tv.channels.firstWhere((c) => c.name == name);
 
 void main() {
   final base = TvContent.fromM3u(_m3u);
@@ -97,6 +98,26 @@ void main() {
       await c.start();
       expect(c.value.channels.first.programTitle, isNull);
       expect(c.value.nowMinute, 20 * 60 + 15);
+      c.dispose();
+    });
+
+    test('güncel kanal listesi gelince liste değişir, akış yeni listeye uygulanır', () async {
+      final fresh = TvContent.fromM3u('''#EXTM3U
+#EXTINF:-1 tvg-chno="6" group-title="Ulusal",TRT 1
+https://example.invalid/yeni.m3u8
+''').channels;
+      final c = TvGuideController(base, load: () async => _guide(), loadChannels: () async => fresh, clock: () => now);
+      await c.start();
+      expect(c.value.channels.map((ch) => ch.name), ['TRT 1']);
+      expect(c.value.channels.single.streams, ['https://example.invalid/yeni.m3u8']);
+      expect(c.value.channels.single.programTitle, 'Ana Haber');
+      c.dispose();
+    });
+
+    test('kanal listesi inmezse eldeki kalır', () async {
+      final c = TvGuideController(base, load: () async => _guide(), loadChannels: () async => null, clock: () => now);
+      await c.start();
+      expect(c.value.channels, hasLength(3));
       c.dispose();
     });
 
