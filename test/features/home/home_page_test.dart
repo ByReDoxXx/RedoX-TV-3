@@ -7,15 +7,16 @@ import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_colors.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/ui/app_header.dart';
 import 'package:redox_tv/core/ui/bottom_nav_bar.dart';
 import 'package:redox_tv/core/ui/header_search.dart';
 import 'package:redox_tv/core/ui/nav_rail.dart';
 import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/ui/redox_icon.dart';
 import 'package:redox_tv/features/home/home_content.dart';
-import 'package:redox_tv/features/home/home_page.dart';
+import 'package:redox_tv/features/shell/root_shell.dart';
+import 'package:redox_tv/features/tv/tv_content.dart';
 import 'package:redox_tv/features/home/widgets/hero_banner.dart';
-import 'package:redox_tv/features/home/widgets/home_header.dart';
 
 import '../../support/render.dart';
 
@@ -24,7 +25,7 @@ Widget _app(Key boundary, {bool previewFocus = false}) => MaterialApp(
   theme: RedoxTheme.dark(),
   home: RepaintBoundary(
     key: boundary,
-    child: HomePage(content: HomeContent.preview, previewFocus: previewFocus),
+    child: RootShell(home: HomeContent.preview, tv: TvContent.preview, previewFocus: previewFocus),
   ),
 );
 
@@ -136,7 +137,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: RedoxTheme.dark(formFactor: FormFactor.phone),
-          home: const HomePage(content: HomeContent.preview),
+          home: const RootShell(home: HomeContent.preview, tv: TvContent.preview),
         ),
       );
       await tester.pump(const Duration(milliseconds: 600));
@@ -146,14 +147,14 @@ void main() {
 
       // Başlık: logo (Anasayfa) · Arama · Kumanda · Diğer (kullanıcı isteği).
       double headerX(String label) =>
-          tester.getCenter(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel(label))).dx;
+          tester.getCenter(find.descendant(of: find.byType(AppHeader), matching: find.bySemanticsLabel(label))).dx;
       expect(headerX('Anasayfa'), lessThan(headerX('Arama')));
       expect(headerX('Arama'), lessThan(headerX('Kumanda')));
       expect(headerX('Kumanda'), lessThan(headerX('Diğer')));
       // Telefonda logo büyük (kullanıcı isteği).
       expect(
-        tester.getSize(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel('Anasayfa'))).width,
-        HomeHeader.phoneLogoSize,
+        tester.getSize(find.descendant(of: find.byType(AppHeader), matching: find.bySemanticsLabel('Anasayfa'))).width,
+        AppHeader.phoneLogoSize,
       );
 
       // Vitrin düğmeleri yan yana; telefonda "OK" ipucu yok (kumanda yok).
@@ -180,7 +181,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: RedoxTheme.dark(formFactor: FormFactor.tablet),
-        home: const HomePage(content: HomeContent.preview),
+        home: const RootShell(home: HomeContent.preview, tv: TvContent.preview),
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));
@@ -198,7 +199,7 @@ void main() {
     expect(clockIcon.left, greaterThan(profileIcon.right));
 
     // Vitrin içerik genişliğinin tamamını kaplar (düğmeler Wrap'te olsa da).
-    expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(HomeHeader)).width);
+    expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(AppHeader)).width);
   });
 
   testWidgets('D-pad: açılışta vitrin düğmesi odakta; sol seçili menü öğesine (Anasayfa) gider', (tester) async {

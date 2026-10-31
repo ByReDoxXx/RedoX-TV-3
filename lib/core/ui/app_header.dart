@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/brand/brand_assets.dart';
-import '../../../core/layout/form_factor.dart';
-import '../../../core/theme/redox_colors.dart';
-import '../../../core/theme/redox_metrics.dart';
-import '../../../core/theme/redox_shapes.dart';
-import '../../../core/theme/redox_type.dart';
-import '../../../core/ui/header_search.dart';
-import '../../../core/ui/icon_action_button.dart';
-import '../../../core/ui/redox_icon.dart';
+import '../brand/brand_assets.dart';
+import '../layout/form_factor.dart';
+import '../theme/redox_colors.dart';
+import '../theme/redox_metrics.dart';
+import '../theme/redox_shapes.dart';
+import '../theme/redox_type.dart';
+import 'header_search.dart';
+import 'icon_action_button.dart';
+import 'redox_icon.dart';
 
-/// Üst şerit: logo işareti, arama (TV'de kutu), saat ve profil. Logo rayda
-/// değil burada durur: 540 dp TV yüksekliğinde ray öğelerine yer kalsın diye.
+/// Bölüm sayfalarının üst şeridi: logo işareti, arama (TV'de kutu), saat ve
+/// profil. Logo rayda değil burada durur: 540 dp TV yüksekliğinde ray
+/// öğelerine yer kalsın diye.
 /// 44 dp'de tam logonun yazısı okunmadığı için yazısız işaret kullanılır.
 ///
 /// Arama kutusu profile kadar uzanır (kullanıcı isteği). Telefonda saat ve
 /// profil sığmaz (saat zaten durum çubuğunda): arama, Kumanda ve [onMore]
 /// (alt menüye sığmayan bölümler) ikon düğmeleri gösterilir.
-class HomeHeader extends StatelessWidget {
-  const HomeHeader({
+class AppHeader extends StatelessWidget {
+  const AppHeader({
     super.key,
     required this.clock,
     required this.profileName,

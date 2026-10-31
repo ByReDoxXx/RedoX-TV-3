@@ -1,3 +1,4 @@
+import '../../core/content/live_channel.dart';
 import '../../core/ui/channel_card.dart';
 import '../../core/ui/redox_icon.dart';
 
@@ -38,28 +39,6 @@ class HomeStory {
   final String label;
   final RedoxIcons icon;
   final bool seen;
-}
-
-class HomeChannel {
-  const HomeChannel({
-    required this.name,
-    required this.number,
-    required this.programTitle,
-    required this.timeRange,
-    required this.genre,
-    required this.progress,
-    this.accent = CardAccent.crimson,
-    this.live = false,
-  });
-
-  final String name;
-  final int number;
-  final String programTitle;
-  final String timeRange;
-  final String genre;
-  final double progress;
-  final CardAccent accent;
-  final bool live;
 }
 
 class HomeContinueItem {
@@ -116,7 +95,7 @@ class HomeContent {
   final List<HomeStory> stories;
 
   /// Son izlenen kanallar.
-  final List<HomeChannel> channels;
+  final List<LiveChannel> channels;
 
   /// Yarım kalan dizi ve filmler.
   final List<HomeContinueItem> continueItems;
@@ -150,8 +129,9 @@ class HomeContent {
       HomeStory('Kumanda', RedoxIcons.remote, seen: true),
     ],
     channels: [
-      HomeChannel(
+      LiveChannel(
         name: 'ULUSAL 1 HD',
+        category: 'Ulusal',
         number: 1,
         programTitle: 'Akşam Dizisi',
         timeRange: '20:00 – 22:30',
@@ -159,8 +139,9 @@ class HomeContent {
         progress: 0.3,
         accent: CardAccent.gold,
       ),
-      HomeChannel(
+      LiveChannel(
         name: 'SPOR 1 4K',
+        category: 'Spor',
         number: 104,
         programTitle: 'Çeyrek Final',
         timeRange: '19:45 – 22:00',
@@ -168,8 +149,9 @@ class HomeContent {
         progress: 0.74,
         live: true,
       ),
-      HomeChannel(
+      LiveChannel(
         name: 'HABER 24',
+        category: 'Haber',
         number: 24,
         programTitle: 'Ana Haber',
         timeRange: '20:00 – 21:00',
@@ -177,8 +159,9 @@ class HomeContent {
         progress: 0.75,
         accent: CardAccent.amber,
       ),
-      HomeChannel(
+      LiveChannel(
         name: 'BELGESEL HD',
+        category: 'Belgesel',
         number: 42,
         programTitle: 'Derin Uzay',
         timeRange: '20:30 – 21:45',

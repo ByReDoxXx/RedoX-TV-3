@@ -10,10 +10,14 @@ import 'package:flutter/services.dart';
 /// (Flutter 3.47'de `didPopRoute` gözlemcileri kayıt sırasıyla sorulur ve
 /// Navigator önce gelir; bu yüzden ayrı gözlemci işe yaramaz.)
 class DoubleBackToExit extends StatefulWidget {
-  const DoubleBackToExit({super.key, required this.child, this.window = const Duration(seconds: 2)});
+  const DoubleBackToExit({super.key, required this.child, this.window = const Duration(seconds: 2), this.onBack});
 
   final Widget child;
   final Duration window;
+
+  /// Kayıtlı işleyicilerden sonra, çıkış uyarısından önce sorulur; `true`
+  /// Geri'yi tüketir (ör. kök kabuk: başka bölümdeyken Anasayfa'ya döner).
+  final bool Function()? onBack;
 
   static const message = 'Çıkmak için tekrar Geri\'ye basın';
 
@@ -38,6 +42,7 @@ class DoubleBackToExitState extends State<DoubleBackToExit> {
     for (final handler in _handlers.reversed.toList()) {
       if (handler()) return;
     }
+    if (widget.onBack?.call() ?? false) return;
     final now = DateTime.now();
     if (_last != null && now.difference(_last!) <= widget.window) {
       SystemNavigator.pop();

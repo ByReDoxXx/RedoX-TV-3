@@ -89,7 +89,7 @@ class SurfacesSection extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const RedoxNavRail(
+                RedoxNavRail(
                   items: AppDestinations.main,
                   footer: AppDestinations.footer,
                   selectedIndex: 0,
@@ -98,7 +98,7 @@ class SurfacesSection extends StatelessWidget {
                 ),
                 // Daralmış raydaki açık hap içeriğin üstüne taşar; yer bırak.
                 const SizedBox(width: 200),
-                const RedoxNavRail(
+                RedoxNavRail(
                   items: AppDestinations.main,
                   footer: AppDestinations.footer,
                   selectedIndex: 0,

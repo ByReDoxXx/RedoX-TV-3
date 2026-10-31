@@ -56,6 +56,29 @@ class ChannelCard extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool? focused;
 
+  static const _infoPadding = EdgeInsets.fromLTRB(12, 10, 12, 12);
+  static const _progressHeight = 6.0;
+
+  /// Kartın [width] genişlikteki yüksekliği: 16:9 görsel + bilgi bloğu. Izgara
+  /// hücresi (SliverGrid mainAxisExtent) bununla boyutlanır. Satır yükseklikleri
+  /// tema yazılarından (boyut × satır oranı, yazı ölçeği dahil) hesaplanır;
+  /// yuvarlama payı için yukarı yuvarlanır.
+  static double heightFor(BuildContext context, double width) {
+    final t = Theme.of(context).textTheme;
+    final scaler = MediaQuery.textScalerOf(context);
+    double line(TextStyle s) => scaler.scale(s.fontSize!) * (s.height ?? 1.2);
+    final info =
+        _infoPadding.vertical +
+        line(t.labelMedium!) +
+        2 +
+        line(t.titleMedium!) +
+        2 +
+        line(t.bodySmall!) +
+        10 +
+        _progressHeight;
+    return (width * 9 / 16 + info).ceilToDouble();
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -96,7 +119,7 @@ class ChannelCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  padding: _infoPadding,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -124,7 +147,7 @@ class ChannelCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 10),
-                      RedoxProgressBar(value: progress, color: accent.fill),
+                      RedoxProgressBar(value: progress, color: accent.fill, height: _progressHeight),
                     ],
                   ),
                 ),
