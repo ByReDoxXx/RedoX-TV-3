@@ -9,6 +9,11 @@ import 'live_channel.dart';
 /// ("Akış 1/2"), dosyadaki sırayla. Kanallar numaraya göre sıralanır;
 /// numarası olmayanlar sona, listedeki sırayla dizilir ve en büyük
 /// numaradan sonraki numaraları alır (numaralar çakışmasın).
+///
+/// Uygulamanın kendi listesi M3U değil, şifreli pakettir (ChannelSource);
+/// aynı kurallar paketi üreten `redox-epg/tools/pack.mjs`'tedir. Bu okuyucu
+/// kullanıcının ekleyeceği M3U kaynakları ("Kaynaklar" bölümü, QR ile kaynak)
+/// ve testler içindir.
 abstract final class M3uParser {
   static final _attr = RegExp(r'([\w-]+)="([^"]*)"');
 

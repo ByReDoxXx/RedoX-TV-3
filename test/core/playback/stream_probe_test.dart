@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
-import 'package:redox_tv/features/player/playback_session.dart';
-import 'package:redox_tv/features/player/stream_probe.dart';
+import 'package:redox_tv/core/playback/playback_session.dart';
+import 'package:redox_tv/core/playback/stream_probe.dart';
 
 import '../../support/fake_engine.dart';
 

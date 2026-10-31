@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:redox_tv/features/player/engine/playback_engine.dart';
+import 'package:redox_tv/core/playback/engine/playback_engine.dart';
 
 /// Testlerin oynatma motoru: yerel video kütüphanesi test ortamında yoktur.
 /// Açılan adresleri ve seçimleri kaydeder; görüntü ve hata elle verilir.

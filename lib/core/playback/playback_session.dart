@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../core/content/live_channel.dart';
+import '../content/live_channel.dart';
 import 'engine/playback_engine.dart';
 import 'stream_probe.dart';
 

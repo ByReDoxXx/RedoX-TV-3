@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'core/layout/form_factor.dart';
 import 'core/theme/redox_theme.dart';
 import 'features/home/home_content.dart';
-import 'features/player/stream_probe.dart';
+import 'core/playback/stream_probe.dart';
 import 'features/shell/root_shell.dart';
 import 'features/tv/tv_content.dart';
 

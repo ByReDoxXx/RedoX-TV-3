@@ -7,17 +7,14 @@ import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
-import '../../core/theme/redox_shapes.dart';
-import '../../core/theme/redox_type.dart';
-import '../../core/ui/redox_buttons.dart';
-import '../../core/ui/redox_icon.dart';
-import 'engine/media_kit_engine.dart';
-import 'engine/playback_engine.dart';
-import 'playback_session.dart';
-import 'stream_probe.dart';
+import '../../core/playback/engine/media_kit_engine.dart';
+import '../../core/playback/engine/playback_engine.dart';
+import '../../core/playback/playback_session.dart';
+import '../../core/playback/stream_probe.dart';
 import 'widgets/channel_drawer.dart';
 import 'widgets/player_bar.dart';
 import 'widgets/player_options.dart';
+import 'widgets/player_overlays.dart';
 
 /// Tam ekran oynatıcı (eski sürümün özellikleriyle). Kumanda:
 /// - OK: alt çubuğu açar, odak oynat/duraklatta.
@@ -312,9 +309,9 @@ class _PlayerPageState extends State<PlayerPage> {
                     onTap: () => _bar ? _hideBar() : _showBar(),
                     child: _engine.view(fit: _scale.fit),
                   ),
-                  if (s.status != PlaybackStatus.playing) _Status(session: s),
+                  if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
                   if (_bar) ...[
-                    Positioned(top: 16, right: 24, child: _Clock(widget.clock)),
+                    Positioned(top: 16, right: 24, child: PlayerClock(widget.clock)),
                     Positioned(
                       left: 24,
                       right: 24,
@@ -394,8 +391,9 @@ class _PlayerPageState extends State<PlayerPage> {
                         ),
                       ),
                     ),
-                  if (_digits.isNotEmpty) Positioned(top: 24, left: 24, child: _Digits(_digits)),
-                  if (_notice != null) Positioned(top: 24, left: 0, right: 0, child: Center(child: _Notice(_notice!))),
+                  if (_digits.isNotEmpty) Positioned(top: 24, left: 24, child: PlayerDigits(_digits)),
+                  if (_notice != null)
+                    Positioned(top: 24, left: 0, right: 0, child: Center(child: PlayerNotice(_notice!))),
                 ],
               ),
             ),
@@ -404,136 +402,4 @@ class _PlayerPageState extends State<PlayerPage> {
       ),
     );
   }
-}
-
-/// Yükleniyor / açılamadı durumu (görüntünün üstünde ortada).
-class _Status extends StatelessWidget {
-  const _Status({required this.session});
-
-  final PlaybackSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final s = session;
-    final stream = s.streamCount > 0 ? ' · Akış ${s.streamIndex + 1}/${s.streamCount}' : '';
-    if (s.status == PlaybackStatus.loading) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox.square(
-              dimension: 40,
-              child: CircularProgressIndicator(color: RedoxRoles.primaryContainer, strokeWidth: 3),
-            ),
-            const SizedBox(height: 12),
-            Text('Yükleniyor$stream', style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
-          ],
-        ),
-      );
-    }
-    // Açılamadı: odak "Tekrar dene"de (yeni odak alanı, kendiliğinden odak).
-    return Center(
-      child: FocusScope(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 420),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: RedoxRoles.surfaceContainer,
-            borderRadius: BorderRadius.circular(RedoxRadius.xl),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${s.channel.name} açılamadı',
-                textAlign: TextAlign.center,
-                style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                s.streamCount == 0 ? 'Bu kanalın yayın adresi yok.' : 'Bütün akışlar denendi, yanıt gelmedi.',
-                textAlign: TextAlign.center,
-                style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  PrimaryButton(label: 'Tekrar dene', icon: RedoxIcons.sync, autofocus: true, onPressed: s.retry),
-                  GlassButton(label: 'Sonraki kanal', icon: RedoxIcons.next, onPressed: () => s.zap(1)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Clock extends StatelessWidget {
-  const _Clock(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-      color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.85),
-      borderRadius: BorderRadius.circular(RedoxRadius.full),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const RedoxIcon(RedoxIcons.clock, color: RedoxRoles.tertiary, size: 18),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: RedoxType.labelLg.copyWith(color: RedoxRoles.onSurface, fontFeatures: RedoxType.tabular),
-        ),
-      ],
-    ),
-  );
-}
-
-/// Girilen kanal numarası (sol üstte, büyük).
-class _Digits extends StatelessWidget {
-  const _Digits(this.digits);
-
-  final String digits;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.9),
-      borderRadius: BorderRadius.circular(RedoxRadius.md),
-      border: Border.all(color: RedoxRoles.tertiary, width: 2),
-    ),
-    child: Text(
-      digits,
-      style: Theme.of(context).textTheme.headlineMedium!
-          .copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w800, fontFeatures: RedoxType.tabular),
-    ),
-  );
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: RedoxRoles.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(RedoxRadius.full),
-    ),
-    child: Text(text, style: RedoxType.labelLg.copyWith(color: RedoxRoles.onSurface)),
-  );
 }

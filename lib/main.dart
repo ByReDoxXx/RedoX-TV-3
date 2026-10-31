@@ -10,7 +10,7 @@ import 'core/content/data_pack.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
 import 'core/layout/form_factor.dart';
-import 'features/player/stream_probe.dart';
+import 'core/playback/stream_probe.dart';
 import 'features/tv/tv_content.dart';
 import 'features/tv/tv_guide_controller.dart';
 

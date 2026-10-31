@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
-import 'package:redox_tv/features/player/playback_session.dart';
+import 'package:redox_tv/core/playback/playback_session.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/channel_drawer.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';

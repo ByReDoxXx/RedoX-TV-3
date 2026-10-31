@@ -6,7 +6,7 @@ import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_icon.dart';
-import '../engine/playback_engine.dart';
+import '../../../core/playback/engine/playback_engine.dart';
 
 /// Görüntü ölçeği seçenekleri.
 enum VideoScale {
