@@ -28,6 +28,11 @@ class HomeHeader extends StatelessWidget {
     this.onRemote,
   });
 
+  /// Logo işareti: TV/tablet 44 dp. Telefonda 56 dp (kullanıcı isteği:
+  /// biraz büyüsün); başlıkta yer var, dokunma hedefi de 48'i aşar.
+  static const double logoSize = 44;
+  static const double phoneLogoSize = 56;
+
   final String clock;
   final String profileName;
 
@@ -45,20 +50,21 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final logo = SvgPicture.asset(BrandAssets.mark, width: 44, height: 44, semanticsLabel: 'RedoX TV');
-    if (Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone) {
+    final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
+    final logo = SvgPicture.asset(
+      BrandAssets.mark,
+      width: phone ? phoneLogoSize : logoSize,
+      height: phone ? phoneLogoSize : logoSize,
+      semanticsLabel: 'RedoX TV',
+    );
+    if (phone) {
       return Row(
         children: [
           Semantics(
             button: true,
             label: 'Anasayfa',
             excludeSemantics: true,
-            child: InkWell(
-              onTap: onHome,
-              customBorder: const CircleBorder(),
-              // 48 dp dokunma hedefi (M3).
-              child: Padding(padding: const EdgeInsets.all(2), child: logo),
-            ),
+            child: InkWell(onTap: onHome, customBorder: const CircleBorder(), child: logo),
           ),
           const Spacer(),
           // Sıra (kullanıcı isteği): Arama · Kumanda · Diğer.

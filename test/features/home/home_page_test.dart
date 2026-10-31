@@ -150,6 +150,11 @@ void main() {
       expect(headerX('Anasayfa'), lessThan(headerX('Arama')));
       expect(headerX('Arama'), lessThan(headerX('Kumanda')));
       expect(headerX('Kumanda'), lessThan(headerX('Diğer')));
+      // Telefonda logo büyük (kullanıcı isteği).
+      expect(
+        tester.getSize(find.descendant(of: find.byType(HomeHeader), matching: find.bySemanticsLabel('Anasayfa'))).width,
+        HomeHeader.phoneLogoSize,
+      );
 
       // Vitrin düğmeleri yan yana; telefonda "OK" ipucu yok (kumanda yok).
       final primaryY = tester.getCenter(find.text('Canlı yayına gir')).dy;
