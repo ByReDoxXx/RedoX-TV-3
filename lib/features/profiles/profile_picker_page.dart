@@ -109,6 +109,8 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     final t = Theme.of(context).textTheme;
     final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
     final diameter = phone ? 84.0 : 112.0;
+    // TV'de 540 dp yüksekliğe logo, başlık ve profil satırı birlikte sığar.
+    final logo = phone ? 180.0 : 150.0;
     return Scaffold(
       backgroundColor: RedoxSeeds.obsidian,
       body: DecoratedBox(
@@ -127,8 +129,10 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
               listenable: _store,
               builder: (context, _) => Column(
                 children: [
-                  const SizedBox(height: 24),
-                  SvgPicture.asset(BrandAssets.mark, width: 56, height: 56, semanticsLabel: 'RedoX TV'),
+                  const SizedBox(height: 16),
+                  // Tam logo: işaret ve altında "RedoX TV" yazısı (kullanıcı isteği);
+                  // karosu zeminden biraz açık, uygulama simgesi gibi durur.
+                  SvgPicture.asset(BrandAssets.logo, width: logo, height: logo, semanticsLabel: 'RedoX TV'),
                   const Spacer(),
                   Text('Kim izliyor?', style: t.headlineLarge!.copyWith(color: RedoxRoles.onSurface)),
                   const SizedBox(height: 32),
