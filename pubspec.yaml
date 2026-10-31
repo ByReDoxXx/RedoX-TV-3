@@ -31,6 +31,7 @@ flutter:
     - assets/brand/redox-logo.svg
     - assets/brand/redox-mark.svg
     - assets/icons/
+    - assets/channels/
 
   fonts:
     # Değişken yazı tipi (OFL), tek eksen: wght 100–800. FontWeight -> wght.

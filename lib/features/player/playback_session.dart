@@ -26,7 +26,7 @@ class PlaybackSession extends ChangeNotifier {
     required this.engine,
     required this.channels,
     required int initialIndex,
-    this.startupTimeout = const Duration(seconds: 10),
+    this.startupTimeout = defaultStartupTimeout,
     this.staleErrorWindow = const Duration(seconds: 1),
   }) : assert(channels.isNotEmpty) {
     engine.state.addListener(_onEngine);
@@ -39,9 +39,13 @@ class PlaybackSession extends ChangeNotifier {
   /// Yukarı/aşağı ile gezilen kanal dizisi.
   final List<LiveChannel> channels;
 
-  /// Görüntünün gelmesi için beklenen en uzun süre. Eski sürüm TV'de 2,5 sn
-  /// bekliyordu; test yayınları emülatörde daha geç açıldığı için 10 sn.
+  /// Görüntünün gelmesi için beklenen en uzun süre. Eski sürüm (ExoPlayer)
+  /// TV'de 2,5 sn bekliyordu; mpv gerçek kanalları Chromecast with Google TV'de
+  /// 6–12 sn'de açtı (ölçüldü), 10 sn sınırında kanallar bir açılıp bir
+  /// açılmıyordu.
   final Duration startupTimeout;
+
+  static const defaultStartupTimeout = Duration(seconds: 15);
 
   /// Hatayla yedek akışa geçtikten sonra bu süre gelen hatalar eski akışındır
   /// (emülatörde açılmayan adres iki hata bildirdi; ikincisi yedek akışı da

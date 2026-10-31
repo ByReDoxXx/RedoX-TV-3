@@ -7,7 +7,10 @@ import 'features/shell/root_shell.dart';
 import 'features/tv/tv_content.dart';
 
 class RedoxApp extends StatelessWidget {
-  const RedoxApp({super.key});
+  const RedoxApp({super.key, required this.tv});
+
+  /// Televizyon kanalları (gömülü M3U listesinden, main.dart).
+  final TvContent tv;
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +19,9 @@ class RedoxApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: RedoxTheme.dark(formFactor: FormFactor.current),
       themeMode: ThemeMode.dark,
-      // Açılış: Anasayfa. Veri katmanı yazılana kadar örnek içerikle.
-      home: const RootShell(home: HomeContent.preview, tv: TvContent.preview),
+      // Açılış: Anasayfa. Anasayfa veri katmanı yazılana kadar örnek içerikle;
+      // Televizyon gerçek kanal listesiyle.
+      home: RootShell(home: HomeContent.preview, tv: tv),
     );
   }
 }

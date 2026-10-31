@@ -16,9 +16,12 @@ import '../../../core/ui/status_badge.dart';
 /// Stitch referansından ("Canlı önizleme") esinlenildi; teknik bilgi
 /// (bit hızı, tampon) oynatıcı yazılana kadar gösterilmez.
 class ChannelPreview extends StatelessWidget {
-  const ChannelPreview({super.key, required this.channel, this.onWatch});
+  const ChannelPreview({super.key, required this.channel, this.onWatch, this.video});
 
   final LiveChannel channel;
+
+  /// Canlı önizleme görüntüsü; null ise kanal logosu.
+  final Widget? video;
   final VoidCallback? onWatch;
 
   /// 540 dp TV yüksekliğinde düğmeler dahil sığacak genişlik (16:9 görsel).
@@ -46,7 +49,7 @@ class ChannelPreview extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ChannelLogo(name: c.name, logoUrl: c.logoUrl, alignment: Alignment.center),
+                    video ?? ChannelLogo(name: c.name, logoUrl: c.logoUrl, alignment: Alignment.center),
                     if (c.live) const Positioned(top: 8, left: 8, child: StatusBadge(label: 'CANLI', pulse: true)),
                     Positioned(
                       right: 8,
@@ -80,20 +83,25 @@ class ChannelPreview extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              c.programTitle,
-              style: t.titleLarge!.copyWith(color: RedoxRoles.onSurface),
+              c.programTitle ?? 'Yayın akışı bilgisi yok',
+              style: t.titleLarge!.copyWith(
+                color: c.programTitle == null ? RedoxRoles.onSurfaceVariant : RedoxRoles.onSurface,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Text(
-              '${c.timeRange} · ${c.genre}',
+              // Yayın akışı yoksa: kategori ve akış sayısı.
+              [c.timeRange ?? c.category, c.genre ?? '${c.streams.length} akış'].join(' · '),
               style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant, fontFeatures: RedoxType.tabular),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 10),
-            RedoxProgressBar(value: c.progress, color: c.accent.fill),
+            if (c.progress != null) ...[
+              const SizedBox(height: 10),
+              RedoxProgressBar(value: c.progress!, color: c.accent.fill),
+            ],
             if (c.next != null) ...[
               const SizedBox(height: 8),
               Text(

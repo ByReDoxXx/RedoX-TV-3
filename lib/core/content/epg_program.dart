@@ -1,13 +1,19 @@
 /// EPG çizelgesindeki tek program. Saatler gün başından dakikadır (20:30 →
 /// 1230); veri katmanı (XMLTV) yazıldığında tarih/saat dilimiyle eşlenecek.
 class EpgProgram {
-  const EpgProgram({required this.title, required this.start, required this.end});
+  const EpgProgram({required this.title, required this.start, required this.end, this.known = true});
+
+  /// Yayın akışı bilinmeyen kanalın tek bloğu: çizelge penceresini kaplar.
+  const EpgProgram.unknown() : title = 'Yayın akışı bilgisi yok', start = 0, end = 48 * 60, known = false;
 
   final String title;
   final int start;
   final int end;
 
-  bool isLiveAt(int minute) => start <= minute && minute < end;
+  /// false: gerçek program değil (saat ve ilerleme yazılmaz).
+  final bool known;
+
+  bool isLiveAt(int minute) => known && start <= minute && minute < end;
 
   /// "20:30" → 1230; biçim tutmazsa null.
   static int? parseClock(String text) {

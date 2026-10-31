@@ -11,6 +11,7 @@ import 'playback_engine.dart';
 /// `MediaKit.ensureInitialized()` çağrılmış olmalı (main.dart).
 class MediaKitEngine implements PlaybackEngine {
   MediaKitEngine() {
+    unawaited(_tune());
     final s = _player.stream;
     _subscriptions.addAll([
       s.playing.listen((v) => _update(_state.value.copyWith(playing: v))),
@@ -29,6 +30,18 @@ class MediaKitEngine implements PlaybackEngine {
 
   final _player = Player();
   late final _video = VideoController(_player);
+
+  /// Canlı yayında açılışı hızlandırır: ffmpeg yayın biçimini varsayılan 5 sn
+  /// yerine 1 sn çözümler (IPTV akışlarında yeterli). Ağ beklemesi 10 sn.
+  /// (Doğrudan çizim, vo=mediacodec_embed, denendi: gerçek TV'de "Could not
+  /// open codec." verdi; kullanılmıyor.)
+  Future<void> _tune() async {
+    final native = _player.platform;
+    if (native is! NativePlayer) return;
+    await native.setProperty('demuxer-lavf-analyzeduration', '1');
+    await native.setProperty('network-timeout', '10');
+  }
+
   final _state = ValueNotifier(const EngineState());
   final _errors = StreamController<String>.broadcast();
   final _subscriptions = <StreamSubscription<Object?>>[];

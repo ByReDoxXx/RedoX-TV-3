@@ -16,10 +16,10 @@ Görsel ilham: kullanıcının verdiği Stitch Anasayfa ekranı (`stitch_redox_t
 ## 1. Birim ve tuval
 
 - **1 spec px = 1 dp.** CSS pikseli ve Android dp ikisi de yoğunluktan bağımsız referans birimdir. rem = 16 px.
-- **TV tuvali 960×540 dp.** Kaynak: Android TV tasarım rehberi (developer.android.com/design/ui/tv/guides/styles/layouts): "Always design at MDPI resolution at 960px × 540px", "At MDPI 1px = 1dp". Önceki "1920×1080 dp" varsayımı yanlıştı ve kaldırıldı.
+- **TV tuvali 960×540 dp** (`RedoxMetrics`, `PageLayout`). Kaynak: Android TV tasarım rehberi (developer.android.com/design/ui/tv/guides/styles/layouts): "Always design at MDPI resolution at 960px × 540px", "At MDPI 1px = 1dp". Önceki "1920×1080 dp" varsayımı yanlıştı ve kaldırıldı.
   - 1080p arayüzde 1 dp = 2 px, 4K arayüzde 1 dp = 4 px olur. Bu oranlar sayfadan çıkarımdır, cihazda ölçülmedi.
   - Bazı kutular 1080p'de 240 dpi kullanır; bu durumda tuval 1280×720 dp olur. Yerleşim genişliğe göre hesaplanır, sabit değildir.
-- **TV kenarları:**
+- **TV kenarları** (`RedoxSpace`):
   - Yatay: spec'in `margin-tv` değeri, 64 dp.
   - Dikey: 27 dp. Spec'in 64'ü 540 dp yükseklikte %24 eder. Android TV'nin %5 taşma kuralı 540 × 0,05 ≈ 27 dp verir.
 
@@ -29,7 +29,7 @@ Görsel ilham: kullanıcının verdiği Stitch Anasayfa ekranı (`stitch_redox_t
 
 Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyla aynı çizimdir (piksel hizalı, en iyi kayma 0,0); fark zemindedir: lacivert yerine saf siyah.
 
-**Tohumlar logodan ölçüldü** (2048 px görsel, 1024 px'e ölçeklenip boğa ve halka bölgesinde):
+**Tohumlar logodan ölçüldü** (`RedoxSeeds`; 2048 px görsel, 1024 px'e ölçeklenip boğa ve halka bölgesinde):
 
 | Tohum | Değer | Ölçüm |
 |---|---|---|
@@ -42,7 +42,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 - Beyaz düğme yazısı ≥ 4,5:1 olmalı.
 - Odak halkası kartta (`#1F1F1F`) ≥ 3:1 olmalı.
 
-**Roller M3 sadakat (fidelity) şemasıyla hesaplanır.** Bu Stitch'in yöntemidir. Kanıt:
+**Roller M3 sadakat (fidelity) şemasıyla hesaplanır** (`RedoxTonal`, `RedoxRoles`). Bu Stitch'in yöntemidir. Kanıt:
 - Eski tohumlar (`#E61638 #FF9E1B #FFD54F #0D0E11`) bu şemayla ilk DESIGN.md'nin 44 rolünü **birebir** üretti (0/44 fark).
 - Yeni roller aynı hesapla üretildi ve DESIGN.md YAML'ına yazıldı.
 - `redox_roles_test.dart`, 44 rolün `RedoxTonal.scheme` ile eşleştiğini denetler.
@@ -79,7 +79,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 
 ## 3. Yazı
 
-- **Sora** (OFL, google/fonts `ofl/sora`), değişken yazı tipi, wght 100–800. fontTools ile doğrulandı:
+- **Sora** (`RedoxType`; OFL, google/fonts `ofl/sora`), değişken yazı tipi, wght 100–800. fontTools ile doğrulandı:
   - Türkçe harflerin hepsi var.
   - `tnum` var: tüm rakamlar 676 birim.
   - `₺` ve `→` glifleri **yok**. Görünen metinde `→` yerine `–` kullanılır.
@@ -94,11 +94,11 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 
 ## 4. Şekil, boşluk, derinlik
 
-- **Köşeler:** 4 / 8 / 12 / 16 / 24 / tam. **Boşluk:** 4 / 8 / 16 / 24 / 40, oluk 24 (TV 48), kenar 24 (TV 64).
+- **Köşeler** (`RedoxRadius`): 4 / 8 / 12 / 16 / 24 / tam. **Boşluk** (`RedoxSpace`): 4 / 8 / 16 / 24 / 40, oluk 24 (TV 48), kenar 24 (TV 64).
 - **Odak:**
   - Büyüme: TV 1.08, masaüstü ve tablet 1.04, birincil düğme 1.06.
-  - Yay: M3E `spatialFast` (sertlik 800, sönüm 0,6).
-- **Odak halkası:** 2 dp kızıl çizgi + aura (0 8 32, kızıl %40) + ışıma (0 16 64, amber %20).
+  - Yay: M3E `spatialFast` (`M3EMotion`; sertlik 800, sönüm 0,6).
+- **Odak halkası** (`FocusGlow`, `RedoxElevation`): 2 dp kızıl çizgi + aura (0 8 32, kızıl %40) + ışıma (0 16 64, amber %20).
 - **Çelişki 4 – ışıma değerleri.** "Focus & Kinetic Glow" bölümü %45 / %25 ve iç vurgu veriyor; "Focus Elevation" bölümü ofset ve bulanıklıkla birlikte %40 / %20.
 
   **Karar:** Ölçüleri tam olan "Focus Elevation" değerleri kullanılır. Flutter'da iç gölge yoktur.
@@ -111,7 +111,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 
 ## 5. Bileşen yorumları
 
-- **Gezinme rayı: M3 Expressive (kullanıcı isteği, 2026-10-31).** Kullanıcı eski rayı beğenmedi ve M3 Expressive istedi.
+- **Gezinme rayı: M3 Expressive (`RedoxNavRail`; kullanıcı isteği, 2026-10-31).** Kullanıcı eski rayı beğenmedi ve M3 Expressive istedi.
   - Spec'teki "sol kenara yaslı asimetrik hap" M3E ile çelişir. **Karar: M3E.**
   - Ölçü ve renkler, Compose Material 3 belirteç dosyalarından okundu (androidx `NavigationRailCollapsedTokens`, `…ExpandedTokens`, `…VerticalItemTokens`, `…HorizontalItemTokens`, `…ColorTokens`). m3.material.io sayfası metin olarak okunamadı.
   - **Daralmış:** 96 dp, `surface`; gösterge 56 × 32 dp hap; öğe arası 4 dp; üst boşluk 44 dp.
@@ -129,7 +129,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - Seçili öğe dinlenirken parlamaz; parıltı ve halka yalnızca odaktadır (halka ölçeği 1, büyüme yok).
   - Açık rayda ana öğeler kaydırılır (TV'de 9 × 56 dp sığmaz). Kaydırma alanı keser; odak halkası için 4 dp pay bırakılır.
   - Kanıt: `test/core/ui/nav_rail_test.dart` (konumlar, gösterge ölçüsü ve rengi, menü düğmesi).
-- **Telefon alt menüsü (kullanıcı isteği, 2026-10-31).** Telefonda ray yoktur. Ray 411 dp ekranın dörtte birini alıyordu; emülatörde kartlar ve yazılar kesildi. Yerine alt menü gelir.
+- **Telefon alt menüsü (`RedoxBottomBar`; kullanıcı isteği, 2026-10-31).** Telefonda ray yoktur. Ray 411 dp ekranın dörtte birini alıyordu; emülatörde kartlar ve yazılar kesildi. Yerine alt menü gelir.
   - Sıra: TV · Radyo · Film · Dizi · Favori. Beş öğe (M3 sınırı).
     - Anasayfa çubukta yoktur; başlıktaki logoya dokununca gidilir (kullanıcı isteği). Anasayfadayken hiçbir öğe seçili değildir.
     - Kumanda çubuktan alındı; önce başlığa, sonra "Diğer" sayfasına taşındı (kullanıcı isteği: başlıkta göze batıyordu).
@@ -150,11 +150,11 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - 20 dp denendi: emülatörde yan yana etiketler (~5 dp) birbirine değdi.
   - Etiketin iki yanında 4 dp pay vardır. Yuvaya sığmayan etiket ("Çoklu ekran", "QR kaynak") kesilmez, iki satıra iner. Satır üste hizalıdır, halkalar aynı hizada kalır.
 - **TV raf aralığı (kullanıcı isteği):** kartlar arası 48 → 16 dp. Odaktaki kart 1,08 büyür ve 4 dp halka alır; 16 dp'de komşuya değmez.
-- **Düğmeler küçüldü (kullanıcı isteği):**
+- **Düğmeler küçüldü (`PrimaryButton`, `GlassButton`, `RedoxButtonSize`; kullanıcı isteği):**
   - Hap düğmeler 48 → 40 dp yükseklikte, yan boşluk 24 → 16 dp. Compose TV Material düğmesi ve M3 ortak düğmeler 40 dp'dir. Dokunmatikte isabet alanı 48 dp kalır.
   - TV ikon düğmesi 56 → 40 dp (Compose TV IconButton).
 - **Başlık sırası (kullanıcı isteği):** logo · arama · profil · saat. Arama kutusu profile kadar uzanır (16 dp boşluk); saat en sağdadır. Kanıt: `home_page_test.dart`.
-- **Arama kutusu iki kiplidir (TV emülatöründe görülen sorunlar üzerine):**
+- **Arama kutusu iki kiplidir (`HeaderSearch`; TV emülatöründe görülen sorunlar üzerine):**
   - Sorunlar:
     - D-pad kutunun üstünden geçerken klavye kendiliğinden açılıyordu.
     - Tek satırlı alan sol/sağ tuşlarını tutuyordu.
@@ -165,7 +165,7 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - **Teknik not:** Android Geri'yi hem tuş hem "pop" olarak iletir. Tuşta yakalamak pop'u durdurmaz; emülatörde ikisi birden işledi.
     - Flutter 3.47'de `didPopRoute` gözlemcileri kayıt sırasıyla sorulur ve Navigator önce gelir.
     - Bu yüzden yazma kipindeki kutu, kök sayfa koruyucusuna (`DoubleBackToExit`) Geri işleyicisi olarak kaydolur.
-- **Anasayfada Geri (kullanıcı isteği: doğrudan çıkmasın):** ilk basışta "Çıkmak için tekrar Geri'ye basın" uyarısı çıkar. 2 sn içindeki ikinci basış uygulamadan çıkar.
+- **Anasayfada Geri (`DoubleBackToExit`; kullanıcı isteği: doğrudan çıkmasın):** ilk basışta "Çıkmak için tekrar Geri'ye basın" uyarısı çıkar. 2 sn içindeki ikinci basış uygulamadan çıkar.
   - Kanıt: `test/core/ui/header_search_test.dart` ve TV emülatörü. Sırasıyla doğrulandı:
     - kutuya gelince klavye kapalı;
     - OK ile klavye açılıyor; "qw" yazıldı;
@@ -177,35 +177,53 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 - **TV'de odak hep görünür:** Android'in varsayılan "touch" vurgu kipinde odak halkası ilk tuşa kadar gizliydi (emülatörde görüldü). TV'de `FocusHighlightStrategy.alwaysTraditional` kullanılır (`lib/main.dart`). Kanıt: emülatör, açılışta "Canlı yayına gir" halkalı; D-pad sol, ray öğesini açar.
 - **Ray açılış eğrisi:** spec `cubic-bezier(0.2, 0, 0, 1)`; süre spec'te yok, M3 `medium4` = 400 ms seçildi.
 - **Radyo düğmesi:** "obsidyen merkez, amber halka". Seçili radyo düğmesinin içi obsidyen, halka ve noktası amberdir.
-- **Nabız atan nokta:** spec süre vermez. Zip'teki `animate-pulse` değeri kullanıldı: 2 sn, opaklık 1 → 0,5. Sistem animasyonları kapalıysa nokta sabit kalır.
-- **Medya kartı rampası:** spec'teki doğrusal rampa (alt üçte bir, %0 → %95). Çok açık afişlerde başlığın üst kısmı rampanın düşük opaklık bölgesine düşer. Bu yüzden rampa kontrastı **garanti etmez**. Gerçek afişlerle bakılıp gerekirse rampa başlangıcı yukarı çekilmeli; bu açık nokta olarak bırakıldı.
+- **Nabız atan nokta** (`StatusBadge`): spec süre vermez. Zip'teki `animate-pulse` değeri kullanıldı: 2 sn, opaklık 1 → 0,5. Sistem animasyonları kapalıysa nokta sabit kalır.
+- **Medya kartı rampası** (`MediaCard`): spec'teki doğrusal rampa (alt üçte bir, %0 → %95). Çok açık afişlerde başlığın üst kısmı rampanın düşük opaklık bölgesine düşer. Bu yüzden rampa kontrastı **garanti etmez**. Gerçek afişlerle bakılıp gerekirse rampa başlangıcı yukarı çekilmeli; bu açık nokta olarak bırakıldı.
 - **Televizyon sayfası (kullanıcı isteği, 2026-10-31).** Üstte sayılı kategori çipleri ve görünüm anahtarı, altta seçili görünüm. Kullanıcının Stitch referansından esinlenildi, aynısı değil. Teknik panel, numara tuş takımı ve ipucu şeridi alınmadı.
   - **Anahtar:** "Kart görünümü | EPG çizelgesi". İkonludur; seçili parça yalnız ikon, seçili olmayanın adı yazılı. Ağaç her durumda aynıdır; seçim değişince odak parçada kalır (emülatörde görüldü).
   - **Çip satırı kayar:** kaydırılabilen uçta "<" / ">" oku ve zemine solma çıkar. Kayma alanı sayfa kenarında başlar; ekran kenarından başlasaydı odakla kayan çip rayın altına girerdi. Odaktaki çip okun altında kalırsa satır ok payı kadar daha kayar.
   - **Kart görünümü:** TV/tablette 3 sütun ve sağda 280 dp önizleme paneli; telefonda 2 sütun, panel yok.
     - İlk OK/dokunma önizler (altın kenarlık), aynı kanalda ikincisi tam ekran açar. Önizleme odakla değişmez. Açılışta panelde yönerge durur.
+    - **Önizleme canlı oynar (kullanıcı isteği):** ilk OK panelde yayını açar (`ChannelPreview`, kendi `PlaybackSession`'ı ile). Görüntü gelene kadar logo ve bekleme göstergesi, açılmazsa "Yayın açılamadı" durur. Görüntü yüzeyi baştan kurulur, logo üstünü örter: yüzey ancak "oynuyor"da kurulunca Android'de media_kit görüntüyü hiç çözmedi, panel sonsuza dek bekledi (gerçek TV'de görüldü, düzeltildi). Tam ekrana geçerken önizleme durur, dönünce yeniden başlar; kategori değişince ve sayfadan çıkınca durur.
+    - **Odaktaki kart ortalanır (`CenterOnFocus`):** varsayılan odak kaydırması kartı kenara yaslıyordu; büyüyen kart ve halkası ızgaranın kenarında kesiliyordu (gerçek TV'de görüldü). D-pad odağında kart kayma alanının ortasına getirilir; dokunmatikte kaydırma yapılmaz.
     - Sık kart (`ChannelTile`, kullanıcının ikinci referansından): logo karosu, numara ve CANLI, kanal adı, program, ince ilerleme çizgisi. 16:9 görsel yoktur.
     - Kart yazıları 12/14 dp'dir. Bu, TV'nin 16 dp yazı tabanının bilinçli istisnasıdır (kullanıcı isteği: yazılar çok büyüktü). 960 dp tuvalde 12 dp, 1080p ekranda 24 px eder.
     - TV'de düğmelerin dokunma alanı büyütülmez (`MaterialTapTargetSize.shrinkWrap`). 40 dp düğmeler 48'e çıkmaz, böylece panel düğmeleri 540 dp'ye sığar.
-  - **EPG çizelgesi:** solda kanal sütunu, sağda zaman ekseni ve kızıl "şimdi" çizgisi. Yatay kaydırma yoktur: pencere genişliğe sığan, yarım saatin katı uzunluktadır ve şimdiden 30 dk önce başlar. Dar blokta saat (100 dp altı) ve başlık (44 dp altı) yazılmaz. Programa OK o kanalı açar. Veri katmanı (XMLTV) yazılana kadar çizelge şimdiki/sonraki programdan türetilir.
-  - **Tam ekran:** oynatıcı henüz yok. Yer tutucu sayfada kanal kimliği ve program durur; Geri/Esc ile dönülür.
-  - Kanıt: `test/features/tv/tv_page_test.dart` (4K görüntüler `build/tv/televizyon-4k.png`, `epg-4k.png`). TV emülatöründe sırayla doğrulandı: OK → önizleme → OK → tam ekran → Geri → anahtar → EPG → çizelgede gezinme.
+  - **EPG çizelgesi:** solda kanal sütunu, sağda zaman ekseni ve kızıl "şimdi" çizgisi. Yatay kaydırma yoktur: pencere genişliğe sığan, yarım saatin katı uzunluktadır ve şimdiden 30 dk önce başlar. Dar blokta saat (100 dp altı) ve başlık (44 dp altı) yazılmaz. Programa OK o kanalı açar. Yayın akışı (XMLTV) henüz bağlı değil: bilgisi olmayan kanalda tek soluk blok "Yayın akışı bilgisi yok" yazar (`EpgProgram.unknown`), şimdi çizgisi ve ilerleme çizilmez.
+  - **Tam ekran:** `PlayerPage` açılır; ▲▼ kategori süzgecinden bağımsız bütün kanallarda gezer (`RootShell`).
+  - Bileşenler: `TvPage`, anahtar `SegmentedToggle`, çip satırı `ScrollHintRow` + `CategoryChip`, kart `ChannelTile`, panel `ChannelPreview`, çizelge `EpgGrid`.
+  - Kanıt: `test/features/tv/tv_page_test.dart` (4K görüntüler `build/tv/televizyon-4k.png`, `epg-4k.png`, gerçek listeyle `televizyon-gercek-4k.png`, `epg-gercek-4k.png`). TV emülatöründe sırayla doğrulandı: OK → önizleme → OK → tam ekran → Geri → anahtar → EPG → çizelgede gezinme.
+- **Kanal listesi (kullanıcı isteği, 2026-10-31).** Kaynak: kullanıcının verdiği herkese açık M3U (gist `blog-tv.m3u`). Yalnız Türkçe ve şifresiz kanallar alındı; liste uygulamaya gömülüdür (`assets/channels/tr.m3u`, `TvContent.fromM3u`).
+  - 204 kanal, 446 akış. Aynı `tvg-id`'li satırlar tek kanalın akışlarıdır (`M3uParser`); ilk akış gist'inki, ardından eski sürümün listesindeki yedekler.
+  - **Sıra:** gerçek TKGS kanal sırası herkese açık bir kaynakta yok. Kullanıcının seçimiyle eski sürümün sırası kullanıldı (Türksat frekans tablosu satır sırası). Eşleşen 94 kanal eski numarasını korur; kalan 110 kanal 134'ten başlayarak numaralanır. `tvg-chno` olmayan kanal sona eklenir.
+  - **Kategoriler** sabit sıradadır (`TvContent.categoryOrder`): Ulusal, Haber, Spor, Belgesel, Sinema, Müzik, Çocuk, Yaşam, Dini, Kıbrıs, Dünya, Genel, Yerel, Diğer.
+  - Logolar gist'teki `tvg-logo` adresleridir (`ChannelLogo`); yoksa monogram (`ArtworkFallback`).
+  - Alınmayanlar: şifreli/ücretli paketler (beIN, FX, Disney Junior, Baby TV, FilmScreen, FIX Sinema), Azerice kanallar, radyo akışları. Gist'te olmadığı için Kanal D, Star TV, NTV ve Teve2 listede yok.
+  - Gist'te yayın akışı (EPG) adresi yok, `tvg-id`'ler rastgele; EPG ayrı bir kaynaktan bağlanmalı.
+  - Kanıt: `test/core/content/m3u_parser_test.dart`.
 - **Oynatıcı, 1. aşama (kullanıcı isteği, 2026-10-31).** Eski sürümün oynatıcısı örnek alındı (`design/referans-oynatici.jpg`, eski deponun wiki'si).
-  - **Motor: media_kit 1.2.6 (libmpv).** Android/Android TV, Windows ve Linux'ta HLS ve MPEG-TS oynatır; Flutter'ın `video_player`ı Windows/Linux'u desteklemiyor. Motor bir arayüzün (`PlaybackEngine`) arkasındadır; testler sahte motorla koşar.
+  - **Motor: media_kit 1.2.6 (libmpv).** Android/Android TV, Windows ve Linux'ta HLS ve MPEG-TS oynatır; Flutter'ın `video_player`ı Windows/Linux'u desteklemiyor. Motor bir arayüzün (`PlaybackEngine`, uygulaması `MediaKitEngine`) arkasındadır; testler sahte motorla (`FakeEngine`) koşar. Kullanıcı kararı: bütün platformlarda aynı motor.
+    - mpv ayarları: `demuxer-lavf-analyzeduration=1` (HLS'te akış çözümleme süresi kısalır), `network-timeout=10`. Android varsayılanları (`vo=gpu`, `hwdec=auto-safe`) korunur.
+    - `vo=mediacodec_embed` / `hwdec=mediacodec` denendi: Chromecast'te TRT 1 "Could not open codec" verdi ve bazı kanallar kaplamasız siyah kaldı. Geri alındı.
     - APK işlemci başına ~25 MB büyür: CI APK'ları işlemciye göre ayırır (`--split-per-abi`). Linux derlemesi `libmpv-dev` ister.
     - Sürüm derlemesine internet izni eklendi (yalnız hata ayıklama derlemesinde vardı).
+  - Bileşenler: sayfa `PlayerPage`, oturum `PlaybackSession`, çubuk `PlayerBar` + `PlayerHints`, menü `PlayerOptions`, hızlı liste `ChannelDrawer`.
   - **Alt çubuk (eski düzen):** solda logo + numara rozeti, ad, CANLI, ölçülen çözünürlük, "Akış 1/2"; ortada önceki kanal · oynat/duraklat · sonraki kanal; sağda kanal listesi, sonraki akış (birden çok akış varsa), Seçenekler. Odaktaki düğmenin adı üstünde yazar.
     - Oynat/duraklat 92 dp'dir; satırda 48 dp yer kaplar, çubuğun üstünden ve altından taşar. Çevresinde koyu kırmızı (`onPrimaryFixedVariant`) 4 dp çizgi vardır (kullanıcı isteği).
   - **Kumanda:** OK çubuğu açar (odak oynat/duraklatta). ▲▼ kanal değiştirir (uçta başa döner), ◄ hızlı kanal listesi, ► sonraki akış. 0-9 kanal numarası (1,5 sn sonra açılır), tek başına 0 önceki kanal. Geri açık menüyü, listeyi, çubuğu sırayla kapatır; sonra oynatıcıdan çıkar.
+    - Kanal açılamadığında yalnız rakamlar ve ▲▼ / kanal tuşları işler; öteki tuşlar "Tekrar dene" / "Sonraki kanal" düğmelerine gider (cihazda ▲▼ engelleniyordu).
   - **İpuçları:** kanal ya da akış değişince çubuk ve "OK Kontroller · ▲▼ Kanal · ◄ Kanal listesi · ► Sonraki akış" 3,8 sn görünür. Eski sürümde böyleydi; Anasayfadaki kalıcı şerit kaldırılmıştı, bu kısa süreli.
   - **Seçenekler:** Kalite, Ses, Altyazı, Ölçek (16:9 Orijinal / Ekranı doldur / Uzat), Önceki kanal, Oynatıcıdan çık; altta ölçülen boyut ve akış. Kalite listesi yüksekten düşüğe sıralıdır. İşlevi olmayan satır (gece modu, PiP, 2×2, kanalı gizle) gösterilmez: 2. aşama.
-  - **Otomatik yedek akış:** akış hata verirse ya da 10 sn içinde görüntü gelmezse sıradaki akışa geçilir; hepsi açılmazsa "Tekrar dene" / "Sonraki kanal". Eski sürüm TV'de 2,5 sn bekliyordu; test yayınları emülatörde daha geç açıldığı için 10 sn.
+  - **Otomatik yedek akış (`PlaybackSession`):** akış hata verirse ya da 15 sn içinde görüntü gelmezse (`PlaybackSession.defaultStartupTimeout`) sıradaki akışa geçilir; hepsi açılmazsa "Tekrar dene" / "Sonraki kanal". Eski sürüm (ExoPlayer) TV'de 2,5 sn bekliyordu.
+    - Süre ölçümle belirlendi: mpv gerçek kanalları Chromecast with Google TV'de 6–12 sn'de açtı (A Haber 5,9 · ATV 7,9 · TV8 8,3 · Show 8,5 · Halk TV 11,7 sn). İlk sınır 10 sn idi; kanallar bir açılıp bir açılmıyordu.
     - Hatayla geçişten sonraki 1 sn içinde gelen hatalar eski akışın sayılır: emülatörde açılmayan adres iki hata bildirdi, ikincisi yedek akışı da düşürüyordu.
-  - **Test yayınları:** örnek kanallara Mux, Apple (çok sesli/altyazılı) ve Unified Streaming test yayınları bağlı; ULUSAL 2'nin ilk akışı bilerek açılmaz (`.invalid`). Gerçek kanal değildir.
+  - **Test yayınları:** uygulama gerçek kanal listesini oynatır. Mux ve Unified Streaming (çok sesli/altyazılı) test yayınları yalnız önizleme verisinde ve testlerde kullanılır; bir örnek kanalın ilk akışı bilerek açılmaz (`.invalid`). Apple test yayını, Chromecast'te hiç açılmadığı için çıkarıldı.
   - **Doğrulama:** testler (`test/features/player/player_page_test.dart`, 4K görüntüler `build/player/`). TV emülatöründe yayın açıldı, 1920×1080 ölçüldü, kalite izleri listelendi; çubuk, Seçenekler ve kanal listesi çalıştı.
     - **Görüntü emülatörde çizilemiyor:** media_kit emülatörü tanıyıp yazılımsal çizime geçiyor, emülatörün EGL'i bağlam kuramıyor (`EGL_BAD_ATTRIBUTE`). Görüntü gerçek cihazda doğrulanmalı.
     - **Gerçek cihazda doğrulandı (Chromecast with Google TV, Android 14, 32 bit ARM, 2026-10-31):** görüntü ve ses geliyor (1080p); ULUSAL 2'de bozuk ilk akıştan yedeğe geçiliyor; Seçenekler (ses listesi, ölçek "Ekranı doldur", önceki kanal), kanal listesi, numara girişi ve Geri sırası çalışıyor.
-    - Apple test yayını (çok sesli/altyazılı) bu cihazda 10 sn içinde açılmadı; oynatıcı yedek akışa geçti. Hata değil, açılış süresi aşıldı. Bu yüzden çok sesli/altyazılı yayında seçim cihazda doğrulanamadı.
+    - Gerçek kanallar cihazda açıldı (TRT Spor, NOW, ATV, Show, Kanal 7, Habertürk, TV8).
+    - Apple ve Unified Streaming test yayınları bu cihazda mpv ile hiç açılmadı (40 sn'de bile hata yok). Bu yüzden çok sesli/altyazılı yayında seçim cihazda doğrulanamadı.
+    - **Açık sorun:** bazı kanallarda oynatma takılıyor ("kasma"); nedeni henüz bulunmadı.
     - Windows derlemesi denenmedi: proje D:, pub önbelleği C: sürücüsünde olduğu için eklenti bağlantısı (symlink) kurulamıyor. Windows'ta Geliştirici Modu gerekir.
   - **2. aşama:** 15 sn geri sarma ve Canlıya dön, favori, kanalı gizle, gece modu, PiP, 2×2, bit hızı/düşen kare, çalışan akışı kanal başına hatırlama, telefon hareketleri ve mini oynatıcı.
 
@@ -255,9 +273,12 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
 
 ## 7. Doğrulanmayanlar
 
-- Hiçbir şey cihazda çalıştırılmadı. Görüntüler test ortamında çizildi.
+- Oynatıcı gerçek cihazda doğrulandı (5. bölüm). Öteki ekranların görüntüleri test ortamında çizildi ve emülatörde denendi.
+  - Cihazda doğrulandı (2026-10-31): kart kesilmesinin düzeltmesi (`CenterOnFocus`), panelde canlı önizleme (TRT Genç), tam ekran ve dönünce önizlemenin sürmesi.
+  - Cihazda henüz denenmeyenler: açılamayan kanalda ▲▼, 15 sn sınırında yedek akışa geçiş.
+  - TRT Belgesel, TRT Diyanet Çocuk ve TRT Spor'un gist'teki logoları cihazda yüklenmedi; baş harfli yer tutucu çiziliyor.
   - Test ortamı gölgeleri bulanıksız çizer (`debugDisableShadows`).
   - Görüntü alınırken gerçek bulanıklık açılır.
 - Android TV biçim algılaması yok. Biçim şimdilik açılışta verilir; varsayılan TV'dir.
-- Anasayfa'daki içerik örnektir (`HomeContent.preview`). Veri katmanı yazılmadı.
+- Anasayfa'daki içerik örnektir (`HomeContent.preview`). Televizyon sayfası gerçek listeyi kullanır; yayın akışı (EPG) bağlı değil.
 - Simgeler ve TV afişi gerçek bir başlatıcıda görülmedi. Ölçüleri testle, görünüşleri önizleme görüntüleriyle denetlendi.

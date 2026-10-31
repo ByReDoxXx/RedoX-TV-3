@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/content/epg_program.dart';
@@ -8,13 +10,21 @@ import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/category_chip.dart';
+import '../../core/ui/center_on_focus.dart';
+import '../../core/ui/channel_logo.dart';
 import '../../core/ui/channel_tile.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
 import '../../core/ui/segmented_toggle.dart';
+import '../player/engine/media_kit_engine.dart';
+import '../player/engine/playback_engine.dart';
+import '../player/playback_session.dart';
 import 'tv_content.dart';
 import 'widgets/channel_preview.dart';
 import 'widgets/epg_grid.dart';
+
+/// Televizyon sayfasının alt görünümleri.
+enum TvView { cards, epg }
 
 /// Televizyon: üstte sayılı kategori çipleri ve görünüm anahtarı (Kart
 /// görünümü | EPG çizelgesi), altta seçili görünüm. Kart görünümünde
@@ -23,9 +33,6 @@ import 'widgets/epg_grid.dart';
 /// Stitch referansından esinlenildi). Izgara ve çizelge tembel kurulur:
 /// gerçek listelerde binlerce kanal olabilir. Ray, alt menü ve Geri kök
 /// kabuktadır (RootShell).
-/// Televizyon sayfasının alt görünümleri.
-enum TvView { cards, epg }
-
 class TvPage extends StatefulWidget {
   const TvPage({
     super.key,
@@ -35,6 +42,7 @@ class TvPage extends StatefulWidget {
     this.onHome,
     this.onMore,
     this.onChannel,
+    this.engineFactory,
   });
 
   final TvContent content;
@@ -47,8 +55,12 @@ class TvPage extends StatefulWidget {
   /// Telefonda "Diğer" düğmesine basılınca.
   final VoidCallback? onMore;
 
-  /// Kanal tam ekranda izlenmek istenince.
-  final ValueChanged<LiveChannel>? onChannel;
+  /// Kanal tam ekranda izlenmek istenince; tam ekran kapanınca tamamlanır
+  /// (önizleme o zaman sürer).
+  final Future<void> Function(LiveChannel)? onChannel;
+
+  /// Önizleme oynatıcısının motoru; null ise media_kit (testlerde sahte motor).
+  final PlaybackEngine Function()? engineFactory;
 
   /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam
   /// genişlikte 2.
@@ -75,6 +87,49 @@ class _TvPageState extends State<TvPage> {
 
   TvView _view = TvView.cards;
 
+  /// Önizleme panelinde oynayan yayın (ilk OK ile başlar).
+  PlaybackEngine? _previewEngine;
+  PlaybackSession? _previewSession;
+
+  @override
+  void dispose() {
+    _stopPreview();
+    super.dispose();
+  }
+
+  /// Kanalı önizlemeye al ve panelde oynat.
+  void _preview(LiveChannel c) {
+    setState(() => _previewed = c);
+    final index = widget.content.channels.indexOf(c);
+    final session = _previewSession;
+    if (session != null) {
+      session.openAt(index);
+      return;
+    }
+    final engine = (widget.engineFactory ?? MediaKitEngine.new)();
+    _previewEngine = engine;
+    _previewSession = PlaybackSession(engine: engine, channels: widget.content.channels, initialIndex: index);
+  }
+
+  void _stopPreview() {
+    _previewSession?.dispose();
+    final engine = _previewEngine;
+    if (engine != null) unawaited(engine.dispose());
+    _previewSession = null;
+    _previewEngine = null;
+  }
+
+  /// Tam ekran. Önizleme durur (zayıf cihazda iki yayın birden çözülmesin),
+  /// tam ekran kapanınca aynı kanalda sürer.
+  Future<void> _watch(LiveChannel c) async {
+    final open = widget.onChannel;
+    if (open == null) return;
+    final resume = _previewed;
+    setState(_stopPreview);
+    await open(c);
+    if (mounted && resume != null && identical(_previewed, resume)) _preview(resume);
+  }
+
   List<LiveChannel> get _channels => _category == null
       ? widget.content.channels
       : [
@@ -85,6 +140,7 @@ class _TvPageState extends State<TvPage> {
   void _select(String? category) => setState(() {
     _category = category;
     _previewed = null;
+    _stopPreview();
   });
 
   @override
@@ -123,7 +179,7 @@ class _TvPageState extends State<TvPage> {
         scheduleOf: widget.content.scheduleOf,
         now: EpgProgram.parseClock(widget.clock) ?? 0,
         compact: phone,
-        onChannel: widget.onChannel,
+        onChannel: (c) => unawaited(_watch(c)),
         padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: phone ? padding.bottom : 0),
       ),
       TvView.cards => _cardsWithPreview(context, channels, metrics, padding),
@@ -171,11 +227,57 @@ class _TvPageState extends State<TvPage> {
               width: ChannelPreview.width,
               child: previewed == null
                   ? ChannelPreviewHint(touch: metrics.formFactor != FormFactor.tv)
-                  : ChannelPreview(channel: previewed, onWatch: () => widget.onChannel?.call(previewed)),
+                  : ChannelPreview(
+                      channel: previewed,
+                      video: _previewVideo(previewed),
+                      onWatch: () => unawaited(_watch(previewed)),
+                    ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Paneldeki canlı görüntü: açılırken logo ve yükleniyor işareti,
+  /// açılamazsa logo ve uyarı. Görüntü yüzeyi baştan kurulur, logo üstünü
+  /// örter: Android'de media_kit yüzey olmadan görüntüyü çözmüyor, "görüntü
+  /// geldi" hiç gelmiyordu (gerçek TV'de görüldü; tam ekran oynatıcı da
+  /// yüzeyi baştan kurar).
+  Widget? _previewVideo(LiveChannel c) {
+    final session = _previewSession;
+    final engine = _previewEngine;
+    if (session == null || engine == null) return null;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        engine.view(fit: BoxFit.cover),
+        ListenableBuilder(
+          listenable: session,
+          builder: (context, _) {
+            if (session.status == PlaybackStatus.playing) return const SizedBox.shrink();
+            final failed = session.status == PlaybackStatus.failed;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                ChannelLogo(name: c.name, logoUrl: c.logoUrl, alignment: Alignment.center),
+                Align(
+                  alignment: const Alignment(0, 0.75),
+                  child: failed
+                      ? Text(
+                          'Yayın açılamadı',
+                          style: Theme.of(context).textTheme.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                        )
+                      : const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(color: RedoxRoles.primaryContainer, strokeWidth: 2),
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -249,12 +351,15 @@ class _TvPageState extends State<TvPage> {
       ),
       delegate: SliverChildBuilderDelegate((context, i) {
         final c = channels[i];
-        return ChannelTile(
-          channel: c,
-          selected: preview && _previewed == c,
-          // İlk OK/dokunma önizler, aynı kanalda ikincisi tam ekran açar.
-          // Telefonda panel yok: doğrudan tam ekran.
-          onPressed: () => preview && _previewed != c ? setState(() => _previewed = c) : widget.onChannel?.call(c),
+        // Odaktaki kartın satırı ortaya kayar: kenarda büyüyen kart kesiliyordu.
+        return CenterOnFocus(
+          child: ChannelTile(
+            channel: c,
+            selected: preview && _previewed == c,
+            // İlk OK/dokunma önizler, aynı kanalda ikincisi tam ekran açar.
+            // Telefonda panel yok: doğrudan tam ekran.
+            onPressed: () => preview && _previewed != c ? _preview(c) : unawaited(_watch(c)),
+          ),
         );
       }, childCount: channels.length),
     );

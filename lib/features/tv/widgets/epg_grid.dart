@@ -279,11 +279,11 @@ class _Block extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = program;
     final live = p.isLiveAt(now);
-    final past = p.end <= now;
+    final past = p.known && p.end <= now;
     final radius = BorderRadius.circular(RedoxRadius.sm);
-    final fg = past ? RedoxRoles.onSurfaceVariant.withValues(alpha: 0.7) : RedoxRoles.onSurface;
+    final fg = past || !p.known ? RedoxRoles.onSurfaceVariant.withValues(alpha: 0.7) : RedoxRoles.onSurface;
     return Semantics(
-      label: '${p.title}, ${EpgProgram.formatClock(p.start)} – ${EpgProgram.formatClock(p.end)}',
+      label: p.known ? '${p.title}, ${EpgProgram.formatClock(p.start)} – ${EpgProgram.formatClock(p.end)}' : p.title,
       excludeSemantics: true,
       button: true,
       // Ölçek 1: komşu bloklar yan yanadır, büyüyen blok onların altında kalırdı.
@@ -327,7 +327,7 @@ class _Block extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (box.maxWidth >= 100) ...[
+                              if (p.known && box.maxWidth >= 100) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   '${EpgProgram.formatClock(p.start)} – ${EpgProgram.formatClock(p.end)}',

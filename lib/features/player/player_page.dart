@@ -217,10 +217,18 @@ class _PlayerPageState extends State<PlayerPage> {
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) return KeyEventResult.ignored;
     if (_bar && !_hints) _restartBarTimer();
-    if (_options || _drawer || (_bar && !_hints) || _session.status == PlaybackStatus.failed) {
-      return KeyEventResult.ignored;
-    }
+    if (_options || _drawer || (_bar && !_hints)) return KeyEventResult.ignored;
     final key = event.logicalKey;
+    // Açılamadı: ◄► ve OK ekrandaki "Tekrar dene" / "Sonraki kanal"
+    // düğmelerinindir; ▲▼ ve rakamlar yine kanal değiştirir (yoksa kullanıcı
+    // açılmayan kanalda kalıyordu).
+    final zapKey =
+        _digitKeys.containsKey(key) ||
+        key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.channelUp ||
+        key == LogicalKeyboardKey.channelDown;
+    if (_session.status == PlaybackStatus.failed && !zapKey) return KeyEventResult.ignored;
     if (event is KeyRepeatEvent && key != LogicalKeyboardKey.arrowUp && key != LogicalKeyboardKey.arrowDown) {
       return KeyEventResult.handled;
     }

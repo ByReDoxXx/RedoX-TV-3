@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/features/player/playback_session.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/channel_drawer.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
@@ -84,10 +85,19 @@ void main() {
     // Yedek akışa geçişten hemen sonraki hatalar eski akışın sayılır; yeni
     // akışı açılış süresi yakalar.
     expect(find.text('Tekrar dene'), findsNothing);
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(PlaybackSession.defaultStartupTimeout);
     await _settle(tester);
     expect(find.text('Tekrar dene'), findsOneWidget);
     expect(find.textContaining('açılamadı'), findsOneWidget);
+
+    // Açılamadı durumunda da ▲ kanal değiştirir.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await _settle(tester);
+    expect(_bar(tester).channel, _channels[1]);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await _settle(tester);
+    await tester.pump(PlaybackSession.defaultStartupTimeout);
+    await _settle(tester);
 
     e.failing.clear();
     await tester.tap(find.text('Tekrar dene'));
@@ -104,21 +114,21 @@ void main() {
     expect(_bar(tester).streamIndex, 1);
     expect(find.text('Tekrar dene'), findsNothing);
     expect(_bar(tester).resolution, '720p');
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(PlaybackSession.defaultStartupTimeout);
   });
 
   testWidgets('görüntü süresinde gelmezse yedek akışa geçilir', (tester) async {
     final e = FakeEngine()..autoVideo = false;
     await _open(tester, engine: e);
     expect(e.opened.length, 1);
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(PlaybackSession.defaultStartupTimeout);
     await _settle(tester);
     expect(e.opened, _channels.first.streams);
     expect(_bar(tester).streamIndex, 1);
     e.showVideo();
     await _settle(tester);
     expect(find.text('Tekrar dene'), findsNothing);
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(PlaybackSession.defaultStartupTimeout);
   });
 
   testWidgets('▲▼ kanal değiştirir, ► sonraki akış, ◄ kanal listesi', (tester) async {

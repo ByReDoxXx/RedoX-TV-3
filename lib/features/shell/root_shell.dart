@@ -69,6 +69,7 @@ class _RootShellState extends State<RootShell> {
       profileName: widget.home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
+      engineFactory: widget.engineFactory,
       // Oynatıcıda ▲▼ bütün kanallarda gezer (kategori süzgecinden bağımsız).
       onChannel: (c) => Navigator.of(context).push(
         PlayerPage.route(

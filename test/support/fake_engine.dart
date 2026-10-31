@@ -17,6 +17,9 @@ class FakeEngine implements PlaybackEngine {
   final subtitleSelections = <String>[];
   bool disposed = false;
 
+  /// Testin motor listesine eklenir (sayfaların kurduğu motorları izlemek için).
+  void addTo(List<FakeEngine>? list) => list?.add(this);
+
   /// Bu adresler açılınca hata verir.
   final failing = <String>{};
 

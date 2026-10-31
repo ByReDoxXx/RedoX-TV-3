@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
@@ -20,20 +22,21 @@ import 'package:redox_tv/features/tv/widgets/epg_grid.dart';
 import '../../support/fake_engine.dart';
 import '../../support/render.dart';
 
-Widget _app(FormFactor f, {Key? boundary}) => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: RedoxTheme.dark(formFactor: f),
-  home: RepaintBoundary(
-    key: boundary,
-    child: RootShell(
-      home: HomeContent.preview,
-      tv: TvContent.preview,
-      initial: AppSection.tv,
-      // Yerel video kütüphanesi testte yok: sahte motor.
-      engineFactory: FakeEngine.new,
-    ),
-  ),
-);
+Widget _app(FormFactor f, {Key? boundary, TvContent content = TvContent.preview, List<FakeEngine>? engines}) =>
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: RedoxTheme.dark(formFactor: f),
+      home: RepaintBoundary(
+        key: boundary,
+        child: RootShell(
+          home: HomeContent.preview,
+          tv: content,
+          initial: AppSection.tv,
+          // Yerel video kütüphanesi testte yok: sahte motor.
+          engineFactory: () => FakeEngine()..addTo(engines),
+        ),
+      ),
+    );
 
 Future<void> _size(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size;
@@ -98,7 +101,8 @@ void main() {
   testWidgets('ilk OK/dokunma önizler, aynı kanalda ikincisi tam ekran; Geri sayfaya döner', (tester) async {
     await loadSora(tester);
     await _size(tester, const Size(960, 540));
-    await tester.pumpWidget(_app(FormFactor.tv));
+    final engines = <FakeEngine>[];
+    await tester.pumpWidget(_app(FormFactor.tv, engines: engines));
     await _settle(tester);
     final channels = TvContent.preview.channels;
     LiveChannel previewed() => tester.widget<ChannelPreview>(find.byType(ChannelPreview)).channel;
@@ -107,6 +111,10 @@ void main() {
     await _settle(tester);
     expect(previewed(), channels[1]);
     expect(find.byType(PlayerPage), findsNothing);
+    // Önizleme panelde oynar (kullanıcı isteği).
+    expect(engines, hasLength(1));
+    expect(engines.single.opened.first, channels[1].streams.first);
+    expect(tester.widget<ChannelPreview>(find.byType(ChannelPreview)).video, isNotNull);
 
     // Başka kanal: önizleme değişir, tam ekran açılmaz.
     await tester.tap(find.byType(ChannelTile).at(2));
@@ -119,6 +127,8 @@ void main() {
     await _settle(tester);
     final player = tester.widget<PlayerPage>(find.byType(PlayerPage));
     expect(player.channels[player.initialIndex], channels[2]);
+    // Tam ekranda önizleme durur (iki yayın birden çözülmesin).
+    expect(engines.first.disposed, isTrue);
 
     // Geri: önce kanal açılışında görünen çubuk kapanır, sonra oynatıcıdan
     // çıkılır; Televizyon (önizleme korunarak) kalır.
@@ -130,6 +140,9 @@ void main() {
     expect(find.byType(PlayerPage), findsNothing);
     expect(find.byType(TvPage), findsOneWidget);
     expect(previewed(), channels[2]);
+    // Dönüşte önizleme aynı kanalda sürer (yeni motor).
+    expect(engines.last.disposed, isFalse);
+    expect(engines.last.opened.last, channels[2].streams.first);
   });
 
   testWidgets(
@@ -192,6 +205,33 @@ void main() {
     await _settle(tester);
     expect(find.text('ULUSAL 1 HD'), findsWidgets);
   });
+
+  testWidgets(
+    'gerçek liste (yayın akışı yok): kartlar, önizleme ve EPG taşmasız (4K görüntü)',
+    (tester) => withRealShadows(() async {
+      await loadSora(tester);
+      await _size(tester, const Size(960, 540));
+      final content = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync());
+      final key = GlobalKey();
+      await tester.pumpWidget(_app(FormFactor.tv, boundary: key, content: content));
+      await settleAssets(tester, rounds: 2);
+      expect(tester.takeException(), isNull);
+      expect(find.text('TRT Belgesel'), findsOneWidget);
+      expect(find.textContaining('akış · Belgesel'), findsOneWidget, reason: 'program yerine akış sayısı ve kategori');
+
+      await tester.tap(find.byType(ChannelTile).first);
+      await _settle(tester);
+      expect(find.text('Yayın akışı bilgisi yok'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await maybeSnapshot(tester, key, 'build/tv/televizyon-gercek-4k.png', pixelRatio: 4);
+
+      await tester.tap(find.text('EPG çizelgesi'));
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.text('Yayın akışı bilgisi yok'), findsWidgets);
+      await maybeSnapshot(tester, key, 'build/tv/epg-gercek-4k.png', pixelRatio: 4);
+    }),
+  );
 
   for (final (f, size) in [
     (FormFactor.phone, const Size(360, 780)),

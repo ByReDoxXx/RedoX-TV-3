@@ -125,13 +125,14 @@ class ChannelTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  c.programTitle,
+                  // Yayın akışı yoksa: akış sayısı ve kategori.
+                  c.programTitle ?? '${c.streams.length} akış · ${c.category}',
                   style: _program.copyWith(color: RedoxRoles.onSurfaceVariant),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: _progressGap),
-                RedoxProgressBar(value: c.progress, color: c.accent.fill, height: _progressHeight),
+                RedoxProgressBar(value: c.progress ?? 0, color: c.accent.fill, height: _progressHeight),
               ],
             ),
           ),

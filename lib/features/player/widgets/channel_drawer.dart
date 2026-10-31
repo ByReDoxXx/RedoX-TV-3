@@ -166,7 +166,7 @@ class _Row extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        '${c.streams.length} akış · ${c.programTitle}',
+                        '${c.streams.length} akış · ${c.programTitle ?? c.category}',
                         style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

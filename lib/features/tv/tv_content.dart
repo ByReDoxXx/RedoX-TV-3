@@ -1,5 +1,6 @@
 import '../../core/content/epg_program.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/m3u_parser.dart';
 import '../../core/ui/channel_card.dart';
 
 /// Oynatıcıyı denemek için herkese açık test yayınları (gerçek kanal değildir;
@@ -8,13 +9,16 @@ abstract final class _TestStreams {
   /// Mux: Big Buck Bunny (HLS).
   static const mux = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
 
-  /// Apple: Bipbop (HLS; birden çok ses ve altyazı izi: seçicileri denemek için).
-  static const apple =
-      'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8';
+  /// Unified Streaming: Tears of Steel, iki ses izi (İngilizce, İtalyanca):
+  /// ses seçimini denemek için. (Apple'ın çok sesli test yayını gerçek TV'de
+  /// 10 sn'de açılmıyordu.)
+  static const multiAudio =
+      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel-multi-lang.ism/.m3u8';
 
-  /// Unified Streaming: Tears of Steel (HLS).
+  /// Unified Streaming: Tears of Steel, 5 dilde altyazı: altyazı seçimini
+  /// denemek için.
   static const tears =
-      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
+      'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel-wvtt.ism/.m3u8';
 
   /// Bilerek açılmayan adres (.invalid ayrılmış alan adı): otomatik yedek
   /// akış geçişini denemek için.
@@ -28,15 +32,48 @@ class TvContent {
 
   final List<LiveChannel> channels;
 
-  /// Kanallardaki kategoriler, ilk görülme sırasıyla ("Tümü" arayüzdedir).
-  /// (Küme sabiti ekleme sırasını korur.)
-  List<String> get categories => {for (final c in channels) c.category}.toList();
+  /// Gömülü M3U listesinden (assets/channels/tr.m3u).
+  factory TvContent.fromM3u(String text) => TvContent(channels: M3uParser.parse(text));
+
+  /// Çip sırası (eski sürümdeki gibi sabit); listede olmayan kategoriler
+  /// sonda, ilk görülme sırasıyla.
+  static const categoryOrder = [
+    'Ulusal',
+    'Haber',
+    'Spor',
+    'Belgesel',
+    'Sinema',
+    'Müzik',
+    'Çocuk',
+    'Yaşam',
+    'Dini',
+    'Kıbrıs',
+    'Dünya',
+    'Genel',
+    'Yerel',
+    'Diğer',
+  ];
+
+  /// Kanallardaki kategoriler ("Tümü" arayüzdedir).
+  List<String> get categories {
+    // Küme sabiti ekleme sırasını korur.
+    final seen = {for (final c in channels) c.category};
+    return [
+      for (final c in categoryOrder)
+        if (seen.contains(c)) c,
+      for (final c in seen)
+        if (!categoryOrder.contains(c)) c,
+    ];
+  }
 
   /// Kanalın EPG çizelgesi. Veri katmanı (XMLTV) yazılana kadar şimdiki ve
   /// sonraki programdan türetilir; öncesi ve sonrası kategoriye göre örnek
   /// kuşaklarla doldurulur (gerçek veri değildir).
   List<EpgProgram> scheduleOf(LiveChannel c) {
-    final range = c.timeRange.split('–');
+    final timeRange = c.timeRange;
+    final programTitle = c.programTitle;
+    if (timeRange == null || programTitle == null) return const [EpgProgram.unknown()];
+    final range = timeRange.split('–');
     final start = EpgProgram.parseClock(range.first);
     final end = range.length > 1 ? EpgProgram.parseClock(range.last) : null;
     if (start == null || end == null) return const [];
@@ -45,7 +82,7 @@ class TvContent {
     final nextEnd = end + 60;
     return [
       EpgProgram(title: filler.first, start: start - 120, end: start),
-      EpgProgram(title: c.programTitle, start: start, end: end),
+      EpgProgram(title: programTitle, start: start, end: end),
       if (nextTitle != null) EpgProgram(title: nextTitle, start: end, end: nextEnd),
       EpgProgram(title: filler.last, start: nextTitle == null ? end : nextEnd, end: 24 * 60 + 120),
     ];
@@ -90,7 +127,7 @@ class TvContent {
       LiveChannel(
         name: 'ULUSAL 3 HD',
         number: 3,
-        streams: [_TestStreams.tears, _TestStreams.apple],
+        streams: [_TestStreams.tears, _TestStreams.multiAudio],
         category: 'Ulusal',
         programTitle: 'Kırık Kalpler',
         timeRange: '20:00 – 22:15',
@@ -114,7 +151,7 @@ class TvContent {
       LiveChannel(
         name: 'ULUSAL 5 HD',
         number: 5,
-        streams: [_TestStreams.apple, _TestStreams.mux],
+        streams: [_TestStreams.multiAudio, _TestStreams.mux],
         category: 'Ulusal',
         programTitle: 'Gece Sineması',
         timeRange: '20:30 – 22:45',
@@ -126,7 +163,7 @@ class TvContent {
       LiveChannel(
         name: 'HABER 24',
         number: 24,
-        streams: [_TestStreams.tears, _TestStreams.apple],
+        streams: [_TestStreams.tears, _TestStreams.multiAudio],
         category: 'Haber',
         programTitle: 'Ana Haber',
         timeRange: '20:00 – 21:00',
@@ -150,7 +187,7 @@ class TvContent {
       LiveChannel(
         name: 'EKONOMİ TV',
         number: 26,
-        streams: [_TestStreams.apple, _TestStreams.mux],
+        streams: [_TestStreams.multiAudio, _TestStreams.mux],
         category: 'Haber',
         programTitle: 'Piyasa Kapanışı',
         timeRange: '20:00 – 20:45',
@@ -162,7 +199,7 @@ class TvContent {
       LiveChannel(
         name: 'DÜNYA HABER',
         number: 27,
-        streams: [_TestStreams.tears, _TestStreams.apple],
+        streams: [_TestStreams.tears, _TestStreams.multiAudio],
         category: 'Haber',
         programTitle: 'Dünya Bülteni',
         timeRange: '20:45 – 21:15',
@@ -186,7 +223,7 @@ class TvContent {
       LiveChannel(
         name: 'SPOR 2 4K',
         number: 105,
-        streams: [_TestStreams.apple, _TestStreams.mux],
+        streams: [_TestStreams.multiAudio, _TestStreams.mux],
         category: 'Spor',
         programTitle: 'Basketbol Ligi',
         timeRange: '20:30 – 22:30',
@@ -198,7 +235,7 @@ class TvContent {
       LiveChannel(
         name: 'SPOR 3',
         number: 106,
-        streams: [_TestStreams.tears, _TestStreams.apple],
+        streams: [_TestStreams.tears, _TestStreams.multiAudio],
         category: 'Spor',
         programTitle: 'Maç Önü',
         timeRange: '20:00 – 21:00',
@@ -223,7 +260,7 @@ class TvContent {
       LiveChannel(
         name: 'BELGESEL HD',
         number: 42,
-        streams: [_TestStreams.apple, _TestStreams.mux],
+        streams: [_TestStreams.multiAudio, _TestStreams.mux],
         category: 'Belgesel',
         programTitle: 'Derin Uzay',
         timeRange: '20:30 – 21:45',
@@ -235,7 +272,7 @@ class TvContent {
       LiveChannel(
         name: 'DOĞA TV',
         number: 43,
-        streams: [_TestStreams.tears, _TestStreams.apple],
+        streams: [_TestStreams.tears, _TestStreams.multiAudio],
         category: 'Belgesel',
         programTitle: 'Okyanusun Sırları',
         timeRange: '20:00 – 21:00',
@@ -258,7 +295,7 @@ class TvContent {
       LiveChannel(
         name: 'MÜZİK HİT',
         number: 60,
-        streams: [_TestStreams.apple, _TestStreams.mux],
+        streams: [_TestStreams.multiAudio, _TestStreams.mux],
         category: 'Müzik',
         programTitle: 'Haftanın Listesi',
         timeRange: '20:00 – 22:00',
@@ -270,7 +307,7 @@ class TvContent {
       LiveChannel(
         name: 'TÜRKÜ TV',
         number: 61,
-        streams: [_TestStreams.tears, _TestStreams.apple],
+        streams: [_TestStreams.tears, _TestStreams.multiAudio],
         category: 'Müzik',
         programTitle: 'Bozlak Gecesi',
         timeRange: '20:30 – 22:00',
@@ -293,7 +330,7 @@ class TvContent {
       LiveChannel(
         name: 'MİNİK KANAL',
         number: 71,
-        streams: [_TestStreams.apple, _TestStreams.mux],
+        streams: [_TestStreams.multiAudio, _TestStreams.mux],
         category: 'Çocuk',
         programTitle: 'Masal Saati',
         timeRange: '20:15 – 20:45',

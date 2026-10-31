@@ -1,17 +1,18 @@
 import '../ui/channel_card.dart';
 
 /// Canlı kanal (Anasayfa "Son izlenen kanallar" ve Televizyon sayfası).
-/// Veri katmanı (GitHub'daki şifreli JSON) yazıldığında bu modele eşlenecek;
-/// burada ağ veya depolama API'si yoktur.
+/// Program bilgileri (yayın akışı, EPG) isteğe bağlıdır: M3U listelerinde
+/// yoktur; EPG kaynağı (XMLTV) yazılınca dolacak. Burada ağ veya depolama
+/// API'si yoktur.
 class LiveChannel {
   const LiveChannel({
     required this.name,
     required this.number,
     required this.category,
-    required this.programTitle,
-    required this.timeRange,
-    required this.genre,
-    required this.progress,
+    this.programTitle,
+    this.timeRange,
+    this.genre,
+    this.progress,
     this.accent = CardAccent.crimson,
     this.live = false,
     this.next,
@@ -37,15 +38,17 @@ class LiveChannel {
   /// Televizyon sayfasındaki kategori çipi, örn. "Ulusal", "Spor".
   final String category;
 
-  /// Şu an yayındaki program.
-  final String programTitle;
+  /// Şu an yayındaki program; yayın akışı yoksa null.
+  final String? programTitle;
 
   /// Örn. "20:00 – 22:30".
-  final String timeRange;
+  final String? timeRange;
 
   /// Programın türü, örn. "Dram".
-  final String genre;
-  final double progress;
+  final String? genre;
+
+  /// Şimdiki programın ilerlemesi (0–1).
+  final double? progress;
   final CardAccent accent;
 
   /// Canlı yayın rozeti (maç, haber bülteni gibi).
