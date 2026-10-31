@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/redox_palette.dart';
-import '../../core/theme/redox_tonal.dart';
-import '../../core/ui/brand_components.dart';
+import '../../core/theme/redox_colors.dart';
+import '../../core/ui/brand_wordmark.dart';
 import 'sections/component_section.dart';
 import 'sections/icon_section.dart';
 import 'sections/logo_section.dart';
 import 'sections/palette_section.dart';
 import 'sections/shape_section.dart';
+import 'sections/surfaces_section.dart';
 import 'sections/type_section.dart';
 
 /// Stil rehberi sayfası (kaydırılabilir).
@@ -29,45 +29,33 @@ class StyleGuideContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      // Motif 6: zemin dikey gradyanı, üstte mavi parıltı.
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          stops: [0, 0.18, 1],
-          colors: [
-            Color(0x801E3755), // backgroundGlow %50
-            RedoxDarkRoles.surface,
-            RedoxPalette.backgroundDeep,
-          ],
-        ),
-      ),
+    return ColoredBox(
+      color: RedoxRoles.surfaceContainerLowest,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(72, 64, 72, 32),
+        padding: const EdgeInsets.fromLTRB(48, 40, 48, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const BrandWordmark(fontSize: 48),
-                const SizedBox(width: 20),
-                Text('3.0 · Stil Rehberi', style: t.headlineMedium!.copyWith(color: scheme.onSurface)),
+                const BrandWordmark(fontSize: 40),
+                const SizedBox(width: 16),
+                Text('3.0 · Stil Rehberi', style: t.headlineMedium!.copyWith(color: RedoxRoles.onSurface)),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Material 3 Expressive + logodan tasarım dili · tüm değerler uygulamanın kendi belirteçlerinden çizilir',
-              style: t.bodyLarge!.copyWith(color: scheme.onSurfaceVariant),
+              'RedoX TV Expressive (DESIGN.md) · Material 3 Expressive · TV ölçeğinde (960 dp genişlik) çizilir',
+              style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 40),
             const PaletteSection(),
             const TypeSection(),
             const IconSection(),
             const ShapeSection(),
             const ComponentSection(),
+            const SurfacesSection(),
             const LogoSection(),
           ],
         ),

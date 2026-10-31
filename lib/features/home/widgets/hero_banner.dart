@@ -1,0 +1,174 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/theme/redox_colors.dart';
+import '../../../core/theme/redox_elevation.dart';
+import '../../../core/theme/redox_shapes.dart';
+import '../../../core/theme/redox_type.dart';
+import '../../../core/ui/artwork_fallback.dart';
+import '../../../core/ui/redox_buttons.dart';
+import '../../../core/ui/redox_icon.dart';
+import '../../../core/ui/redox_progress_bar.dart';
+import '../../../core/ui/status_badge.dart';
+import '../home_content.dart';
+
+/// Vitrin: şu an yayında olan öne çıkan içerik. rounded-xl, arkada kromatik
+/// ışık (DESIGN.md "Chromatic Backlight Flares"; zip'teki tasarımın hero hâlesi).
+class HeroBanner extends StatelessWidget {
+  const HeroBanner({super.key, required this.hero, this.primaryFocused});
+
+  final HomeHero hero;
+
+  /// Önizleme: birincil düğmeyi odakta göster.
+  final bool? primaryFocused;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(RedoxRadius.xl);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: [
+          BoxShadow(
+            color: RedoxSeeds.crimson.withValues(alpha: 0.28),
+            offset: const Offset(-8, 0),
+            blurRadius: cssBlur(48),
+          ),
+          BoxShadow(
+            color: RedoxSeeds.amber.withValues(alpha: 0.16),
+            offset: const Offset(12, 8),
+            blurRadius: cssBlur(64),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ArtworkFallback(name: hero.channelName, showInitials: false),
+            ),
+            // Okunurluk: alttan ve soldan obsidyen perde.
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [RedoxRoles.surfaceContainerLowest, Color(0xB30D0E11), Color(0x000D0E11)],
+                  ),
+                ),
+              ),
+            ),
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    stops: [0, 0.45, 0.8],
+                    colors: [RedoxRoles.surfaceContainerLowest, Color(0xCC0D0E11), Color(0x000D0E11)],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      const StatusBadge(label: 'CANLI YAYIN', pulse: true),
+                      _InfoPill(
+                        text: '${hero.channelName} · Kanal ${hero.number}',
+                        color: RedoxRoles.tertiary,
+                      ),
+                      _InfoPill(text: hero.tech, color: RedoxRoles.onSurfaceVariant),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(hero.title, style: t.headlineLarge!.copyWith(color: RedoxRoles.onSurface)),
+                  const SizedBox(height: 4),
+                  Text(hero.subtitle, style: t.bodyLarge!.copyWith(color: RedoxRoles.secondary)),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: 460,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: RedoxRoles.surfaceContainerHigh.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(RedoxRadius.lg),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                hero.phase,
+                                style: t.labelMedium!.copyWith(color: RedoxRoles.onSurface),
+                              ),
+                              const Spacer(),
+                              Text(
+                                hero.clock,
+                                style: t.labelMedium!.copyWith(
+                                  color: RedoxRoles.onSurfaceVariant,
+                                  fontFeatures: RedoxType.tabular,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          RedoxProgressBar(value: hero.progress, thermal: true, height: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      PrimaryButton(
+                        label: 'Canlı yayına gir',
+                        icon: RedoxIcons.play,
+                        keyHint: 'OK',
+                        onPressed: () {},
+                        focused: primaryFocused,
+                        autofocus: primaryFocused == null,
+                      ),
+                      const SizedBox(width: 20),
+                      GlassButton(label: 'Çoklu ekrana ekle', icon: RedoxIcons.splitScreen, onPressed: () {}),
+                      const SizedBox(width: 12),
+                      GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, onPressed: () {}),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: RedoxRoles.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(RedoxRadius.full),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelSmall!.copyWith(color: color, fontFeatures: RedoxType.tabular),
+      ),
+    );
+  }
+}

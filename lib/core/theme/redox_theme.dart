@@ -1,86 +1,160 @@
 import 'package:flutter/material.dart';
 
-import 'm3e_tokens.dart';
-import 'redox_palette.dart';
-import 'redox_tonal.dart';
+import '../layout/form_factor.dart';
+import 'redox_colors.dart';
+import 'redox_elevation.dart';
+import 'redox_metrics.dart';
+import 'redox_shapes.dart';
 import 'redox_type.dart';
 
-/// Şekil ölçüleri (design/tokens.json -> m3e.shape).
-abstract final class RedoxShapes {
-  static const double card = M3EShape.extraLarge;
-  static const double item = M3EShape.large;
-  static const double focusRingWidth = 3;
-}
-
-/// Koyu "Kızıl Halka" teması. Rol kuralları: design/PALET-VE-TASARIM.md
+/// "RedoX TV Expressive" koyu teması (DESIGN.md). Yalnızca koyu tema vardır.
 abstract final class RedoxTheme {
-  /// Roller tool/generate_tonal_palette.dart tarafından üretilir (HCT tonal palet).
   static const ColorScheme _scheme = ColorScheme(
     brightness: Brightness.dark,
-    primary: RedoxDarkRoles.primary,
-    onPrimary: RedoxDarkRoles.onPrimary,
-    primaryContainer: RedoxDarkRoles.primaryContainer,
-    onPrimaryContainer: RedoxDarkRoles.onPrimaryContainer,
-    secondary: RedoxDarkRoles.secondary,
-    onSecondary: RedoxDarkRoles.onSecondary,
-    secondaryContainer: RedoxDarkRoles.secondaryContainer,
-    onSecondaryContainer: RedoxDarkRoles.onSecondaryContainer,
-    tertiary: RedoxDarkRoles.tertiary,
-    onTertiary: RedoxDarkRoles.onTertiary,
-    tertiaryContainer: RedoxDarkRoles.tertiaryContainer,
-    onTertiaryContainer: RedoxDarkRoles.onTertiaryContainer,
-    error: RedoxDarkRoles.error,
-    onError: RedoxDarkRoles.onError,
-    errorContainer: RedoxDarkRoles.errorContainer,
-    onErrorContainer: RedoxDarkRoles.onErrorContainer,
-    surface: RedoxDarkRoles.surface,
-    onSurface: RedoxDarkRoles.onSurface,
-    onSurfaceVariant: RedoxDarkRoles.onSurfaceVariant,
-    outline: RedoxDarkRoles.outline,
-    outlineVariant: RedoxDarkRoles.outlineVariant,
-    shadow: RedoxDarkRoles.shadow,
-    scrim: RedoxDarkRoles.scrim,
-    inverseSurface: RedoxDarkRoles.inverseSurface,
-    onInverseSurface: RedoxDarkRoles.onInverseSurface,
-    inversePrimary: RedoxDarkRoles.inversePrimary,
-    surfaceDim: RedoxDarkRoles.surfaceDim,
-    surfaceBright: RedoxDarkRoles.surfaceBright,
-    surfaceContainerLowest: RedoxDarkRoles.surfaceContainerLowest,
-    surfaceContainerLow: RedoxDarkRoles.surfaceContainerLow,
-    surfaceContainer: RedoxDarkRoles.surfaceContainer,
-    surfaceContainerHigh: RedoxDarkRoles.surfaceContainerHigh,
-    surfaceContainerHighest: RedoxDarkRoles.surfaceContainerHighest,
+    primary: RedoxRoles.primary,
+    onPrimary: RedoxRoles.onPrimary,
+    primaryContainer: RedoxRoles.primaryContainer,
+    onPrimaryContainer: RedoxRoles.onPrimaryContainer,
+    primaryFixed: RedoxRoles.primaryFixed,
+    primaryFixedDim: RedoxRoles.primaryFixedDim,
+    onPrimaryFixed: RedoxRoles.onPrimaryFixed,
+    onPrimaryFixedVariant: RedoxRoles.onPrimaryFixedVariant,
+    secondary: RedoxRoles.secondary,
+    onSecondary: RedoxRoles.onSecondary,
+    secondaryContainer: RedoxRoles.secondaryContainer,
+    onSecondaryContainer: RedoxRoles.onSecondaryContainer,
+    secondaryFixed: RedoxRoles.secondaryFixed,
+    secondaryFixedDim: RedoxRoles.secondaryFixedDim,
+    onSecondaryFixed: RedoxRoles.onSecondaryFixed,
+    onSecondaryFixedVariant: RedoxRoles.onSecondaryFixedVariant,
+    tertiary: RedoxRoles.tertiary,
+    onTertiary: RedoxRoles.onTertiary,
+    tertiaryContainer: RedoxRoles.tertiaryContainer,
+    onTertiaryContainer: RedoxRoles.onTertiaryContainer,
+    tertiaryFixed: RedoxRoles.tertiaryFixed,
+    tertiaryFixedDim: RedoxRoles.tertiaryFixedDim,
+    onTertiaryFixed: RedoxRoles.onTertiaryFixed,
+    onTertiaryFixedVariant: RedoxRoles.onTertiaryFixedVariant,
+    error: RedoxRoles.error,
+    onError: RedoxRoles.onError,
+    errorContainer: RedoxRoles.errorContainer,
+    onErrorContainer: RedoxRoles.onErrorContainer,
+    surface: RedoxRoles.surface,
+    onSurface: RedoxRoles.onSurface,
+    onSurfaceVariant: RedoxRoles.onSurfaceVariant,
+    surfaceDim: RedoxRoles.surfaceDim,
+    surfaceBright: RedoxRoles.surfaceBright,
+    surfaceContainerLowest: RedoxRoles.surfaceContainerLowest,
+    surfaceContainerLow: RedoxRoles.surfaceContainerLow,
+    surfaceContainer: RedoxRoles.surfaceContainer,
+    surfaceContainerHigh: RedoxRoles.surfaceContainerHigh,
+    surfaceContainerHighest: RedoxRoles.surfaceContainerHighest,
+    surfaceTint: RedoxRoles.surfaceTint,
+    outline: RedoxRoles.outline,
+    outlineVariant: RedoxRoles.outlineVariant,
+    inverseSurface: RedoxRoles.inverseSurface,
+    onInverseSurface: RedoxRoles.inverseOnSurface,
+    inversePrimary: RedoxRoles.inversePrimary,
+    shadow: Colors.black,
+    scrim: Colors.black,
   );
 
-  static ThemeData dark() {
+  static bool _focusLike(Set<WidgetState> s) =>
+      s.contains(WidgetState.focused) || s.contains(WidgetState.hovered);
+
+  static ThemeData dark({FormFactor formFactor = FormFactor.tv}) {
+    final text = RedoxType.textTheme(formFactor);
     return ThemeData(
       useMaterial3: true,
       colorScheme: _scheme,
       fontFamily: RedoxType.family,
-      textTheme: M3EType.baseline.apply(fontFamily: RedoxType.family),
-      scaffoldBackgroundColor: _scheme.surface,
+      textTheme: text,
+      // Taban seviye (0dp) tuval = surface-container-lowest (Obsidian Void).
+      scaffoldBackgroundColor: RedoxRoles.surfaceContainerLowest,
+      extensions: [RedoxMetrics.of(formFactor)],
       cardTheme: CardThemeData(
-        color: _scheme.surfaceContainer,
+        color: RedoxRoles.surfaceContainer,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(RedoxShapes.card),
+          borderRadius: BorderRadius.circular(RedoxRadius.lg),
+          side: RedoxElevation.restingBorder,
         ),
       ),
-      // Beyaz yazı / ana kızıl 4,73:1 (küçük metin için yeterli).
+      dialogTheme: DialogThemeData(
+        backgroundColor: RedoxRoles.surfaceContainerHighest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RedoxRadius.lg)),
+      ),
+      // Birincil "Combustive" düğme: hap, kızıl dolgu, label-lg beyaz.
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(minimumSize: const Size(64, 48)),
-      ),
-      // M3 varsayılanı bu düğmelerin yazısını primary (kızıl) yapar; kızıl küçük
-      // yazıda yetmez (kartta 3,44:1). Kural: küçük kırmızı yazı = mercan.
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: RedoxPalette.coral,
+        style: FilledButton.styleFrom(
+          backgroundColor: RedoxRoles.primaryContainer,
+          foregroundColor: RedoxRoles.onPrimaryContainer,
+          shape: const StadiumBorder(),
+          textStyle: text.labelLarge,
           minimumSize: const Size(64, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: RedoxPalette.coral,
-          minimumSize: const Size(64, 48),
+      // İkincil "Glass" düğme: %10 beyaz dolgu + %15 kenar; odakta amber, koyu yazı.
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => _focusLike(s) ? RedoxSeeds.amber : RedoxAccent.glassFill,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (s) => _focusLike(s) ? RedoxSeeds.obsidian : RedoxRoles.onSurface,
+          ),
+          iconColor: WidgetStateProperty.resolveWith(
+            (s) => _focusLike(s) ? RedoxSeeds.obsidian : RedoxRoles.secondary,
+          ),
+          side: WidgetStateProperty.resolveWith(
+            (s) => _focusLike(s) ? BorderSide.none : const BorderSide(color: RedoxAccent.glassBorder),
+          ),
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
+          textStyle: WidgetStatePropertyAll(text.labelLarge),
+          minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
+          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 24)),
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RedoxRadius.xs)),
+        fillColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? RedoxRoles.primaryContainer : Colors.transparent,
+        ),
+        checkColor: const WidgetStatePropertyAll(Colors.white),
+        side: const BorderSide(color: RedoxRoles.onSurfaceVariant, width: 2),
+      ),
+      // Seçili: amber halka, obsidyen iç zemin (DESIGN.md "Radio Buttons").
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? RedoxSeeds.amber : RedoxRoles.onSurfaceVariant,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? RedoxSeeds.obsidian : Colors.transparent,
+        ),
+      ),
+      // Giriş alanı: en yüksek kap dolgusu + hayalet kenar; odakta 2px amber ve amber yıkama.
+      inputDecorationTheme: InputDecorationThemeData(
+        filled: true,
+        fillColor: WidgetStateColor.resolveWith(
+          (s) => s.contains(WidgetState.focused)
+              ? Color.alphaBlend(RedoxAccent.inputFocusWash, RedoxRoles.surfaceContainerHighest)
+              : RedoxRoles.surfaceContainerHighest,
+        ),
+        hoverColor: Colors.transparent,
+        floatingLabelStyle: text.labelMedium,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RedoxRadius.sm),
+          borderSide: RedoxElevation.restingBorder,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RedoxRadius.sm),
+          borderSide: RedoxElevation.restingBorder,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(RedoxRadius.sm),
+          borderSide: const BorderSide(color: RedoxSeeds.amber, width: 2),
         ),
       ),
     );

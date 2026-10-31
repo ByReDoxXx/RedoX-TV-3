@@ -1,72 +1,99 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:redox_tv/core/theme/redox_palette.dart';
+import 'package:redox_tv/core/theme/redox_colors.dart';
+import 'package:redox_tv/core/theme/redox_elevation.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/theme/redox_tonal.dart';
+import 'package:redox_tv/core/ui/channel_card.dart';
+import 'package:redox_tv/core/ui/status_badge.dart';
 
-/// WCAG 2.x göreli parlaklık ve kontrast oranı.
-double _lin(double c) =>
-    c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+import '../../support/contrast.dart';
 
-double _luminance(Color c) =>
-    0.2126 * _lin(c.r) + 0.7152 * _lin(c.g) + 0.0722 * _lin(c.b);
-
-double contrast(Color a, Color b) {
-  final x = _luminance(a), y = _luminance(b);
-  final hi = math.max(x, y), lo = math.min(x, y);
-  return (hi + 0.05) / (lo + 0.05);
-}
+const _white = Color(0xFFFFFFFF);
 
 void main() {
-  group('Küçük metin >= 4.5:1 (design/PALET-VE-TASARIM.md)', () {
-    test('ana, ikincil, üçüncül metin kart üzerinde', () {
-      for (final t in [
-        RedoxPalette.textPrimary,
-        RedoxPalette.textSecondary,
-        RedoxPalette.textTertiary,
-      ]) {
-        expect(contrast(t, RedoxPalette.surface), greaterThanOrEqualTo(4.5));
+  group('Bileşen yazıları >= 4.5:1', () {
+    test('birincil düğme: beyaz (on-primary-container) / kızıl', () {
+      expect(contrast(RedoxRoles.onPrimaryContainer, RedoxSeeds.crimson), greaterThanOrEqualTo(4.5));
+    });
+
+    test('cam düğme: boşta yazı cam üstünde, odakta obsidyen / amber', () {
+      final glassOnCanvas = Color.alphaBlend(RedoxAccent.glassFill, RedoxRoles.surfaceContainerLowest);
+      final glassOnCard = Color.alphaBlend(RedoxAccent.glassFill, RedoxRoles.surfaceContainerHigh);
+      expect(contrast(RedoxRoles.onSurface, glassOnCanvas), greaterThanOrEqualTo(4.5));
+      expect(contrast(RedoxRoles.onSurface, glassOnCard), greaterThanOrEqualTo(4.5));
+      expect(contrast(RedoxSeeds.obsidian, RedoxSeeds.amber), greaterThanOrEqualTo(4.5));
+    });
+
+    test('tema cam düğmeyi odakta amber/obsidyen çözer', () {
+      final style = RedoxTheme.dark().outlinedButtonTheme.style!;
+      const focused = {WidgetState.focused};
+      expect(style.backgroundColor!.resolve(focused), RedoxSeeds.amber);
+      expect(style.foregroundColor!.resolve(focused), RedoxSeeds.obsidian);
+      expect(style.backgroundColor!.resolve({}), RedoxAccent.glassFill);
+    });
+
+    test('seçili çip: beyaz yazı degradenin iki ucunda', () {
+      expect(contrast(_white, RedoxSeeds.crimson), greaterThanOrEqualTo(4.5));
+      expect(contrast(_white, RedoxAccent.ember), greaterThanOrEqualTo(4.5));
+    });
+
+    test('kor = amber paletinin beyazla 4.5:1 veren en açık tonu (T49)', () {
+      expect(RedoxAccent.ember, Color(RedoxTonal.secondary.get(49)));
+      expect(contrast(_white, Color(RedoxTonal.secondary.get(50))), lessThan(4.5));
+    });
+
+    test('rozetler', () {
+      for (final tone in BadgeTone.values) {
+        expect(contrast(tone.foreground, tone.background), greaterThanOrEqualTo(4.5), reason: tone.name);
       }
     });
 
-    test('beyaz yazı ana kızıl ve koyu kızıl dolguda', () {
-      expect(contrast(RedoxPalette.white, RedoxPalette.red),
-          greaterThanOrEqualTo(4.5));
-      expect(contrast(RedoxPalette.white, RedoxPalette.redDeep),
-          greaterThanOrEqualTo(4.5));
+    test('kart vurgu metinleri kartta (boşta ve odakta)', () {
+      for (final a in CardAccent.values) {
+        expect(contrast(a.text, RedoxRoles.surfaceContainer), greaterThanOrEqualTo(4.5), reason: a.name);
+        expect(contrast(a.text, RedoxRoles.surfaceContainerHigh), greaterThanOrEqualTo(4.5), reason: a.name);
+      }
     });
 
-    test('mercan küçük kırmızı yazı kartta', () {
-      expect(contrast(RedoxPalette.coral, RedoxPalette.surface),
-          greaterThanOrEqualTo(4.5));
-    });
-
-    test('altın zeminde ve kartta', () {
-      expect(contrast(RedoxPalette.gold, RedoxPalette.background),
-          greaterThanOrEqualTo(4.5));
-      expect(contrast(RedoxPalette.gold, RedoxPalette.surface),
-          greaterThanOrEqualTo(4.5));
+    test('odaktaki giriş alanı: yazı amber yıkamalı zeminde', () {
+      final washed = Color.alphaBlend(RedoxAccent.inputFocusWash, RedoxRoles.surfaceContainerHighest);
+      expect(contrast(RedoxRoles.onSurface, washed), greaterThanOrEqualTo(4.5));
     });
   });
 
-  group('Bilinen sınırlar korunur (regresyon)', () {
-    test('ana kızıl küçük metin olarak yetmez: yalnızca simge/büyük metin', () {
-      expect(contrast(RedoxPalette.red, RedoxPalette.surface), lessThan(4.5));
-      expect(contrast(RedoxPalette.red, RedoxPalette.background),
-          greaterThanOrEqualTo(3.0)); // metin dışı bileşen eşiği
+  group('Metin dışı öğeler >= 3:1', () {
+    test('odak halkası tuvalde ve kartta', () {
+      expect(contrast(RedoxElevation.focusRing.color, RedoxRoles.surfaceContainerLowest), greaterThanOrEqualTo(3.0));
+      expect(contrast(RedoxElevation.focusRing.color, RedoxRoles.surfaceContainer), greaterThanOrEqualTo(3.0));
     });
 
-    test('odak halkası kartta 3:1 üstü (metin dışı kural)', () {
-      expect(contrast(RedoxPalette.goldBright, RedoxPalette.surface),
-          greaterThanOrEqualTo(3.0));
+    test('ilerleme dolguları obsidyen izde', () {
+      for (final fill in [...CardAccent.values.map((a) => a.fill), ...RedoxAccent.thermal]) {
+        expect(contrast(fill, RedoxRoles.surfaceContainerLowest), greaterThanOrEqualTo(3.0), reason: '$fill');
+      }
     });
 
-    test('tema ana rengi marka kızılı, düğme boyutu >= 48dp', () {
-      final t = RedoxTheme.dark();
-      expect(t.colorScheme.primary, RedoxPalette.red);
-      expect(t.filledButtonTheme.style!.minimumSize!.resolve({})!.height,
-          greaterThanOrEqualTo(48));
+    test('odaktaki giriş kenarı (amber) en yüksek kapta', () {
+      expect(contrast(RedoxSeeds.amber, RedoxRoles.surfaceContainerHighest), greaterThanOrEqualTo(3.0));
+    });
+
+    test('marka adındaki kızıl yalnızca büyük yazı: tuvalde >= 3:1', () {
+      expect(contrast(RedoxSeeds.crimson, RedoxRoles.surfaceContainerLowest), greaterThanOrEqualTo(3.0));
+    });
+  });
+
+  group('Bilinen sınırlar (regresyon)', () {
+    test('spec birebir çip ucu: beyaz / #FF9E1B yetmez', () {
+      expect(contrast(_white, RedoxSeeds.amber), lessThan(3.0));
+    });
+
+    test('kızıl dolgu en yüksek kap izinde yetmez; iz bu yüzden obsidyen', () {
+      expect(contrast(RedoxSeeds.crimson, RedoxRoles.surfaceContainerHighest), lessThan(3.0));
+    });
+
+    test('kızıl küçük yazıda kullanılmaz: kartta 4.5:1 altı', () {
+      expect(contrast(RedoxSeeds.crimson, RedoxRoles.surfaceContainer), lessThan(4.5));
     });
   });
 }

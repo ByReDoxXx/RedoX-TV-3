@@ -10,12 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: 2.3.2
+  # Tonal paletler çalışma anında tohumlardan hesaplanır (HCT). Sürüm Flutter
+  # SDK'nın sabitlediği sürümle aynıdır.
+  material_color_utilities: 0.13.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  material_color_utilities: 0.13.0
 
 flutter:
   uses-material-design: true
@@ -25,7 +27,7 @@ flutter:
     - assets/icons/
 
   fonts:
-    # Değişken yazı tipi (OFL): FontWeight -> wght ekseni; slnt/opsz FontVariation ile.
-    - family: GoogleSansFlex
+    # Değişken yazı tipi (OFL), tek eksen: wght 100–800. FontWeight -> wght.
+    - family: Sora
       fonts:
-        - asset: assets/fonts/GoogleSansFlex.ttf
+        - asset: assets/fonts/Sora-Variable.ttf

@@ -1,175 +1,135 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/m3e_tokens.dart';
-import '../../../core/theme/redox_palette.dart';
-import '../../../core/theme/redox_type.dart';
-import '../../../core/ui/brand_components.dart';
+import '../../../core/theme/redox_colors.dart';
+import '../../../core/ui/category_chip.dart';
+import '../../../core/ui/header_search.dart';
+import '../../../core/ui/icon_action_button.dart';
+import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
+import '../../../core/ui/redox_progress_bar.dart';
+import '../../../core/ui/segmented_toggle.dart';
+import '../../../core/ui/status_badge.dart';
 import '../widgets/section_frame.dart';
 
-/// 5. Bileşenler: düğmeler, çipler, rozet, kart, odak halkası, story, ilerleme, arama.
+/// 5. Kontroller: düğmeler, çipler, rozetler, ilerleme, giriş ve seçim.
 class ComponentSection extends StatelessWidget {
   const ComponentSection({super.key});
 
+  static const _gap = SizedBox(width: 20);
+
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final label = Theme.of(context).textTheme.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant);
     return SectionFrame(
       index: 5,
-      title: 'Bileşenler',
-      subtitle: 'Logodan tasarım dili: halka, üçlü kontur, statik ışık, eğim, gradyan (design/TASARIM-DILI.md).',
+      title: 'Kontroller',
+      subtitle: 'Odak = D-pad, klavye veya fare üstü. Odakta büyüme yay fiziğiyle; ışıma hemen açılır.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Düğmeler', style: t.titleMedium),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
+          const GroupLabel('Düğmeler · boşta'),
+          Row(
             children: [
-              FilledButton.icon(
-                onPressed: () {},
-                icon: const RedoxIcon(RedoxIcons.play, filled: true, color: Colors.white),
-                label: const Text('İzle'),
-              ),
-              FilledButton.tonal(onPressed: () {}, child: const Text('Favorilere ekle')),
-              OutlinedButton(onPressed: () {}, child: const Text('Kaynak ekle')),
+              PrimaryButton(label: 'Canlı yayına gir', icon: RedoxIcons.play, keyHint: 'OK', onPressed: () {}),
+              _gap,
+              GlassButton(label: 'Çoklu ekrana ekle', icon: RedoxIcons.splitScreen, onPressed: () {}),
+              _gap,
+              IconActionButton(icon: RedoxIcons.favorites, onPressed: () {}),
             ],
           ),
-          const SizedBox(height: 28),
-          Text('Kategori çipleri', style: t.titleMedium),
           const SizedBox(height: 12),
+          const GroupLabel('Düğmeler · odakta'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                PrimaryButton(label: 'Canlı yayına gir', icon: RedoxIcons.play, keyHint: 'OK', onPressed: () {}, focused: true),
+                const SizedBox(width: 32),
+                GlassButton(label: 'Çoklu ekrana ekle', icon: RedoxIcons.splitScreen, onPressed: () {}, focused: true),
+                const SizedBox(width: 32),
+                IconActionButton(icon: RedoxIcons.favorites, onPressed: () {}, focused: true),
+              ],
+            ),
+          ),
+          const GroupLabel('Kategori çipleri'),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              CategoryChip(label: 'Tüm kanallar', selected: true, onPressed: () {}),
+              CategoryChip(label: 'Ulusal', onPressed: () {}),
+              CategoryChip(label: 'Haber', onPressed: () {}),
+              CategoryChip(label: 'Spor', onPressed: () {}, focused: true),
+              CategoryChip(label: 'Müzik', onPressed: () {}),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('Seçili: kızıl – kor #A86500, beyaz yazı her noktada >= 4,5:1.', style: label),
+          const GroupLabel('Rozetler ve ilerleme'),
           const Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
-              CategoryChip(label: 'Tüm Kanallar', selected: true),
-              CategoryChip(label: 'Ulusal'),
-              CategoryChip(label: 'Haber'),
-              CategoryChip(label: 'Spor'),
-              CategoryChip(label: 'Müzik'),
+              StatusBadge(label: 'CANLI', pulse: true),
+              StatusBadge(label: '4K HDR', tone: BadgeTone.gold),
+              StatusBadge(label: 'YENİ', tone: BadgeTone.amber),
+              StatusBadge(label: 'KAYITTA', tone: BadgeTone.neutral),
             ],
           ),
-          const SizedBox(height: 28),
-          Text('Kanal kartı: boşta ve odakta (3 dp halka + statik parıltı)', style: t.titleMedium),
           const SizedBox(height: 16),
           const Row(
             children: [
-              _ChannelCardSample(number: '002', name: 'Örnek Kanal', program: 'Akşam Haberleri', progress: 0.35),
-              SizedBox(width: 24),
-              _ChannelCardSample(number: '001', name: 'Örnek Kanal', program: 'Canlı Yayın', progress: 0.6, focused: true),
+              Expanded(child: RedoxProgressBar(value: 0.35)),
+              SizedBox(width: 16),
+              Expanded(child: RedoxProgressBar(value: 0.74, thermal: true, height: 8)),
+              SizedBox(width: 16),
+              Expanded(child: RedoxProgressBar(value: 0.6, color: RedoxSeeds.crimson)),
             ],
           ),
-          const SizedBox(height: 28),
-          Text('Story ve arama', style: t.titleMedium),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
+          Text('İzlenme (amber) · canlı maç süresi (ısıl) · oynatma konumu (kızıl). İz: obsidyen.', style: label),
+          const GroupLabel('Giriş ve seçim'),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              StoryAvatar(
-                label: 'Yeni kanal',
-                child: Center(child: RedoxIcon(RedoxIcons.television, color: scheme.onSurfaceVariant, size: 36)),
-              ),
-              const SizedBox(width: 24),
-              StoryAvatar(
-                label: 'Radyo',
-                child: Center(child: RedoxIcon(RedoxIcons.radio, color: scheme.onSurfaceVariant, size: 36)),
-              ),
-              const SizedBox(width: 48),
-              SizedBox(
-                width: 520,
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Kanal, film veya dizi ara…',
-                    filled: true,
-                    fillColor: scheme.surfaceContainerHigh,
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: RedoxIcon(RedoxIcons.search, color: scheme.onSurfaceVariant),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(M3EShape.full),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
+              const Expanded(
+                child: InputDecorator(
+                  decoration: InputDecoration(labelText: 'Kaynak adı'),
+                  child: Text('RedoX Liste'),
                 ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: InputDecorator(
+                  isFocused: true,
+                  decoration: InputDecoration(labelText: 'M3U adresi'),
+                  child: Text('https://…/liste.m3u8'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Checkbox(value: true, onChanged: (_) {}),
+              Checkbox(value: false, onChanged: (_) {}),
+              RadioGroup<int>(
+                groupValue: 0,
+                onChanged: (_) {},
+                child: const Row(children: [Radio<int>(value: 0), Radio<int>(value: 1)]),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChannelCardSample extends StatelessWidget {
-  const _ChannelCardSample({
-    required this.number,
-    required this.name,
-    required this.program,
-    required this.progress,
-    this.focused = false,
-  });
-
-  final String number;
-  final String name;
-  final String program;
-  final double progress;
-  final bool focused;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final decoration = focused
-        ? RedoxFocus.ring(radius: M3EShape.extraLarge, fill: scheme.surfaceContainerHigh)
-        : BoxDecoration(
-            color: scheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(M3EShape.extraLarge),
-          );
-    return Container(
-      width: 400,
-      padding: const EdgeInsets.all(20),
-      decoration: decoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 20),
           Row(
             children: [
-              Text(
-                number,
-                style: t.titleLarge!.copyWith(
-                  color: RedoxPalette.gold,
-                  fontWeight: FontWeight.w700,
-                  fontVariations: RedoxType.brandSlant,
-                  fontFeatures: M3EType.tabularFigures,
-                ),
+              const SegmentedToggle(
+                segments: [
+                  ToggleSegment('Kart görünümü', RedoxIcons.splitScreen),
+                  ToggleSegment('EPG çizelgesi', RedoxIcons.clock),
+                ],
+                selectedIndex: 0,
+                focusedIndex: 1,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  name,
-                  style: M3EType.emphasized.titleMedium!.copyWith(
-                    fontFamily: RedoxType.family,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ),
-              const LiveBadge(),
+              const SizedBox(width: 24),
+              const Expanded(child: HeaderSearch()),
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(program, style: t.bodyLarge!.copyWith(color: scheme.onSurface)),
-          const SizedBox(height: 16),
-          GoldProgressBar(value: progress),
-          const SizedBox(height: 8),
-          Text(
-            '20:00 – 21:30',
-            style: t.labelLarge!.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontFeatures: M3EType.tabularFigures,
-            ),
           ),
         ],
       ),

@@ -1,78 +1,71 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/m3e_tokens.dart';
-import '../../../core/theme/redox_palette.dart';
+import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_type.dart';
-import '../../../core/ui/brand_components.dart';
+import '../../../core/ui/brand_wordmark.dart';
 import '../widgets/section_frame.dart';
 
-/// 2. Yazı tipi: Google Sans Flex, baz ve vurgulu ölçek.
+/// 2. Yazı: Sora, DESIGN.md ölçeği.
 class TypeSection extends StatelessWidget {
   const TypeSection({super.key});
 
-  static const _sample = 'Kızıl Halka · ĞÜŞİÖÇ ğüşıöç';
+  static const _sample = 'Şampiyonlar Ligi · ĞÜŞİÖÇ ğüşıöç';
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final base = M3EType.baseline.apply(fontFamily: RedoxType.family);
-    final emph = M3EType.emphasized.apply(fontFamily: RedoxType.family);
-    final rows = <String, (TextStyle?, TextStyle?)>{
-      'displayMedium': (base.displayMedium, emph.displayMedium),
-      'headlineLarge': (base.headlineLarge, emph.headlineLarge),
-      'headlineSmall': (base.headlineSmall, emph.headlineSmall),
-      'titleLarge': (base.titleLarge, emph.titleLarge),
-      'titleMedium': (base.titleMedium, emph.titleMedium),
-      'labelLarge': (base.labelLarge, emph.labelLarge),
-      'bodyLarge': (base.bodyLarge, emph.bodyLarge),
-      'bodyMedium': (base.bodyMedium, emph.bodyMedium),
-    };
-    final meta = Theme.of(context).textTheme.labelMedium!.copyWith(
-          color: scheme.onSurfaceVariant,
-          fontFeatures: M3EType.tabularFigures,
+    final meta = Theme.of(context).textTheme.bodySmall!.copyWith(
+          color: RedoxRoles.onSurfaceVariant,
+          fontFeatures: RedoxType.tabular,
         );
-
     return SectionFrame(
       index: 2,
-      title: 'Yazı tipi',
-      subtitle: 'Google Sans Flex (OFL) · Türkçe karakterler ve sabit genişlikli rakam doğrulandı · monospace yok.',
+      title: 'Yazı',
+      subtitle: 'Sora (OFL) · ağırlık 400–800 · TV\'de en küçük yazı 16 (title-md) · rakamlar tnum.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const BrandWordmark(fontSize: 56),
-          const SizedBox(height: 8),
-          Text('Marka anı: eğim slnt −10 · ağırlık 800', style: meta),
-          const SizedBox(height: 28),
-          for (final e in rows.entries)
+          const BrandWordmark(fontSize: 48),
+          const SizedBox(height: 20),
+          for (final e in RedoxType.tokens.entries)
             Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 220,
+                    width: 190,
                     child: Text(
-                      '${e.key}\n${e.value.$1!.fontSize!.round()}/${(e.value.$1!.fontSize! * e.value.$1!.height!).round()}',
+                      '${e.key}\n${_spec(e.value)}${e.value.fontSize! < RedoxType.tvMinSize ? ' · TV 16' : ''}',
                       style: meta,
                     ),
                   ),
-                  Expanded(child: Text(_sample, style: e.value.$1!.copyWith(color: scheme.onSurface), maxLines: 1, overflow: TextOverflow.clip)),
-                  const SizedBox(width: 24),
-                  Expanded(child: Text(_sample, style: e.value.$2!.copyWith(color: scheme.onSurface), maxLines: 1, overflow: TextOverflow.clip)),
+                  Expanded(
+                    child: Text(
+                      _sample,
+                      style: e.value.copyWith(color: RedoxRoles.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      softWrap: false,
+                    ),
+                  ),
                 ],
               ),
             ),
           const SizedBox(height: 12),
           Text(
-            '20:45 · 001 002 011 118 · 19:30–21:00',
-            style: base.headlineSmall!.copyWith(
-              color: RedoxPalette.gold,
-              fontFeatures: M3EType.tabularFigures,
-            ),
+            '20:45 · 001 002 011 118 · 19:30 – 21:00',
+            style: RedoxType.headlineMd.copyWith(color: RedoxRoles.tertiary, fontFeatures: RedoxType.tabular),
           ),
-          Text('Saat, kanal numarası, EPG saatleri: tabular rakam', style: meta),
+          Text('Saat, kanal numarası, EPG saatleri: sabit genişlikli rakam', style: meta),
         ],
       ),
     );
+  }
+
+  static String _spec(TextStyle s) {
+    final size = s.fontSize!;
+    final line = (size * s.height!).round();
+    final em = s.letterSpacing! / size;
+    return '${size.round()}/$line · ${s.fontWeight!.value} · ${em.toStringAsFixed(em == 0 ? 0 : 3)}em';
   }
 }

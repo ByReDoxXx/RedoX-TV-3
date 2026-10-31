@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/redox_type.dart';
-import '../../../core/ui/brand_components.dart';
+import '../../../core/theme/redox_colors.dart';
+import '../../../core/ui/section_header.dart';
 
-/// Rehber bölümü: numara + başlık + açıklama + içerik.
+/// Rehber bölümü: numaralı başlık + açıklama + içerik.
 class SectionFrame extends StatelessWidget {
   const SectionFrame({
     super.key,
@@ -11,40 +11,48 @@ class SectionFrame extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
+    this.accent = RedoxSeeds.crimson,
   });
 
   final int index;
   final String title;
   final String subtitle;
   final Widget child;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 56),
+      padding: const EdgeInsets.only(bottom: 48),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${index.toString().padLeft(2, '0')}  $title',
-            style: t.headlineSmall!.copyWith(
-              fontWeight: FontWeight.w500,
-              fontVariations: RedoxType.brandSlant,
-              color: scheme.onSurface,
-            ),
+          SectionHeader(
+            title: '${index.toString().padLeft(2, '0')}  $title',
+            subtitle: subtitle,
+            accent: accent,
           ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: t.bodyMedium!.copyWith(color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 12),
-          const FlareDivider(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           child,
         ],
+      ),
+    );
+  }
+}
+
+/// Alt başlık (bölüm içi grup adı).
+class GroupLabel extends StatelessWidget {
+  const GroupLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.titleMedium!.copyWith(color: RedoxRoles.onSurface),
       ),
     );
   }
