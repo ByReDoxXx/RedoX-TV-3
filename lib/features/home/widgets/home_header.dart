@@ -2,35 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/brand/brand_assets.dart';
+import '../../../core/layout/form_factor.dart';
 import '../../../core/theme/redox_colors.dart';
+import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/header_search.dart';
+import '../../../core/ui/icon_action_button.dart';
 import '../../../core/ui/redox_icon.dart';
 
 /// Üst şerit: logo işareti, arama (TV'de kutu), saat ve profil. Logo rayda
 /// değil burada durur: 540 dp TV yüksekliğinde ray öğelerine yer kalsın diye.
 /// 44 dp'de tam logonun yazısı okunmadığı için yazısız işaret kullanılır.
+///
+/// Arama kutusu saate kadar uzanır (kullanıcı isteği). Telefonda saat ve
+/// profil sığmaz (saat zaten durum çubuğunda): arama ikonu ve [onMore]
+/// düğmesi (alt menüye sığmayan bölümler) gösterilir.
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key, required this.clock, required this.profileName});
+  const HomeHeader({super.key, required this.clock, required this.profileName, this.onMore});
 
   final String clock;
   final String profileName;
 
+  /// Telefonda "Diğer" düğmesine basılınca.
+  final VoidCallback? onMore;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final logo = SvgPicture.asset(
+      BrandAssets.mark,
+      width: 44,
+      height: 44,
+      semanticsLabel: 'RedoX TV',
+    );
+    if (Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone) {
+      return Row(
+        children: [
+          logo,
+          const Spacer(),
+          const HeaderSearch(),
+          const SizedBox(width: 8),
+          IconActionButton(icon: RedoxIcons.more, onPressed: onMore),
+        ],
+      );
+    }
     return Row(
       children: [
-        SvgPicture.asset(
-          BrandAssets.mark,
-          width: 44,
-          height: 44,
-          semanticsLabel: 'RedoX TV',
-        ),
+        logo,
         const SizedBox(width: 16),
-        const SizedBox(width: 340, child: HeaderSearch()),
-        const Spacer(),
+        const Expanded(child: HeaderSearch()),
+        const SizedBox(width: 16),
         _Pill(
           child: Row(
             mainAxisSize: MainAxisSize.min,

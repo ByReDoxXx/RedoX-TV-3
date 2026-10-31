@@ -70,8 +70,10 @@ class HeroBanner extends StatelessWidget {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
+            // Vitrin tam genişliktir; içerik (Wrap) genişliği belirlemez.
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(28, 22, 28, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -87,11 +89,11 @@ class HeroBanner extends StatelessWidget {
                       _InfoPill(text: hero.tech, color: RedoxRoles.onSurfaceVariant),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Text(hero.title, style: t.headlineLarge!.copyWith(color: RedoxRoles.onSurface)),
                   const SizedBox(height: 4),
                   Text(hero.subtitle, style: t.bodyLarge!.copyWith(color: RedoxRoles.secondary)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: 460,
                     child: Container(
@@ -104,11 +106,16 @@ class HeroBanner extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                hero.phase,
-                                style: t.labelMedium!.copyWith(color: RedoxRoles.onSurface),
+                              // Dar ekranda evre metni kısalır, saatle çakışmaz.
+                              Expanded(
+                                child: Text(
+                                  hero.phase,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.labelMedium!.copyWith(color: RedoxRoles.onSurface),
+                                ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: 12),
                               Text(
                                 hero.clock,
                                 style: t.labelMedium!.copyWith(
@@ -124,8 +131,11 @@ class HeroBanner extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
+                  const SizedBox(height: 16),
+                  // Dar ekranda (telefon) düğmeler alt satıra iner.
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
                     children: [
                       PrimaryButton(
                         label: 'Canlı yayına gir',
@@ -135,9 +145,7 @@ class HeroBanner extends StatelessWidget {
                         focused: primaryFocused,
                         autofocus: primaryFocused == null,
                       ),
-                      const SizedBox(width: 20),
                       GlassButton(label: 'Çoklu ekrana ekle', icon: RedoxIcons.splitScreen, onPressed: () {}),
-                      const SizedBox(width: 12),
                       GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, onPressed: () {}),
                     ],
                   ),

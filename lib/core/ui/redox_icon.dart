@@ -29,7 +29,10 @@ enum RedoxIcons {
   profile('account_circle', 'Profil'),
   lock('lock', 'Kilit'),
   menu('menu', 'Menüyü aç'),
-  menuOpen('menu_open', 'Menüyü kapat');
+  menuOpen('menu_open', 'Menüyü kapat'),
+  dpad('gamepad', 'Yön tuşları'),
+  back('arrow_back', 'Geri'),
+  more('more_vert', 'Diğer');
 
   const RedoxIcons(this.symbol, this.label);
 

@@ -359,6 +359,19 @@ def main():
     half = src.resize((1000, 1000), Image.LANCZOS)
     recolor_trace(half)
     write_full_svg(half)
+
+    # Saydam köşeli tam logo (PNG): Stitch gibi SVG almayan araçlara yüklemek
+    # için. Kaynak görselin beyaz köşeleri, SVG'dekiyle aynı karo sınırıyla
+    # saydamlaştırılır.
+    from PIL import ImageDraw
+
+    size, ss = 1024, 4
+    outline = tile_outline(half)
+    big = Image.new("L", (size * ss, size * ss), 0)
+    ImageDraw.Draw(big).polygon([(x / 1000 * size * ss, y / 1000 * size * ss) for x, y in outline], fill=255)
+    logo_png = src.resize((size, size), Image.LANCZOS).convert("RGBA")
+    logo_png.putalpha(big.resize((size, size), Image.LANCZOS))
+    logo_png.save(ROOT / "design/logo/redox-logo-saydam.png")
     write_mark_svg()
     mb = tuple(v // 2 for v in MARK_BOX)
     crop = half.crop(mb)

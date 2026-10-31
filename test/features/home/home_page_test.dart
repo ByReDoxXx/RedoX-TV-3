@@ -1,12 +1,19 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/layout/form_factor.dart';
+import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_colors.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/ui/bottom_nav_bar.dart';
 import 'package:redox_tv/core/ui/nav_rail.dart';
+import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/ui/redox_icon.dart';
 import 'package:redox_tv/features/home/home_content.dart';
 import 'package:redox_tv/features/home/home_page.dart';
+import 'package:redox_tv/features/home/widgets/hero_banner.dart';
+import 'package:redox_tv/features/home/widgets/home_header.dart';
 
 import '../../support/render.dart';
 
@@ -113,5 +120,74 @@ void main() {
     await tester.pump();
     await settle();
     expect(floating, findsNothing);
+  });
+
+  testWidgets('telefon: ray yok, alt menü var, sayfa taşmasız; Diğer alt sayfayı açar', (tester) async {
+    await loadSora(tester);
+    tester.view.physicalSize = const Size(411, 891);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.phone),
+        home: const HomePage(content: HomeContent.preview),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull);
+    expect(find.byType(RedoxNavRail), findsNothing);
+    expect(find.byType(RedoxBottomBar), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('Diğer'));
+    await tester.pump(const Duration(milliseconds: 600));
+    for (final item in AppDestinations.phoneMore) {
+      expect(find.text(item.label), findsOneWidget, reason: item.label);
+    }
+  });
+
+  testWidgets('tablet: arama kutusu saate kadar uzanır', (tester) async {
+    await loadSora(tester);
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.tablet),
+        home: const HomePage(content: HomeContent.preview),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull);
+
+    final search = tester.getRect(find.byType(TextField));
+    final clockIcon = tester.getRect(
+      find.byWidgetPredicate((w) => w is RedoxIcon && w.icon == RedoxIcons.clock).first,
+    );
+    // Arama ile saat hapı arasında 16 dp; hap kenarı 1 + iç boşluğu 14 dp.
+    expect(clockIcon.left - 15 - search.right, closeTo(16, 0.01));
+
+    // Vitrin içerik genişliğinin tamamını kaplar (düğmeler Wrap'te olsa da).
+    expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(HomeHeader)).width);
+  });
+
+  testWidgets('D-pad: açılışta vitrin düğmesi odakta, sola basınca odak menüye geçer', (tester) async {
+    await loadSora(tester);
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_app(GlobalKey()));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // Odaktaki öğe hangi bileşenin içinde?
+    bool focusInside<T extends Widget>() =>
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<T>() != null;
+
+    expect(focusInside<PrimaryButton>(), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(focusInside<RedoxNavRail>(), isTrue);
   });
 }
