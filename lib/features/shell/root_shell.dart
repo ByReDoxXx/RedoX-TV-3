@@ -12,6 +12,7 @@ import '../home/home_content.dart';
 import '../home/home_page.dart';
 import '../player/engine/playback_engine.dart';
 import '../player/player_page.dart';
+import '../player/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../tv/tv_page.dart';
 import 'section_placeholder.dart';
@@ -27,6 +28,7 @@ class RootShell extends StatefulWidget {
     this.initial = AppSection.home,
     this.previewFocus = false,
     this.engineFactory,
+    this.rank,
   });
 
   final HomeContent home;
@@ -38,6 +40,9 @@ class RootShell extends StatefulWidget {
 
   /// Oynatma motoru; null ise media_kit (testlerde sahte motor).
   final PlaybackEngine Function()? engineFactory;
+
+  /// Akış sıralayıcı (StreamProbe.rank); null ise listedeki sıra (testler).
+  final StreamRanker? rank;
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -77,6 +82,7 @@ class _RootShellState extends State<RootShell> {
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       engineFactory: widget.engineFactory,
+      rank: widget.rank,
       // Oynatıcıda ▲▼ bütün kanallarda gezer (kategori süzgecinden bağımsız).
       onChannel: (c) => Navigator.of(context).push(
         PlayerPage.route(
@@ -84,6 +90,7 @@ class _RootShellState extends State<RootShell> {
           initialIndex: widget.tv.channels.indexOf(c),
           clock: _clock,
           engineFactory: widget.engineFactory,
+          rank: widget.rank,
         ),
       ),
     ),

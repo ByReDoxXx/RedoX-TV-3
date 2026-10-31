@@ -19,6 +19,7 @@ import '../../core/ui/segmented_toggle.dart';
 import '../player/engine/media_kit_engine.dart';
 import '../player/engine/playback_engine.dart';
 import '../player/playback_session.dart';
+import '../player/stream_probe.dart';
 import 'tv_content.dart';
 import 'widgets/channel_preview.dart';
 import 'widgets/epg_grid.dart';
@@ -43,6 +44,7 @@ class TvPage extends StatefulWidget {
     this.onMore,
     this.onChannel,
     this.engineFactory,
+    this.rank,
   });
 
   final TvContent content;
@@ -61,6 +63,9 @@ class TvPage extends StatefulWidget {
 
   /// Önizleme oynatıcısının motoru; null ise media_kit (testlerde sahte motor).
   final PlaybackEngine Function()? engineFactory;
+
+  /// Önizlemede akış sıralayıcı (StreamProbe.rank); null ise listedeki sıra.
+  final StreamRanker? rank;
 
   /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam
   /// genişlikte 2.
@@ -108,7 +113,12 @@ class _TvPageState extends State<TvPage> {
     }
     final engine = (widget.engineFactory ?? MediaKitEngine.new)();
     _previewEngine = engine;
-    _previewSession = PlaybackSession(engine: engine, channels: widget.content.channels, initialIndex: index);
+    _previewSession = PlaybackSession(
+      engine: engine,
+      channels: widget.content.channels,
+      initialIndex: index,
+      rank: widget.rank,
+    );
   }
 
   void _stopPreview() {

@@ -198,9 +198,15 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
   - **Sıra:** gerçek TKGS kanal sırası herkese açık bir kaynakta yok. Kullanıcının seçimiyle eski sürümün sırası kullanıldı (Türksat frekans tablosu satır sırası). Eşleşen 94 kanal eski numarasını korur; kalan 110 kanal 134'ten başlayarak numaralanır. `tvg-chno` olmayan kanal sona eklenir.
   - **Kategoriler** sabit sıradadır (`TvContent.categoryOrder`): Ulusal, Haber, Spor, Belgesel, Sinema, Müzik, Çocuk, Yaşam, Dini, Kıbrıs, Dünya, Genel, Yerel, Diğer.
   - Logolar gist'teki `tvg-logo` adresleridir (`ChannelLogo`); yoksa monogram (`ArtworkFallback`).
-  - Alınmayanlar: şifreli/ücretli paketler (beIN, FX, Disney Junior, Baby TV, FilmScreen, FIX Sinema), Azerice kanallar, radyo akışları. Gist'te olmadığı için Kanal D, Star TV, NTV ve Teve2 listede yok.
+  - Alınmayanlar: şifreli/ücretli paketler (beIN, FX, Disney Junior, Baby TV, FilmScreen, FIX Sinema), Azerice kanallar, radyo akışları. Gist'te olmadığı için Kanal D, Star TV, NTV ve Teve2 başta listede yoktu (aşağıda eklendi).
   - Gist'te yayın akışı (EPG) adresi yok, `tvg-id`'ler rastgele; EPG ayrı bir kaynaktan bağlanır (aşağıda).
   - Kanıt: `test/core/content/m3u_parser_test.dart`.
+  - **Vavoo akışları (kullanıcı isteği, 2026-11-01).** Kullanıcının verdiği liste (`atakan1983.lxi.be/vavoo.php?list=Turkey.m3u`, 849 kayıt): Vavoo (vavoo.to) yayınları, hepsi aynı aracı PHP sunucusundan geçiyor.
+    - Ücretli kanallar (beIN, S Sport, Spor Smart, sinema paketleri vb.) "yalnız şifresiz" kuralıyla alınmadı.
+    - Ortak 86 kanala 210 akış eklendi, mevcut akışların arkasına (adresler https; aracı sunucu http'yi zaten yönlendiriyor).
+    - Eksik altı kanal eski sürümün numarası, kategorisi, logosu ve akışlarıyla eklendi, ardından Vavoo akışları: NTV (38), Star TV (40), Teve2 (78), Kanal D (81), Ekol TV (88), Sözcü TV (122). Liste 210 kanal.
+    - Bilgisayardan denendi: 5 örnekten 4'ü 0,6–1 sn'de yayın listesini verdi, Halk TV 15 sn sonra hata ("m3u8 alinamadi").
+    - Riskler: kimin işlettiği belli olmayan tek bir aracı sunucu (kapanabilir, trafiği görür); Vavoo'nun yayın hakkı yok. Akışlar yedek olarak durur; resmî CDN'ler yoklamada genelde önde çıkıyor.
 - **Yayın akışı (EPG, 2026-10-31).** İki kaynak, kullanıcının seçimi: önce epgshare01'in Türkiye dosyası (`epg_ripper_TR1.xml.gz`), ikinci olarak iptv-org/epg ile ürettiğimiz dosya. İkisi `ByReDoxXx/redox-epg` deposunda tek şifreli pakette (`epg.bin`) yayınlanır, uygulama birleştirir; 31 Ekim'de 204 kanalın 51–52'si.
   - Neden bu kaynak: her gün güncelleniyor (Türksat Kablo'nun yayın akışından), 3 gün, ~170 KB gzip, başlıklar Türkçe, saatler +03:00. 31 Ekim'de gömülü 204 kanalın 31'ini kapsadı.
   - Elenenler: kullanıcının `epg.xml`'i (Rus servisi it999, 404 MB, kanallarımızdan yalnız 5'i, iki gün sonra eskiyor); `ViP.m3u` (EPG adresi yok; adresleri ücretli aboneliğin kullanıcı adı/şifreli bağlantıları, uygulamaya konamaz).
@@ -242,6 +248,9 @@ Kullanıcı paletin Logo-2'ye göre revize edilmesini istedi. Logo-2, ilk logoyl
     - Kanal açılamadığında yalnız rakamlar ve ▲▼ / kanal tuşları işler; öteki tuşlar "Tekrar dene" / "Sonraki kanal" düğmelerine gider (cihazda ▲▼ engelleniyordu).
   - **İpuçları:** kanal ya da akış değişince çubuk ve "OK Kontroller · ▲▼ Kanal · ◄ Kanal listesi · ► Sonraki akış" 3,8 sn görünür. Eski sürümde böyleydi; Anasayfadaki kalıcı şerit kaldırılmıştı, bu kısa süreli.
   - **Seçenekler:** Kalite, Ses, Altyazı, Ölçek (16:9 Orijinal / Ekranı doldur / Uzat), Önceki kanal, Oynatıcıdan çık; altta ölçülen boyut ve akış. Kalite listesi yüksekten düşüğe sıralıdır. İşlevi olmayan satır (gece modu, PiP, 2×2, kanalı gizle) gösterilmez: 2. aşama.
+  - **En iyi akış seçimi (`StreamProbe`, kullanıcı isteği, 2026-11-01):** kanal açılırken bütün akışların oynatma listeleri aynı anda indirilir (en çok 2 sn). Hızlı açılanlar (en hızlının iki katı ya da +0,7 sn içinde) bit hızına göre öne dizilir, sonra yavaşlar, en sonda açılmayanlar (yoklamada açılmayan oynatıcıda açılabilir). Bit hızı: ana listede en yüksek `BANDWIDTH`; tek kaliteli listede ilk parçanın boyutu (HEAD, en çok 1 sn) / süresi. Sonuç kanal başına 30 dk saklanır. Oynatıcı ve önizleme bu sırayla açar, yedek geçişi de bu sırayı izler.
+    - Bedeli: kanalın ilk açılışına en çok ~3 sn eklenir (bilgisayardan TRT 1'in 12 akışı 2 sn, Show TV'nin 11 akışı 3,5 sn sürdü; sınırlar sonradan 2 + 1 sn'ye indirildi). Kanal hızla değişirse eski kanalın geç gelen sonucu yok sayılır.
+    - Kanıt: `test/features/player/stream_probe_test.dart`. Cihazda denenmedi.
   - **Otomatik yedek akış (`PlaybackSession`):** akış hata verirse ya da 15 sn içinde görüntü gelmezse (`PlaybackSession.defaultStartupTimeout`) sıradaki akışa geçilir; hepsi açılmazsa "Tekrar dene" / "Sonraki kanal". Eski sürüm (ExoPlayer) TV'de 2,5 sn bekliyordu.
     - Süre ölçümle belirlendi: mpv gerçek kanalları Chromecast with Google TV'de 6–12 sn'de açtı (A Haber 5,9 · ATV 7,9 · TV8 8,3 · Show 8,5 · Halk TV 11,7 sn). İlk sınır 10 sn idi; kanallar bir açılıp bir açılmıyordu.
     - Hatayla geçişten sonraki 1 sn içinde gelen hatalar eski akışın sayılır: emülatörde açılmayan adres iki hata bildirdi, ikincisi yedek akışı da düşürüyordu.

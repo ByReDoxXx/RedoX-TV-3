@@ -14,6 +14,7 @@ import '../../core/ui/redox_icon.dart';
 import 'engine/media_kit_engine.dart';
 import 'engine/playback_engine.dart';
 import 'playback_session.dart';
+import 'stream_probe.dart';
 import 'widgets/channel_drawer.dart';
 import 'widgets/player_bar.dart';
 import 'widgets/player_options.dart';
@@ -33,6 +34,7 @@ class PlayerPage extends StatefulWidget {
     required this.initialIndex,
     required this.clock,
     this.engineFactory,
+    this.rank,
   });
 
   final List<LiveChannel> channels;
@@ -42,14 +44,23 @@ class PlayerPage extends StatefulWidget {
   /// Testlerde sahte motor; null ise media_kit.
   final PlaybackEngine Function()? engineFactory;
 
+  /// Akış sıralayıcı (StreamProbe.rank); null ise listedeki sıra.
+  final StreamRanker? rank;
+
   static Route<void> route({
     required List<LiveChannel> channels,
     required int initialIndex,
     required String clock,
     PlaybackEngine Function()? engineFactory,
+    StreamRanker? rank,
   }) => MaterialPageRoute(
-    builder: (_) =>
-        PlayerPage(channels: channels, initialIndex: initialIndex, clock: clock, engineFactory: engineFactory),
+    builder: (_) => PlayerPage(
+      channels: channels,
+      initialIndex: initialIndex,
+      clock: clock,
+      engineFactory: engineFactory,
+      rank: rank,
+    ),
   );
 
   /// Kanal değişince çubuğun ve ipuçlarının görünme süresi.
@@ -71,6 +82,7 @@ class _PlayerPageState extends State<PlayerPage> {
     engine: _engine,
     channels: widget.channels,
     initialIndex: widget.initialIndex,
+    rank: widget.rank,
   );
 
   final _rootFocus = FocusNode(debugLabel: 'oynatıcı');

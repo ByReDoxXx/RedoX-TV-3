@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/content/live_channel.dart';
 import 'engine/playback_engine.dart';
+import 'stream_probe.dart';
 
 /// Oynatmanın evresi.
 enum PlaybackStatus {
@@ -20,7 +21,9 @@ enum PlaybackStatus {
 /// Bir oynatma oturumu: kanal dizisi, şimdiki kanal ve akışı, otomatik yedek
 /// geçişi (eski sürümdeki "Auto-Failover"). Akış hata verirse ya da
 /// [startupTimeout] içinde görüntü gelmezse sıradaki akışa geçilir; hepsi
-/// denenince kanal [PlaybackStatus.failed] olur.
+/// denenince kanal [PlaybackStatus.failed] olur. [rank] verilirse akışlar
+/// açılmadan önce sıralanır (StreamProbe: hızlı açılanlar içinde bit hızı en
+/// yüksek olan önde).
 class PlaybackSession extends ChangeNotifier {
   PlaybackSession({
     required this.engine,
@@ -28,6 +31,7 @@ class PlaybackSession extends ChangeNotifier {
     required int initialIndex,
     this.startupTimeout = defaultStartupTimeout,
     this.staleErrorWindow = const Duration(seconds: 1),
+    this.rank,
   }) : assert(channels.isNotEmpty) {
     engine.state.addListener(_onEngine);
     _errorSubscription = engine.errors.listen(_onError);
@@ -53,12 +57,22 @@ class PlaybackSession extends ChangeNotifier {
   /// [startupTimeout] yakalar.
   final Duration staleErrorWindow;
 
+  /// Akış sıralayıcı; null ise listedeki sıra.
+  final StreamRanker? rank;
+
   late final StreamSubscription<String> _errorSubscription;
   Timer? _startupTimer;
   Timer? _staleTimer;
 
   int _index = 0;
   int _stream = 0;
+
+  /// Şimdiki kanalın akışları, denenecek sırayla.
+  List<String> _streams = const [];
+
+  /// Kanal her açılışta artar: geç gelen sıralama sonucu eski kanala uygulanmaz.
+  int _generation = 0;
+  bool _disposed = false;
   int? _previous;
   PlaybackStatus _status = PlaybackStatus.loading;
   String? _lastError;
@@ -68,7 +82,7 @@ class PlaybackSession extends ChangeNotifier {
 
   /// Şimdiki akışın sırası (0'dan) ve sayısı: "Akış 1/2".
   int get streamIndex => _stream;
-  int get streamCount => channel.streams.length;
+  int get streamCount => _streams.length;
 
   PlaybackStatus get status => _status;
 
@@ -82,13 +96,35 @@ class PlaybackSession extends ChangeNotifier {
     if (index != _index) _previous = _index;
     _index = index;
     _stream = 0;
-    _play();
+    final generation = ++_generation;
+    final rank = this.rank;
+    if (rank == null || channel.streams.length < 2) {
+      _streams = channel.streams;
+      _play();
+      return;
+    }
+    // Sıralama sürerken "yükleniyor"; açılış süresi sıralamadan sonra başlar.
+    _startupTimer?.cancel();
+    _streams = channel.streams;
+    _setStatus(PlaybackStatus.loading);
+    unawaited(
+      rank(channel.streams).then(
+        (ordered) {
+          if (_disposed || generation != _generation) return;
+          _streams = ordered;
+          _play();
+        },
+        onError: (Object _) {
+          if (!_disposed && generation == _generation) _play();
+        },
+      ),
+    );
   }
 
   void _play() {
     _startupTimer?.cancel();
     _lastError = null;
-    if (channel.streams.isEmpty) {
+    if (_streams.isEmpty) {
       _setStatus(PlaybackStatus.failed);
       return;
     }
@@ -96,7 +132,7 @@ class PlaybackSession extends ChangeNotifier {
     // Zamanlayıcı açılıştan önce: motor hatayı hemen bildirirse yedek akışa
     // geçiş bu zamanlayıcıyı iptal eder (sonradan kurulsaydı ortada kalırdı).
     _startupTimer = Timer(startupTimeout, _failover);
-    unawaited(engine.open(channel.streams[_stream]));
+    unawaited(engine.open(_streams[_stream]));
   }
 
   void _setStatus(PlaybackStatus status) {
@@ -168,6 +204,7 @@ class PlaybackSession extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _startupTimer?.cancel();
     _staleTimer?.cancel();
     unawaited(_errorSubscription.cancel());
