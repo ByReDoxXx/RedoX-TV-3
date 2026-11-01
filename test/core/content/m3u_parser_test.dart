@@ -36,9 +36,11 @@ https://c/1.m3u8
     final tv = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync());
     final c = tv.channels;
     expect(c.length, greaterThan(150));
-    expect(c.first.name, 'TRT Belgesel');
+    // Ana kanallar önde (Türksat frekans listesi sırası; tools/kanal).
+    expect(c.first.name, 'TRT 1');
     expect(c.first.number, 1);
-    expect(c.firstWhere((x) => x.name == 'TRT 1').number, 6, reason: 'eski sürümün numarası');
+    expect(c.firstWhere((x) => x.name == 'ATV').number, 7);
+    expect(c.firstWhere((x) => x.name == 'Kanal D').number, 9);
     final numbers = [for (final x in c) x.number];
     expect(numbers.toSet().length, numbers.length);
     expect(numbers, orderedEquals([...numbers]..sort()));

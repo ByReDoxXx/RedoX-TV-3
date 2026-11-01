@@ -244,7 +244,8 @@ void main() {
       final now = DateTime(2026, 10, 31, 20, 15);
       DateTime t(int h, [int m = 0]) => DateTime(2026, 10, 31, h, m);
       final guide = EpgGuide({
-        EpgGuide.key('TRT Belgesel'): [
+        // İlk kart: listenin ilk kanalı.
+        EpgGuide.key('TRT 1'): [
           GuideEntry(title: 'Evvel Zaman Tarifleri', start: t(20), stop: t(21), category: 'Belgesel'),
           GuideEntry(title: 'Gizli Oteller', start: t(21), stop: t(22)),
         ],
