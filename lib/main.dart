@@ -46,5 +46,5 @@ Future<void> main() async {
   final history = await WatchHistory.load();
   // Anasayfa kartlarında yayından gerçek kare (FrameStore); "Kim izliyor?"
   // ekranı dururken alınmaya başlar.
-  runApp(RedoxApp(tv: tv, profiles: profiles, history: history, frames: FrameStore(), rank: StreamProbe().rank));
+  runApp(RedoxApp(tv: tv, profiles: profiles, history: history, frames: FrameStore(startDelay: const Duration(seconds: 3)), rank: StreamProbe().rank));
 }

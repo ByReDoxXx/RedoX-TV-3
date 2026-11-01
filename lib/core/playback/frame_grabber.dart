@@ -13,8 +13,10 @@ typedef FrameGrabber = Future<Uint8List?> Function(String url);
 /// oynamasına gerek yok, bir kare alsa yeter").
 ///
 /// Ayrı ve sessiz bir mpv, görüntüyü ekrana değil dosyaya yazar (`vo=image`,
-/// JPEG) ve ilk kareden sonra durur (`frames=1`); çözücü yazılımsaldır
-/// (hwdec=no). Dosya geçici klasörden okunup silinir.
+/// JPEG) ve ilk kareden sonra durur (`frames=1`). Çözücü donanımsaldır, kare
+/// belleğe kopyalanır (`mediacodec-copy`; masaüstünde `auto-copy`); açılmazsa
+/// mpv yazılıma düşer. Yazılım çözücü 1080p akışta zayıf TV işlemcisini
+/// açılışta boğuyordu. Dosya geçici klasörden okunup silinir.
 /// (`vo=null` + `screenshot-raw` denendi: kare saklanmadığı için boş döndü.)
 Future<Uint8List?> grabFrame(String url, {Duration timeout = const Duration(seconds: 15)}) async {
   final dir = await Directory.systemTemp.createTemp('redox-kare-');
@@ -25,7 +27,7 @@ Future<Uint8List?> grabFrame(String url, {Duration timeout = const Duration(seco
     // media_kit görüntüsü bağlanmamış oynatıcıda görüntüyü hiç çözmez (vid=no).
     await native.setProperty('vid', 'auto');
     await native.setProperty('aid', 'no');
-    await native.setProperty('hwdec', 'no');
+    await native.setProperty('hwdec', Platform.isAndroid ? 'mediacodec-copy' : 'auto-copy');
     await native.setProperty('frames', '1');
     await native.setProperty('vo-image-format', 'jpg');
     await native.setProperty('vo-image-jpeg-quality', '80');
@@ -58,9 +60,18 @@ Future<Uint8List?> grabFrame(String url, {Duration timeout = const Duration(seco
 /// TV işlemcisinde iki çözücü aynı anda çalışmasın); [pause] ile durur
 /// (örn. bir kanal izlenirken). Kare [freshFor] boyunca tazedir.
 class FrameStore extends ChangeNotifier {
-  FrameStore({FrameGrabber? grabber, this.freshFor = const Duration(minutes: 10), DateTime Function()? clock})
-    : _grab = grabber ?? grabFrame,
-      _clock = clock ?? DateTime.now;
+  FrameStore({
+    FrameGrabber? grabber,
+    this.freshFor = const Duration(minutes: 10),
+    this.startDelay = Duration.zero,
+    DateTime Function()? clock,
+  }) : _grab = grabber ?? grabFrame,
+       _clock = clock ?? DateTime.now;
+
+  /// İlk kare bu kadar sonra alınır: açılışta arayüz, kanal listesi ve akış
+  /// işlemciyi paylaşmasın.
+  final Duration startDelay;
+  bool _started = false;
 
   final FrameGrabber _grab;
   final Duration freshFor;
@@ -97,6 +108,10 @@ class FrameStore extends ChangeNotifier {
     if (_running) return;
     _running = true;
     try {
+      if (!_started) {
+        _started = true;
+        if (startDelay > Duration.zero) await Future<void>.delayed(startDelay);
+      }
       while (_queue.isNotEmpty && !_paused && !_disposed) {
         final c = _queue.removeAt(0);
         // İlk açılan akış yeter; açılmazsa ikincisi.

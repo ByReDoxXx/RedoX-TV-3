@@ -350,7 +350,8 @@ def figure_mask(img):
 
 
 def write_transparent_svg(src1000):
-    """Zeminsiz tam logo (redox-logo-saydam.svg): lacivert karo zemini atılır,
+    """Zeminsiz tam logo, vektör (design/logo/redox-logo-zeminsiz.svg; uygulama
+    bitmap'ini kullanır, write_app_pngs): lacivert karo zemini atılır,
     boğa, halka ve "REDOX TV" yazısı kalır. Bir yol, görünen alanının yarısından
     çoğu konu maskesinin dışındaysa zemindir. viewBox konuya kırpılır."""
     from PIL import ImageDraw
@@ -382,13 +383,36 @@ def write_transparent_svg(src1000):
     x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
     out = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        "<!-- RedoX TV tam logo, zeminsiz: redox-logo.svg'den (design/logo/logo_varyasyonlari.py). -->\n"
+        "<!-- RedoX TV tam logo, zeminsiz (tasarım kaynağı): redox-logo.svg'den (design/logo/logo_varyasyonlari.py). -->\n"
         f'<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="{x1 - x0}" height="{y1 - y0}" '
         f'viewBox="{x0} {y0} {x1 - x0} {y1 - y0}">\n' + "\n".join(kept) + "\n</svg>\n"
     )
-    dest = ROOT / "assets/brand/redox-logo-saydam.svg"
+    dest = ROOT / "design/logo/redox-logo-zeminsiz.svg"
     dest.write_text(out, encoding="utf-8")
-    print(f"redox-logo-saydam.svg: {len(kept)} yol, {dropped} zemin yolu atıldı, kutu {x1 - x0}x{y1 - y0}")
+    print(f"redox-logo-zeminsiz.svg: {len(kept)} yol, {dropped} zemin yolu atıldı, kutu {x1 - x0}x{y1 - y0}")
+
+
+def write_app_pngs(src2000, src1000):
+    """Uygulama içi bitmap logolar. SVG'ler ~2300 yollu izlemedir; Impeller'da
+    önbellek olmadığından her karede yeniden çizilir ve zayıf TV GPU'sunu
+    yorar. Arayüz bunları kullanır (SVG'ler tasarım kaynağı olarak kalır).
+    - redox-mark.png: işaret karosu, yuvarlak köşe, 192 px (56 dp × 3'e yeter).
+    - redox-logo-saydam.png: zeminsiz tam logo, yükseklik 720 px (220 dp × 3)."""
+    crop = src2000.crop(MARK_BOX)
+    mark = crop.resize((192, 192), Image.LANCZOS).convert("RGBA")
+    mark.putalpha(rounded_mask(192, TILE_RADIUS))
+    mark.save(ROOT / "assets/brand/redox-mark.png", optimize=True)
+
+    mask = figure_mask(src1000).convert("L").resize(src2000.size, Image.LANCZOS).filter(ImageFilter.GaussianBlur(1.5))
+    logo = src2000.convert("RGBA")
+    logo.putalpha(mask)
+    logo = logo.crop(mask.point(lambda v: 255 if v > 8 else 0).getbbox())
+    h = 720
+    logo = logo.resize((round(logo.width * h / logo.height), h), Image.LANCZOS)
+    logo.save(ROOT / "assets/brand/redox-logo-saydam.png", optimize=True)
+    for name in ("redox-mark.png", "redox-logo-saydam.png"):
+        f = ROOT / "assets/brand" / name
+        print(f"{name}: {Image.open(f).size}, {f.stat().st_size} bayt")
 
 
 def write_mark_svg():
@@ -433,6 +457,7 @@ def main():
     recolor_trace(half)
     write_full_svg(half)
     write_transparent_svg(half)
+    write_app_pngs(src, half)
 
     # Saydam köşeli tam logo (PNG): Stitch gibi SVG almayan araçlara yüklemek
     # için. Kaynak görselin beyaz köşeleri, SVG'dekiyle aynı karo sınırıyla

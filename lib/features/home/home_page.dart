@@ -72,26 +72,29 @@ class HomePage extends StatelessWidget {
   static double _cardWidth(double contentWidth, double perRow, double gutter) =>
       (contentWidth - gutter * (perRow - 1)) / perRow;
 
-  @override
-  Widget build(BuildContext context) {
-    final frames = this.frames;
-    if (frames == null) return _build(context);
-    return ListenableBuilder(listenable: frames, builder: (context, _) => _build(context));
-  }
-
-  /// Kartın görseli: yayın karesi; yoksa kanal logosu.
-  Widget _artwork(LiveChannel c, double width, double dpr) => switch (frames?.frameOf(c)) {
-    final jpeg? => Image.memory(
-      jpeg,
-      fit: BoxFit.cover,
-      // Tam boy kare (1080p) zayıf TV belleğinde kart boyuna küçültülerek çözülür.
-      cacheWidth: (width * dpr).round(),
-      gaplessPlayback: true,
-    ),
-    null => ChannelLogo(name: c.name, logoUrl: c.logoUrl),
+  /// Kare deposunu dinleyen parça: kare gelince yalnız o görsel yeniden
+  /// kurulur (bütün sayfa değil; zayıf TV işlemcisi).
+  Widget _withFrames(Widget Function() builder) => switch (frames) {
+    final f? => ListenableBuilder(listenable: f, builder: (context, _) => builder()),
+    null => builder(),
   };
 
-  Widget _build(BuildContext context) {
+  /// Kartın görseli: yayın karesi; yoksa kanal logosu.
+  Widget _artwork(LiveChannel c, double width, double dpr) => _withFrames(
+    () => switch (frames?.frameOf(c)) {
+      final jpeg? => Image.memory(
+        jpeg,
+        fit: BoxFit.cover,
+        // Tam boy kare (1080p) zayıf TV belleğinde kart boyuna küçültülerek çözülür.
+        cacheWidth: (width * dpr).round(),
+        gaplessPlayback: true,
+      ),
+      null => ChannelLogo(name: c.name, logoUrl: c.logoUrl),
+    },
+  );
+
+  @override
+  Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final gutter = metrics.gutter;
@@ -151,12 +154,14 @@ class HomePage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               if (hero != null)
-                HeroBanner(
-                  hero: hero,
-                  frame: frames?.frameOf(hero.channel),
-                  primaryFocused: previewFocus ? true : null,
-                  onWatch: () => onWatch?.call(hero.channel),
-                  onGuide: onGuide,
+                _withFrames(
+                  () => HeroBanner(
+                    hero: hero,
+                    frame: frames?.frameOf(hero.channel),
+                    primaryFocused: previewFocus ? true : null,
+                    onWatch: () => onWatch?.call(hero.channel),
+                    onGuide: onGuide,
+                  ),
                 ),
               if (content.channels.isNotEmpty) ...[
                 const SizedBox(height: 40),

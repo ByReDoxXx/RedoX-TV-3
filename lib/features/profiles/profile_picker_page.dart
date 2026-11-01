@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/brand/brand_assets.dart';
 import '../../core/content/profiles.dart';
@@ -133,7 +132,12 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
                   const SizedBox(height: 16),
                   // Zeminsiz tam logo: işaret ve altında "RedoX TV" yazısı
                   // (kullanıcı isteği); ışımalı zemin arkasından görünür.
-                  SvgPicture.asset(BrandAssets.logoTransparent, height: logo, semanticsLabel: 'RedoX TV'),
+                  Image.asset(
+                    BrandAssets.logoTransparent,
+                    height: logo,
+                    semanticLabel: 'RedoX TV',
+                    filterQuality: FilterQuality.medium,
+                  ),
                   const Spacer(),
                   Text('Kim izliyor?', style: t.headlineLarge!.copyWith(color: RedoxRoles.onSurface)),
                   const SizedBox(height: 32),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../brand/brand_assets.dart';
 import '../layout/form_factor.dart';
@@ -56,11 +55,14 @@ class AppHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
-    final logo = SvgPicture.asset(
-      BrandAssets.mark,
+    // Bitmap işaret: SVG her karede ~2300 yolu yeniden çizerdi (kaydırırken
+    // zayıf TV GPU'sunda takılma).
+    final logo = Image.asset(
+      BrandAssets.markPng,
       width: phone ? phoneLogoSize : logoSize,
       height: phone ? phoneLogoSize : logoSize,
-      semanticsLabel: 'RedoX TV',
+      semanticLabel: 'RedoX TV',
+      filterQuality: FilterQuality.medium,
     );
     if (phone) {
       return Row(
