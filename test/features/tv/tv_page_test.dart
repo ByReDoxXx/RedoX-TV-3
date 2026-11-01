@@ -145,7 +145,7 @@ void main() {
   });
 
   testWidgets(
-    'EPG çizelgesi: anahtarla açılır, taşmasız; programa dokunma kanalı açar (4K görüntü)',
+    'EPG çizelgesi: anahtarla açılır, taşmasız; satıra dokunma kanalı açar (4K görüntü)',
     (tester) => withRealShadows(() async {
       await loadSora(tester);
       await _size(tester, const Size(960, 540));
@@ -163,7 +163,8 @@ void main() {
       await maybeSnapshot(tester, key, 'build/tv/epg-4k.png', pixelRatio: 4);
 
       final first = TvContent.preview.channels.first;
-      await tester.tap(find.bySemanticsLabel(RegExp('^${first.programTitle},')));
+      // Odak satır düzeyinde: satıra (kanal + programlar) dokunma kanalı açar.
+      await tester.tap(find.bySemanticsLabel(RegExp('^${first.name}')).first);
       await _settle(tester);
       final player = tester.widget<PlayerPage>(find.byType(PlayerPage));
       expect(player.channels[player.initialIndex], first);

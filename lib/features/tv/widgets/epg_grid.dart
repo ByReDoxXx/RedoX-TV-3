@@ -13,8 +13,10 @@ import '../../../core/ui/focus_glow.dart';
 /// genişliğine sığacak kadar (yarım saatin katı) uzunluktadır ve şimdiden
 /// yarım saat önce başlar. Satırlar tembel kurulur (ListView.builder).
 ///
-/// Bir programa OK/dokunma o kanalı açar (canlı yayında yalnız şimdiki
-/// program izlenebilir; hatırlatıcı ve geri sarma sonraya).
+/// Odak satır düzeyindedir (kullanıcı isteği): seçim dikdörtgeni kanal
+/// hücresiyle birlikte bütün satırı kaplar; OK/dokunma o kanalı açar (canlı
+/// yayında yalnız şimdiki program izlenebilir; hatırlatıcı ve geri sarma
+/// sonraya). Odaktaki satırda şimdiki program vurgulanır.
 class EpgGrid extends StatelessWidget {
   const EpgGrid({
     super.key,
@@ -56,10 +58,11 @@ class EpgGrid extends StatelessWidget {
 
   double get _channelColumn => compact ? 56 : 176;
 
-  /// Satır yüksekliği: blokta başlık + saat satırı sığsın (yazı ölçeği dahil).
+  /// Satır yüksekliği: blokta başlık + saat satırı sığsın (yazı ölçeği dahil;
+  /// blok iç payı 2 × 6, satır içi dikey pay 2 × 4).
   static double rowHeightFor(BuildContext context) {
     double line(TextStyle s) => MediaQuery.textScalerOf(context).scale(s.fontSize!) * (s.height ?? 1.2);
-    return (line(_title) + line(_meta) + 2 + 16 + _rowGap).ceilToDouble().clamp(56, double.infinity);
+    return (line(_title) + line(_meta) + 2 + 12 + 8 + _rowGap).ceilToDouble().clamp(56, double.infinity);
   }
 
   @override
@@ -90,21 +93,23 @@ class EpgGrid extends StatelessWidget {
                 itemCount: channels.length,
                 itemBuilder: (context, i) {
                   final c = channels[i];
-                  return Row(
-                    children: [
-                      SizedBox(
-                        width: _channelColumn,
-                        child: _ChannelCell(channel: c, compact: compact),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: _rowGap),
+                    child: _ChannelRow(
+                      label: c.name,
+                      onPressed: onChannel == null ? null : () => onChannel!(c),
+                      builder: (active) => Row(
+                        children: [
+                          SizedBox(
+                            width: _channelColumn,
+                            child: _ChannelCell(channel: c, compact: compact),
+                          ),
+                          Expanded(
+                            child: _Row(programs: scheduleOf(c), window: window, now: now, active: active),
+                          ),
+                        ],
                       ),
-                      Expanded(
-                        child: _Row(
-                          programs: scheduleOf(c),
-                          window: window,
-                          now: now,
-                          onPressed: onChannel == null ? null : () => onChannel!(c),
-                        ),
-                      ),
-                    ],
+                    ),
                   );
                 },
               ),
@@ -117,6 +122,36 @@ class EpgGrid extends StatelessWidget {
 }
 
 typedef _Window = ({int start, int end, double scale});
+
+/// Satırın tamamı tek odak öğesidir: kanal hücresi ve zaman ekseni birlikte
+/// seçilir. Ölçek 1: satırlar üst üstedir, büyüyen satır komşusunu örterdi.
+class _ChannelRow extends StatelessWidget {
+  const _ChannelRow({required this.label, required this.builder, this.onPressed});
+
+  final String label;
+  final Widget Function(bool active) builder;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(RedoxRadius.sm);
+    return FocusGlow(
+      borderRadius: radius,
+      scale: 1,
+      builder: (context, active) => Material(
+        color: active ? RedoxAccent.glassFill : Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Semantics(button: true, label: label, child: builder(active)),
+        ),
+      ),
+    );
+  }
+}
 
 class _Ruler extends StatelessWidget {
   const _Ruler({required this.window, required this.now});
@@ -194,7 +229,7 @@ class _ChannelCell extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: EpgGrid._rowGap, right: 8),
+      padding: const EdgeInsets.only(left: 6, right: 8),
       child: compact
           ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [logo, const SizedBox(height: 2), number])
           : Row(
@@ -224,12 +259,14 @@ class _ChannelCell extends StatelessWidget {
 
 /// Bir kanalın zaman ekseni: pencereye kırpılmış program blokları.
 class _Row extends StatelessWidget {
-  const _Row({required this.programs, required this.window, required this.now, this.onPressed});
+  const _Row({required this.programs, required this.window, required this.now, required this.active});
 
   final List<EpgProgram> programs;
   final _Window window;
   final int now;
-  final VoidCallback? onPressed;
+
+  /// Satır odakta: şimdiki program vurgulanır.
+  final bool active;
 
   /// Bloğun pencereye kırpılmış konumu ve genişliği (aralarında 4 dp boşluk).
   (double, double) _span(EpgProgram p) {
@@ -242,7 +279,7 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final nowX = (now - window.start) * window.scale;
     return Padding(
-      padding: const EdgeInsets.only(bottom: EpgGrid._rowGap),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -253,13 +290,13 @@ class _Row extends StatelessWidget {
                 width: width,
                 top: 0,
                 bottom: 0,
-                child: _Block(program: p, now: now, onPressed: onPressed),
+                child: _Block(program: p, now: now, rowActive: active),
               ),
           Positioned(
             left: nowX - 1,
             width: 2,
-            top: -EpgGrid._rowGap / 2,
-            bottom: -EpgGrid._rowGap / 2,
+            top: -4 - EpgGrid._rowGap / 2,
+            bottom: -4 - EpgGrid._rowGap / 2,
             child: const IgnorePointer(child: ColoredBox(color: RedoxSeeds.crimson)),
           ),
         ],
@@ -269,11 +306,11 @@ class _Row extends StatelessWidget {
 }
 
 class _Block extends StatelessWidget {
-  const _Block({required this.program, required this.now, this.onPressed});
+  const _Block({required this.program, required this.now, required this.rowActive});
 
   final EpgProgram program;
   final int now;
-  final VoidCallback? onPressed;
+  final bool rowActive;
 
   @override
   Widget build(BuildContext context) {
@@ -281,79 +318,71 @@ class _Block extends StatelessWidget {
     final live = p.isLiveAt(now);
     final past = p.known && p.end <= now;
     final radius = BorderRadius.circular(RedoxRadius.sm);
+    final highlight = rowActive && live;
     final fg = past || !p.known ? RedoxRoles.onSurfaceVariant.withValues(alpha: 0.7) : RedoxRoles.onSurface;
     return Semantics(
       label: p.known ? '${p.title}, ${EpgProgram.formatClock(p.start)} – ${EpgProgram.formatClock(p.end)}' : p.title,
       excludeSemantics: true,
-      button: true,
-      // Ölçek 1: komşu bloklar yan yanadır, büyüyen blok onların altında kalırdı.
-      child: FocusGlow(
-        borderRadius: radius,
-        scale: 1,
-        builder: (context, active) => Material(
-          color: active
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: highlight
               ? RedoxRoles.surfaceContainerHighest
               : live
               ? RedoxRoles.surfaceContainerHigh
               : past
               ? RedoxRoles.surfaceContainerLowest
               : RedoxRoles.surfaceContainer,
-          shape: RoundedRectangleBorder(
-            borderRadius: radius,
-            side: live && !active ? const BorderSide(color: RedoxRoles.outlineVariant) : BorderSide.none,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onPressed,
-            focusColor: Colors.transparent,
-            hoverColor: Colors.transparent,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Dar blokta yazı kesik görünmesin: saat 100 dp'nin, başlık
-                // 44 dp'nin altında yazılmaz (ad erişilebilirlikte kalır).
-                LayoutBuilder(
-                  builder: (context, box) => box.maxWidth < 44
-                      ? const SizedBox.shrink()
-                      : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
+          borderRadius: radius,
+          border: live && !highlight ? Border.all(color: RedoxRoles.outlineVariant) : null,
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Dar blokta yazı kesik görünmesin: saat 100 dp'nin, başlık
+              // 44 dp'nin altında yazılmaz (ad erişilebilirlikte kalır).
+              LayoutBuilder(
+                builder: (context, box) => box.maxWidth < 44
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              p.title,
+                              style: EpgGrid._title.copyWith(color: fg),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (p.known && box.maxWidth >= 100) ...[
+                              const SizedBox(height: 2),
                               Text(
-                                p.title,
-                                style: EpgGrid._title.copyWith(color: fg),
+                                '${EpgProgram.formatClock(p.start)} – ${EpgProgram.formatClock(p.end)}',
+                                style: EpgGrid._meta.copyWith(
+                                  color: RedoxRoles.onSurfaceVariant,
+                                  fontFeatures: RedoxType.tabular,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (p.known && box.maxWidth >= 100) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${EpgProgram.formatClock(p.start)} – ${EpgProgram.formatClock(p.end)}',
-                                  style: EpgGrid._meta.copyWith(
-                                    color: RedoxRoles.onSurfaceVariant,
-                                    fontFeatures: RedoxType.tabular,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
                             ],
-                          ),
+                          ],
                         ),
-                ),
-                // Canlı programın ilerlemesi: alt kenarda ince kızıl çizgi.
-                if (live)
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: ((now - p.start) / (p.end - p.start)).clamp(0, 1),
-                      child: const SizedBox(height: 3, child: ColoredBox(color: RedoxSeeds.crimson)),
-                    ),
+                      ),
+              ),
+              // Canlı programın ilerlemesi: alt kenarda ince kızıl çizgi.
+              if (live)
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: ((now - p.start) / (p.end - p.start)).clamp(0, 1),
+                    child: const SizedBox(height: 3, child: ColoredBox(color: RedoxSeeds.crimson)),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
