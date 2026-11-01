@@ -35,7 +35,8 @@ https://c/1.m3u8
   test('gömülü Türkçe liste: şifresiz, numaralar benzersiz ve artan, her kanalın akışı var', () {
     final tv = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync());
     final c = tv.channels;
-    expect(c.length, greaterThan(150));
+    // Yalnız TKGS kanalları (tools/kanal/turksat_sifresiz.txt).
+    expect(c.length, greaterThan(100));
     // Ana kanallar önde (Türksat frekans listesi sırası; tools/kanal).
     expect(c.first.name, 'TRT 1');
     expect(c.first.number, 1);
