@@ -15,7 +15,6 @@ Kurallar:
 - Numara: önce ANA sırası (Türksat frekans listesi, hiremco.com.tr, 16.10.2026:
   ana kanallar önde); sonra mevcut sıra (Türksat kanal/frekans PDF'inin satır
   sırası, önceki çalışma); en sonda yeni kanallar, kategori sırasıyla.
-- Yalnız TKGS'deki (Türksat şifresiz) kanallar tutulur (TKGS, TKGS_AD).
 """
 
 import re
@@ -88,54 +87,6 @@ YENI_AD = {
     "CİNE 1": "Cine 1",
     "Cine 1 TV": "Cine 1",
 }
-
-# Yalnız TKGS kanalları (kullanıcı kararı, 01.11.2026): Türksat'ın şifresiz
-# TV kanalları (turksat_listesi.py → turksat_sifresiz.txt). Ad farklıysa:
-# bizim ad → Türksat adı.
-TKGS = Path(__file__).resolve().parent / "turksat_sifresiz.txt"
-TKGS_AD = {
-    "Kanal 3 Afyon": "KANAL 3 HD",
-    "Kanal 32 Isparta": "KANAL 32",
-    "TV 52 Ordu": "TV 52",
-    "TV Den Aydın": "TV DEN",
-    "TV 1 Kayseri": "TV 1",
-    "ES TV Eskişehir": "ES TV",
-    "GRT Gaziantep TV": "GRT.",
-    "Kanal 15 Burdur": "KANAL 15",
-    "Er TV Malatya": "ER TV",
-    "TV 41 Kocaeli": "TV 41",
-    "Aksu TV Kahramanmaraş": "AKSU TV",
-    "Kanal 26 Eskişehir": "KANAL 26",
-    "Kanal 58 Sivas": "KANAL 58",
-    "Mercan TV Adıyaman": "MERCAN TV",
-    "Kanal Fırat Elazığ": "KANAL FIRAT",
-    "Kanal V Antalya": "KANAL V",
-    "Kanal 23 Elazığ": "KANAL 23",
-    "Teve2": "TV 2 HD",
-    "BRT 2 HD Kıbrıs": "BRT 2 HD",
-    "Kıbrıs Genç TV": "GENÇ TV",
-    "Güneydoğu TV Şanlıurfa": "GÜNEYDOĞU TV",
-    "Kanal T Kıbrıs": "KANAL T",
-    "Kardelen TV Erzurum": "K KARDELEN TV",
-    "BRT 1 HD Kıbrıs": "BRT 1 HD",
-    "TV 2020 Kıbrıs": "TV2020",
-    "TRT EBA Ortaokul": "TRT EBA HD",
-    "Number 1 Türk": "NR1 TÜRK TV HD",
-    "TRT Arabi": "TRT ARAPÇA HD",
-    "Çay TV Rize": "ÇAY TV",
-    "KARADENİZ TV": "HDKARADENİZ.",
-}
-
-
-def tkgs_key(name):
-    """Türksat adıyla karşılaştırma: Türkçe harfler katlanır, HD/4K/TV ekleri
-    ve noktalama atılır ("TRT 1 HD" = "TRT 1")."""
-    s = name.replace("İ", "i").replace("I", "ı").lower().replace("ı", "i")
-    k = re.sub(r"[^a-z0-9]", "", "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)))
-    for _ in range(3):
-        k = re.sub(r"(hd|4k|uhd|tv)$", "", k)
-    return k
-
 
 # Yeni listenin grupları → bizim kategoriler.
 GRUP = {
@@ -257,13 +208,6 @@ def main():
             by_key[k] = entry
             added.append((AD.get(k, name), cat))
 
-    # Yalnız TKGS kanalları kalır.
-    tkgs = {tkgs_key(l) for l in TKGS.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#")}
-    removed = [e[1] for e in ours if tkgs_key(TKGS_AD.get(e[1], e[1])) not in tkgs]
-    ours = [e for e in ours if e[1] not in removed]
-    by_key = {k: e for k, e in by_key.items() if e[1] not in removed}
-    added = [(n, c) for n, c in added if n not in removed]
-
     # Numara: ana sıra, sonra mevcut numara sırası, sonra yeni kanallar.
     def old_number(entry):
         n = entry[0].get("tvg-chno", "")
@@ -285,7 +229,6 @@ def main():
     for n, c in added:
         print(f"  {n} [{c}]")
     print(f"Dışlanan: {', '.join(skipped)}")
-    print(f"TKGS'de olmadığı için çıkan ({len(removed)}): {', '.join(removed)}")
     print("İlk 30:", " | ".join(f"{i}:{e[1]}" for i, e in enumerate(ordered[:30], start=1)))
     print(f"Toplam {len(ordered)} kanal")
 
