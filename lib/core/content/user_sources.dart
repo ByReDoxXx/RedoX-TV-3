@@ -9,10 +9,18 @@ import 'package:path_provider/path_provider.dart';
 import 'live_channel.dart';
 import 'm3u_parser.dart';
 import 'remote_file.dart';
+import 'source_formats.dart';
+import 'stalker_client.dart';
+import 'xtream_client.dart';
 
-/// Kaynağın nereden geldiği (kartta rozet).
+/// Kaynağın türü (kartta rozet; yenileme buna göre).
 enum SourceOrigin {
-  url('Adres'),
+  url('M3U'),
+  json('JSON'),
+  html('HTML'),
+  xtream('Xtream'),
+  portal('Portal'),
+  bulk('GitHub'),
   file('Dosya'),
   phone('Telefon');
 
@@ -21,8 +29,8 @@ enum SourceOrigin {
   final String label;
 }
 
-/// Kullanıcının eklediği M3U listesi: bir "klasör" (eski uygulamadaki
-/// "Özel M3U"). Adresle eklenen yenilenebilir.
+/// Kullanıcının eklediği liste: bir "klasör" (eski uygulamadaki "Özel M3U").
+/// Adresle, hesapla ya da portalla eklenen yenilenebilir.
 @immutable
 class UserSource {
   const UserSource({
@@ -32,6 +40,7 @@ class UserSource {
     required this.count,
     required this.updated,
     this.url,
+    this.config = const {},
   });
 
   factory UserSource.fromJson(Map<String, Object?> j) => UserSource(
@@ -41,6 +50,7 @@ class UserSource {
     count: j['count']! as int,
     updated: DateTime.parse(j['updated']! as String),
     url: j['url'] as String?,
+    config: {for (final MapEntry(:key, :value) in ((j['config'] as Map?) ?? const {}).entries) '$key': '$value'},
   );
 
   final String id;
@@ -51,10 +61,17 @@ class UserSource {
   final int count;
   final DateTime updated;
 
-  /// Liste adresi (adresle ya da telefondan adresle eklendiyse).
+  /// Liste adresi (M3U, JSON, HTML, telefondan adres).
   final String? url;
 
-  bool get refreshable => url != null;
+  /// Yenileme bilgisi: Xtream (server, username, password), portal (portal,
+  /// mac). Cihazda, uygulama klasöründe durur.
+  final Map<String, String> config;
+
+  bool get refreshable => url != null || origin == SourceOrigin.xtream || origin == SourceOrigin.portal;
+
+  UserSource _with({required int count}) =>
+      UserSource(id: id, name: name, origin: origin, count: count, updated: DateTime.now(), url: url, config: config);
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -63,6 +80,7 @@ class UserSource {
     'count': count,
     'updated': updated.toIso8601String(),
     'url': ?url,
+    if (config.isNotEmpty) 'config': config,
   };
 }
 
@@ -75,27 +93,35 @@ class SourceException implements Exception {
   String toString() => message;
 }
 
-/// Kullanıcının M3U listeleri. Listelerin metni uygulama klasöründe dosya
-/// olarak durur (büyük olabilir), dizin `kaynaklar.json`'dadır.
+/// Toplu eklemenin sonucu.
+typedef BulkResult = ({List<UserSource> added, int failed});
+
+/// Kullanıcının listeleri. Hangi biçimden gelirse gelsin kanallar M3U olarak
+/// uygulama klasöründe dosyada durur (büyük olabilir); dizin
+/// `kaynaklar.json`'dadır.
 class UserSources extends ChangeNotifier {
-  UserSources({required this.dir, List<UserSource> items = const [], Future<List<int>> Function(Uri)? fetch})
+  UserSources({required this.dir, List<UserSource> items = const [], HeaderFetch? fetch})
     : _items = List.of(items),
-      _fetch = fetch ?? fetchBytes;
+      _fetch = fetch ?? ((uri, headers) => fetchBytes(uri, headers: headers));
 
   /// Listelerin durduğu klasör.
   final Directory dir;
   final List<UserSource> _items;
-  final Future<List<int>> Function(Uri) _fetch;
+  final HeaderFetch _fetch;
   final _cache = <String, List<LiveChannel>>{};
+  final _portals = <String, StalkerClient>{};
 
-  /// En büyük liste (telefondan yükleme ve indirme sınırı).
+  /// En büyük liste (indirme ve telefondan yükleme sınırı).
   static const maxBytes = 50 * 1024 * 1024;
+
+  /// Toplu eklemede en çok liste.
+  static const maxBulk = 50;
 
   static Future<UserSources> load() async =>
       open(Directory('${(await getApplicationSupportDirectory()).path}/kaynaklar'));
 
   /// [dir]'deki listeleri açar (yoksa klasörü kurar).
-  static Future<UserSources> open(Directory dir, {Future<List<int>> Function(Uri)? fetch}) async {
+  static Future<UserSources> open(Directory dir, {HeaderFetch? fetch}) async {
     await dir.create(recursive: true);
     return UserSources(dir: dir, items: await _readIndex(dir), fetch: fetch);
   }
@@ -128,49 +154,144 @@ class UserSources extends ChangeNotifier {
     return _cache[s.id] = M3uParser.parse(await f.readAsString());
   }
 
-  /// Adresteki listeyi indirip ekler.
+  // ---- Ekleme -------------------------------------------------------------
+
+  /// Adresteki listeyi indirip ekler; biçim içerikten anlaşılır (M3U, JSON,
+  /// HTML sayfasındaki yayın bağlantıları).
   Future<UserSource> addUrl(String name, String url, {SourceOrigin origin = SourceOrigin.url}) async {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null || !(uri.isScheme('http') || uri.isScheme('https')) || uri.host.isEmpty) {
-      throw const SourceException('Adres http:// ya da https:// ile başlamalı.');
-    }
-    return addText(name, await _download(uri), origin: origin, url: uri.toString());
-  }
-
-  /// M3U metnini ekler (dosya, telefon).
-  Future<UserSource> addText(String name, String text, {required SourceOrigin origin, String? url}) async {
-    final channels = _validate(text);
-    final s = UserSource(
-      id: _newId(),
-      name: _name(name, url),
+    final uri = _httpUri(url);
+    final text = await _download(uri);
+    return _store(
+      name,
+      SourceFormats.detect(text, base: uri),
       origin: origin,
-      count: channels.length,
-      updated: DateTime.now(),
-      url: url,
+      url: uri.toString(),
+      raw: text,
     );
-    await _file(s.id).writeAsString(text);
-    _cache[s.id] = channels;
-    _items.add(s);
-    await _save();
-    return s;
   }
 
-  /// Adresle eklenen listeyi yeniden indirir.
-  Future<UserSource> refresh(UserSource s) async {
-    final url = s.url;
-    if (url == null) return s;
-    final text = await _download(Uri.parse(url));
-    final channels = _validate(text);
-    await _file(s.id).writeAsString(text);
-    _cache[s.id] = channels;
-    final updated = UserSource(
-      id: s.id,
-      name: s.name,
-      origin: s.origin,
-      count: channels.length,
-      updated: DateTime.now(),
-      url: url,
+  /// Metni ekler (dosya, telefon); biçim içerikten anlaşılır.
+  Future<UserSource> addText(String name, String text, {required SourceOrigin origin, String? url}) =>
+      _store(name, SourceFormats.detect(text), origin: origin, url: url, raw: text);
+
+  /// Xtream Codes hesabının canlı kanalları.
+  Future<UserSource> addXtream(
+    String name, {
+    required String server,
+    required String username,
+    required String password,
+  }) async {
+    final client = XtreamClient(
+      server: server,
+      username: username,
+      password: password,
+      fetch: (u) => _fetch(u, const {}),
     );
+    return _store(
+      name.trim().isEmpty ? Uri.tryParse(client.server)?.host ?? 'Xtream' : name,
+      await client.liveChannels(),
+      origin: SourceOrigin.xtream,
+      config: {'server': client.server, 'username': username, 'password': password},
+    );
+  }
+
+  /// MAC/STB portalının canlı kanalları (adresler oynatma anında çözülür).
+  Future<UserSource> addPortal(String name, {required String portal, required String mac}) async {
+    final id = _newId();
+    final client = StalkerClient(portal: portal, mac: mac, fetch: _fetch);
+    final channels = await client.liveChannels(id);
+    _portals[id] = client;
+    final host = Uri.tryParse(portal.contains('://') ? portal : 'http://$portal')?.host;
+    return _store(
+      name.trim().isEmpty ? host ?? 'Portal' : name,
+      channels,
+      origin: SourceOrigin.portal,
+      config: {'portal': portal.trim(), 'mac': client.mac},
+      id: id,
+    );
+  }
+
+  /// Toplu ekleme: GitHub klasörü (`github.com/kullanıcı/depo[/tree/dal/yol]`)
+  /// içindeki .m3u/.m3u8 dosyaları ya da satır satır adres içeren bir metin
+  /// dosyası. Her liste ayrı klasör olur.
+  Future<BulkResult> addBulk(String url) async {
+    final uri = _httpUri(url);
+    final urls = uri.host == 'github.com' ? await _githubLists(uri) : _lines(await _download(uri));
+    if (urls.isEmpty) throw const SourceException('Bu adreste M3U listesi bulunamadı.');
+    final added = <UserSource>[];
+    var failed = 0;
+    for (final (name, u) in urls.take(maxBulk)) {
+      try {
+        added.add(await addUrl(name, u, origin: SourceOrigin.bulk));
+      } on SourceException {
+        failed++;
+      }
+    }
+    return (added: added, failed: failed);
+  }
+
+  /// GitHub klasöründeki listeler (GitHub içerik arayüzü, oturumsuz).
+  Future<List<(String, String)>> _githubLists(Uri uri) async {
+    final seg = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (seg.length < 2) throw const SourceException('GitHub adresi github.com/kullanıcı/depo biçiminde olmalı.');
+    final (owner, repo) = (seg[0], seg[1]);
+    String? ref;
+    var path = '';
+    if (seg.length >= 4 && (seg[2] == 'tree' || seg[2] == 'blob')) {
+      ref = seg[3];
+      path = seg.skip(4).join('/');
+    }
+    final api = Uri.https('api.github.com', '/repos/$owner/$repo/contents/$path', {'ref': ?ref});
+    final Object? body;
+    try {
+      body = jsonDecode(
+        utf8.decode(await _fetch(api, const {'Accept': 'application/vnd.github+json', 'User-Agent': 'RedoXTV'})),
+      );
+    } on Object {
+      throw const SourceException('GitHub klasörü okunamadı (depo açık mı?).');
+    }
+    final files = body is List ? body : [body];
+    final list = RegExp(r'\.m3u8?$', caseSensitive: false);
+    return [
+      for (final f in files)
+        if (f case {'name': final String name, 'download_url': final String dl} when list.hasMatch(name))
+          (name.replaceAll(list, ''), dl),
+    ];
+  }
+
+  static List<(String, String)> _lines(String text) => [
+    for (final l in const LineSplitter().convert(text))
+      if (l.trim().startsWith('http')) ('', l.trim()),
+  ];
+
+  // ---- Yenileme, silme, çözme --------------------------------------------
+
+  Future<UserSource> refresh(UserSource s) async {
+    final c = s.config;
+    final List<LiveChannel> channels;
+    String? raw;
+    switch (s.origin) {
+      case SourceOrigin.xtream:
+        channels = await XtreamClient(
+          server: c['server']!,
+          username: c['username']!,
+          password: c['password']!,
+          fetch: (u) => _fetch(u, const {}),
+        ).liveChannels();
+      case SourceOrigin.portal:
+        final client = StalkerClient(portal: c['portal']!, mac: c['mac']!, fetch: _fetch);
+        channels = await client.liveChannels(s.id);
+        _portals[s.id] = client;
+      default:
+        final url = s.url;
+        if (url == null) return s;
+        final uri = Uri.parse(url);
+        raw = await _download(uri);
+        channels = SourceFormats.detect(raw, base: uri);
+    }
+    if (channels.isEmpty) throw const SourceException('Listede kanal bulunamadı.');
+    await _write(s.id, channels, raw);
+    final updated = s._with(count: channels.length);
     _items[_items.indexWhere((e) => e.id == s.id)] = updated;
     await _save();
     return updated;
@@ -179,15 +300,43 @@ class UserSources extends ChangeNotifier {
   Future<void> remove(UserSource s) async {
     _items.removeWhere((e) => e.id == s.id);
     _cache.remove(s.id);
+    _portals.remove(s.id);
     final f = _file(s.id);
     if (await f.exists()) await f.delete();
     await _save();
   }
 
+  /// Oynatıcının açacağı gerçek adres: portal yer tutucusu `create_link` ile
+  /// çözülür, diğerleri olduğu gibi.
+  Future<String> resolve(String url) async {
+    final parsed = StalkerClient.parse(url);
+    if (parsed == null) return url;
+    final (id, cmd) = parsed;
+    var client = _portals[id];
+    if (client == null) {
+      final s = _items.where((e) => e.id == id).firstOrNull;
+      if (s == null) throw const SourceException('Portal kaynağı silinmiş.');
+      client = _portals[id] = StalkerClient(portal: s.config['portal']!, mac: s.config['mac']!, fetch: _fetch);
+    }
+    return client.link(cmd);
+  }
+
+  // ---- Yardımcılar -------------------------------------------------------
+
+  static Uri _httpUri(String url) {
+    var t = url.trim();
+    if (!t.contains('://')) t = 'http://$t';
+    final uri = Uri.tryParse(t);
+    if (uri == null || !(uri.isScheme('http') || uri.isScheme('https')) || uri.host.isEmpty) {
+      throw const SourceException('Adres http:// ya da https:// ile başlamalı.');
+    }
+    return uri;
+  }
+
   Future<String> _download(Uri uri) async {
     final List<int> bytes;
     try {
-      bytes = await _fetch(uri);
+      bytes = await _fetch(uri, const {});
     } on Object catch (e) {
       throw SourceException('Liste indirilemedi ($e).');
     }
@@ -195,10 +344,38 @@ class UserSources extends ChangeNotifier {
     return utf8.decode(bytes, allowMalformed: true);
   }
 
-  static List<LiveChannel> _validate(String text) {
-    final channels = text.contains('#EXTINF') ? M3uParser.parse(text) : const <LiveChannel>[];
-    if (channels.isEmpty) throw const SourceException('Geçerli bir M3U listesi değil (kanal bulunamadı).');
-    return channels;
+  Future<UserSource> _store(
+    String name,
+    List<LiveChannel> channels, {
+    required SourceOrigin origin,
+    String? url,
+    String? raw,
+    Map<String, String> config = const {},
+    String? id,
+  }) async {
+    if (channels.isEmpty) {
+      throw const SourceException('Kanal bulunamadı: M3U, JSON ya da yayın bağlantılı HTML değil.');
+    }
+    final s = UserSource(
+      id: id ?? _newId(),
+      name: _name(name, url),
+      origin: origin,
+      count: channels.length,
+      updated: DateTime.now(),
+      url: url,
+      config: config,
+    );
+    await _write(s.id, channels, raw);
+    _items.add(s);
+    await _save();
+    return s;
+  }
+
+  /// M3U ise metnin kendisi, değilse kanallardan üretilen M3U saklanır.
+  Future<void> _write(String id, List<LiveChannel> channels, String? raw) async {
+    final m3u = raw != null && raw.contains('#EXTINF') ? raw : SourceFormats.toM3u(channels);
+    await _file(id).writeAsString(m3u);
+    _cache[id] = channels;
   }
 
   /// Ad boşsa adresin dosya adı ya da "Liste N".
@@ -207,7 +384,7 @@ class UserSources extends ChangeNotifier {
     if (t.isNotEmpty) return t;
     final last = url == null ? '' : Uri.parse(url).pathSegments.lastWhere((p) => p.isNotEmpty, orElse: () => '');
     return last.isNotEmpty
-        ? last.replaceAll(RegExp(r'\.m3u8?$', caseSensitive: false), '')
+        ? last.replaceAll(RegExp(r'\.(m3u8?|json|html?)$', caseSensitive: false), '')
         : 'Liste ${_items.length + 1}';
   }
 

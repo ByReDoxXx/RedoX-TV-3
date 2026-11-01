@@ -33,6 +33,7 @@ class PlayerPage extends StatefulWidget {
     this.engineFactory,
     this.rank,
     this.onWatched,
+    this.resolve,
   });
 
   final List<LiveChannel> channels;
@@ -49,6 +50,9 @@ class PlayerPage extends StatefulWidget {
   /// değişince yeniden.
   final ValueChanged<LiveChannel>? onWatched;
 
+  /// Açmadan önce adres çözücü (STB portalı); null ise adres olduğu gibi.
+  final Future<String> Function(String url)? resolve;
+
   static Route<void> route({
     required List<LiveChannel> channels,
     required int initialIndex,
@@ -56,6 +60,7 @@ class PlayerPage extends StatefulWidget {
     PlaybackEngine Function()? engineFactory,
     StreamRanker? rank,
     ValueChanged<LiveChannel>? onWatched,
+    Future<String> Function(String url)? resolve,
   }) => MaterialPageRoute(
     builder: (_) => PlayerPage(
       channels: channels,
@@ -64,6 +69,7 @@ class PlayerPage extends StatefulWidget {
       engineFactory: engineFactory,
       rank: rank,
       onWatched: onWatched,
+      resolve: resolve,
     ),
   );
 
@@ -87,6 +93,7 @@ class _PlayerPageState extends State<PlayerPage> {
     channels: widget.channels,
     initialIndex: widget.initialIndex,
     rank: widget.rank,
+    resolve: widget.resolve,
   );
 
   final _rootFocus = FocusNode(debugLabel: 'oynatıcı');

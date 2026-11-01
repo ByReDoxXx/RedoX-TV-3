@@ -48,7 +48,14 @@ enum RedoxIcons {
   add('add', 'Ekle'),
   edit('edit', 'Düzenle'),
   backspace('backspace', 'Sil'),
-  kids('child_care', 'Çocuk');
+  kids('child_care', 'Çocuk'),
+  json('data_object', 'JSON'),
+  html('code', 'HTML'),
+  portal('router', 'Portal'),
+  plugin('extension', 'Eklenti'),
+  bulkAdd('playlist_add', 'Toplu ekle'),
+  uploadFile('upload_file', 'Dosya'),
+  link('link', 'Adres');
 
   const RedoxIcons(this.symbol, this.label);
 

@@ -150,5 +150,18 @@ parca-1095.ts
       expect(engine.opened, ['a1']);
       s.dispose();
     });
+
+    test('adres çözücü (STB portalı): çözülen adres açılır; çözülemeyen akış yedeğe geçer', () async {
+      final engine = FakeEngine();
+      final s = PlaybackSession(
+        engine: engine,
+        channels: const [a],
+        initialIndex: 0,
+        resolve: (url) async => url == 'a1' ? throw StateError('bağlantı yok') : 'gercek-$url',
+      );
+      await pumpEventQueue();
+      expect(engine.opened, ['gercek-a2']);
+      s.dispose();
+    });
   });
 }

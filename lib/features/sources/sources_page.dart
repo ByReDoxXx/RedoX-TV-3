@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/content/live_channel.dart';
 import '../../core/content/source_receiver.dart';
@@ -14,18 +13,36 @@ import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/focus_glow.dart';
-import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import 'source_channels_page.dart';
-import 'widgets/add_url_dialog.dart';
+import 'widgets/phone_qr_dialog.dart';
+import 'widgets/source_form_dialog.dart';
+
+/// Ekleme yöntemi (kutu).
+enum AddMethod {
+  m3u('M3U / M3U8', 'Liste adresi', RedoxIcons.link),
+  json('JSON', 'Kanal listesi adresi', RedoxIcons.json),
+  html('HTML', 'Sayfadaki yayınlar', RedoxIcons.html),
+  xtream('Xtream', 'Sunucu ve hesap', RedoxIcons.profile),
+  portal('MAC / STB Portal', 'Portal ve MAC', RedoxIcons.portal),
+  mediaHub('MediaHub (mHub)', 'Açık eklenti', RedoxIcons.plugin),
+  bulk('Toplu (GitHub)', 'Klasördeki listeler', RedoxIcons.bulkAdd),
+  file('Dosyadan', 'Cihazdaki M3U/JSON', RedoxIcons.uploadFile),
+  phone('Telefondan', 'QR ile gönder', RedoxIcons.qrCode);
+
+  const AddMethod(this.title, this.subtitle, this.icon);
+
+  final String title;
+  final String subtitle;
+  final RedoxIcons icon;
+}
 
 /// Kaynaklar (eski "M3U ve Dosya" ve "Özel M3U" ekranlarının uyarlaması):
-/// eklenen her M3U listesi bir klasördür. Solda klasör kartları; sağda ekleme
-/// paneli: adresle, dosyadan ve telefondan (QR). Telefonda klasörler altta,
-/// QR yok (zaten telefondasınız).
+/// üstte ekleme yöntemleri (kutular), altta "Listelerim" klasörleri. Her liste
+/// bir klasördür; içine girince kanalları, OK tam ekran.
 ///
-/// QR: sayfa açıkken yerel ağda [SourceReceiver] çalışır; telefon QR'daki
-/// adresi açıp listeyi gönderir, klasör burada belirir.
+/// Telefondan ekleme ayrı pencerede (QR ve yerel sunucu yalnız o açıkken);
+/// telefonda "Telefondan" kutusu yoktur.
 class SourcesPage extends StatefulWidget {
   const SourcesPage({
     super.key,
@@ -44,8 +61,8 @@ class SourcesPage extends StatefulWidget {
   /// Klasördeki kanalı tam ekran açar.
   final Future<void> Function(List<LiveChannel> channels, int index)? onWatch;
 
-  /// QR alıcısı; null ise [SourceReceiver] kurulur (testlerde verilmez,
-  /// sunucu açılmaz).
+  /// Telefondan ekleme alıcısı; null ise pencere [SourceReceiver] kurar
+  /// (testlerde sunucusuz sahtesi verilir).
   final SourceReceiver? receiver;
   final String clock;
   final String profileName;
@@ -53,51 +70,22 @@ class SourcesPage extends StatefulWidget {
   final VoidCallback? onMore;
   final VoidCallback? onProfile;
 
-  /// Sağ panel genişliği (TV/tablet).
-  static const panelWidth = 330.0;
-
   @override
   State<SourcesPage> createState() => _SourcesPageState();
 }
 
 class _SourcesPageState extends State<SourcesPage> {
-  SourceReceiver? _receiver;
-  String? _qr;
   bool _busy = false;
 
   UserSources get _sources => widget.sources;
 
-  bool get _phone => Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_receiver == null && !_phone) unawaited(_startReceiver());
-  }
-
-  Future<void> _startReceiver() async {
-    final r = _receiver = widget.receiver ?? SourceReceiver(_sources);
-    try {
-      final url = await r.start();
-      if (mounted) setState(() => _qr = url);
-    } on Object {
-      // Ağ yoksa QR gösterilmez; adres ve dosya kalır.
-    }
-  }
-
-  @override
-  void dispose() {
-    unawaited(_receiver?.stop());
-    super.dispose();
-  }
-
   void _toast(String text) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(text)));
 
-  Future<void> _run(Future<UserSource> Function() add) async {
+  /// Eklemeyi çalıştırır; sonucu ileti olarak gösterir.
+  Future<void> _run(Future<String> Function() add) async {
     setState(() => _busy = true);
     try {
-      final s = await add();
-      _toast('"${s.name}" eklendi: ${s.count} kanal.');
+      _toast(await add());
     } on SourceException catch (e) {
       _toast(e.message);
     } finally {
@@ -105,10 +93,102 @@ class _SourcesPageState extends State<SourcesPage> {
     }
   }
 
-  Future<void> _addUrl() async {
-    final r = await showAddUrlDialog(context);
-    if (r == null) return;
-    await _run(() => _sources.addUrl(r.name, r.url));
+  static String _added(UserSource s) => '"${s.name}" eklendi: ${s.count} kanal.';
+
+  static const _name = FormFieldSpec('name', 'Ad', required: false, hint: 'Örn. Spor listem');
+
+  Future<void> _choose(AddMethod m) async {
+    switch (m) {
+      case AddMethod.m3u || AddMethod.json || AddMethod.html:
+        final r = await showSourceForm(
+          context,
+          title: '${m.title} ile ekle',
+          description: switch (m) {
+            AddMethod.json => 'Kanalları içeren JSON adresi (ad, adres, logo, kategori alanları).',
+            AddMethod.html => 'Yayın bağlantıları (.m3u8, .ts, .mpd) içeren sayfanın adresi.',
+            _ => 'M3U ya da M3U8 liste adresi.',
+          },
+          fields: const [
+            FormFieldSpec('url', 'Adres', kind: FieldKind.url, hint: 'https://…'),
+            _name,
+          ],
+        );
+        if (r == null) return;
+        final origin = switch (m) {
+          AddMethod.json => SourceOrigin.json,
+          AddMethod.html => SourceOrigin.html,
+          _ => SourceOrigin.url,
+        };
+        await _run(() async => _added(await _sources.addUrl(r['name']!, r['url']!, origin: origin)));
+      case AddMethod.xtream:
+        final r = await showSourceForm(
+          context,
+          title: 'Xtream hesabı ile ekle',
+          description: 'Sağlayıcınızın verdiği sunucu adresi, kullanıcı adı ve şifre. Canlı kanallar eklenir.',
+          fields: const [
+            FormFieldSpec('server', 'Sunucu', kind: FieldKind.url, hint: 'http://alan:port'),
+            FormFieldSpec('username', 'Kullanıcı adı', kind: FieldKind.url),
+            FormFieldSpec('password', 'Şifre', kind: FieldKind.secret),
+            _name,
+          ],
+        );
+        if (r == null) return;
+        await _run(
+          () async => _added(
+            await _sources.addXtream(
+              r['name']!,
+              server: r['server']!,
+              username: r['username']!,
+              password: r['password']!,
+            ),
+          ),
+        );
+      case AddMethod.portal:
+        final r = await showSourceForm(
+          context,
+          title: 'MAC / STB Portal ile ekle',
+          description: 'Portal adresi ve sağlayıcıya kayıtlı MAC adresi (MAG kutusu portalı).',
+          fields: const [
+            FormFieldSpec('portal', 'Portal adresi', kind: FieldKind.url, hint: 'http://alan:port/c/'),
+            FormFieldSpec('mac', 'MAC adresi', kind: FieldKind.mac, hint: '00:1A:79:12:34:56'),
+            _name,
+          ],
+        );
+        if (r == null) return;
+        await _run(() async => _added(await _sources.addPortal(r['name']!, portal: r['portal']!, mac: r['mac']!)));
+      case AddMethod.bulk:
+        final r = await showSourceForm(
+          context,
+          title: 'Toplu liste ekle',
+          description:
+              'GitHub klasörü (github.com/kullanıcı/depo/tree/dal/klasör) ya da satır satır liste adresi içeren '
+              'metin dosyası. Her liste ayrı klasör olur (en çok ${UserSources.maxBulk}).',
+          fields: const [FormFieldSpec('url', 'Adres', kind: FieldKind.url, hint: 'https://github.com/…')],
+        );
+        if (r == null) return;
+        await _run(() async {
+          final res = await _sources.addBulk(r['url']!);
+          final failed = res.failed == 0 ? '' : ', ${res.failed} liste okunamadı';
+          return '${res.added.length} liste eklendi$failed.';
+        });
+      case AddMethod.file:
+        await _addFile();
+      case AddMethod.phone:
+        await showPhoneQrDialog(context, receiver: widget.receiver ?? SourceReceiver(_sources));
+      case AddMethod.mediaHub:
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: RedoxRoles.surfaceContainerHigh,
+            title: const Text('MediaHub (mHub) eklentisi'),
+            content: const Text(
+              'Bu eklentinin biçimi henüz eklenmedi. Biçimi tahmin etmek yerine örnek bir eklenti '
+              'adresiyle ya da belgesiyle eklenecek.',
+            ),
+            actions: [TextButton(autofocus: true, onPressed: () => Navigator.pop(context), child: const Text('Tamam'))],
+          ),
+        );
+    }
   }
 
   Future<void> _addFile() async {
@@ -123,11 +203,8 @@ class _SourcesPageState extends State<SourcesPage> {
     final f = files.first;
     await _run(() async {
       final text = await f.xFile.readAsString();
-      return _sources.addText(
-        f.name.replaceAll(RegExp(r'\.m3u8?$', caseSensitive: false), ''),
-        text,
-        origin: SourceOrigin.file,
-      );
+      final name = f.name.replaceAll(RegExp(r'\.(m3u8?|json|html?)$', caseSensitive: false), '');
+      return _added(await _sources.addText(name, text, origin: SourceOrigin.file));
     });
   }
 
@@ -141,13 +218,17 @@ class _SourcesPageState extends State<SourcesPage> {
   Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final padding = PageLayout.scrollPadding(context, metrics);
-    final phone = _phone;
+    final phone = metrics.formFactor == FormFactor.phone;
+    final t = Theme.of(context).textTheme;
+    final methods = [
+      for (final m in AddMethod.values)
+        if (!(phone && m == AddMethod.phone)) m,
+    ];
     return ListenableBuilder(
       listenable: _sources,
       builder: (context, _) {
-        final folders = _Folders(sources: _sources.items, onOpen: _open, phone: phone);
-        final add = _AddPanel(busy: _busy, qr: phone ? null : _qr, onUrl: _addUrl, onFile: _addFile);
-        return Padding(
+        final items = _sources.items;
+        return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(padding.left, padding.top, padding.right, phone ? 16 : padding.bottom),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,22 +240,48 @@ class _SourcesPageState extends State<SourcesPage> {
                 onMore: widget.onMore,
                 onProfile: widget.onProfile,
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: phone
-                    ? ListView(children: [add, const SizedBox(height: 20), folders])
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: SingleChildScrollView(child: folders)),
-                          const SizedBox(width: 20),
-                          SizedBox(
-                            width: SourcesPage.panelWidth,
-                            child: SingleChildScrollView(child: add),
-                          ),
-                        ],
-                      ),
+              const SizedBox(height: 18),
+              _SectionTitle(
+                title: 'Liste ekle',
+                trailing: _busy
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: RedoxSeeds.amber),
+                      )
+                    : null,
               ),
+              const SizedBox(height: 10),
+              _Grid(
+                columns: phone ? 2 : 3,
+                children: [
+                  for (final (i, m) in methods.indexed)
+                    _MethodTile(
+                      method: m,
+                      compact: phone,
+                      autofocus: i == 0,
+                      onPressed: _busy ? null : () => _choose(m),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _SectionTitle(
+                title: 'Listelerim',
+                trailing: Text(
+                  '${items.length} liste · ${_sources.channelCount} kanal',
+                  style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (items.isEmpty)
+                Text(
+                  'Henüz liste yok. Yukarıdaki yöntemlerden biriyle ekleyin; her liste bir klasör olur.',
+                  style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                )
+              else
+                _Grid(
+                  columns: phone ? 1 : 3,
+                  children: [for (final s in items) _FolderCard(source: s, onPressed: () => _open(s))],
+                ),
             ],
           ),
         );
@@ -183,60 +290,122 @@ class _SourcesPageState extends State<SourcesPage> {
   }
 }
 
-class _Folders extends StatelessWidget {
-  const _Folders({required this.sources, required this.onOpen, required this.phone});
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, this.trailing});
 
-  final List<UserSource> sources;
-  final ValueChanged<UserSource> onOpen;
-  final bool phone;
+  final String title;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text('Listelerim', style: t.titleLarge!.copyWith(color: RedoxRoles.onSurface)),
-        const SizedBox(height: 4),
-        Text(
-          'Her liste, eklerken verdiğiniz adla bir klasördür.',
-          style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
-        ),
-        const SizedBox(height: 14),
-        if (sources.isEmpty)
-          Text(
-            'Henüz liste yok. Sağdaki panelden adres, dosya ya da telefonla ekleyin.',
-            style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
-          )
-        else
-          LayoutBuilder(
-            builder: (context, box) {
-              final cols = phone ? 1 : (box.maxWidth / 200).floor().clamp(1, 4);
-              final w = (box.maxWidth - 14 * (cols - 1)) / cols;
-              return Wrap(
-                spacing: 14,
-                runSpacing: 14,
-                children: [
-                  for (final (i, s) in sources.indexed)
-                    SizedBox(
-                      width: w,
-                      child: _FolderCard(source: s, autofocus: i == 0, onPressed: () => onOpen(s)),
-                    ),
-                ],
-              );
-            },
-          ),
+        Container(width: 4, height: 20, color: RedoxSeeds.crimson),
+        const SizedBox(width: 10),
+        Text(title, style: t.titleLarge!.copyWith(color: RedoxRoles.onSurface)),
+        const Spacer(),
+        ?trailing,
       ],
     );
   }
 }
 
+/// Eşit genişlikte kutular (satırlara sarılır).
+class _Grid extends StatelessWidget {
+  const _Grid({required this.columns, required this.children});
+
+  final int columns;
+  final List<Widget> children;
+
+  static const gap = 12.0;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final w = (box.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [for (final c in children) SizedBox(width: w, child: c)],
+      );
+    },
+  );
+}
+
+class _MethodTile extends StatelessWidget {
+  const _MethodTile({required this.method, this.onPressed, this.autofocus = false, this.compact = false});
+
+  final AddMethod method;
+
+  /// Telefon: dar kutu; başlık iki satıra iner, açıklama yok.
+  final bool compact;
+  final VoidCallback? onPressed;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final m = method;
+    final radius = BorderRadius.circular(RedoxRadius.lg);
+    return FocusGlow(
+      borderRadius: radius,
+      builder: (context, active) => Material(
+        color: active ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainer,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onPressed,
+          autofocus: autofocus,
+          borderRadius: radius,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: (active ? RedoxSeeds.amber : RedoxSeeds.crimson).withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: RedoxIcon(m.icon, size: 20, color: active ? RedoxSeeds.amber : RedoxRoles.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        m.title,
+                        maxLines: compact ? 2 : 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                      ),
+                      if (!compact)
+                        Text(
+                          m.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FolderCard extends StatelessWidget {
-  const _FolderCard({required this.source, required this.onPressed, this.autofocus = false});
+  const _FolderCard({required this.source, required this.onPressed});
 
   final UserSource source;
   final VoidCallback onPressed;
-  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +419,6 @@ class _FolderCard extends StatelessWidget {
         borderRadius: radius,
         child: InkWell(
           onTap: onPressed,
-          autofocus: autofocus,
           borderRadius: radius,
           focusColor: Colors.transparent,
           hoverColor: Colors.transparent,
@@ -290,86 +458,6 @@ class _FolderCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AddPanel extends StatelessWidget {
-  const _AddPanel({required this.busy, required this.onUrl, required this.onFile, this.qr});
-
-  final bool busy;
-  final String? qr;
-  final VoidCallback onUrl;
-  final VoidCallback onFile;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: RedoxRoles.surfaceContainer,
-        borderRadius: BorderRadius.circular(RedoxRadius.xl),
-        border: Border.all(color: RedoxRoles.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('Liste ekle', style: t.titleLarge!.copyWith(color: RedoxRoles.onSurface)),
-              if (busy) ...[
-                const SizedBox(width: 12),
-                const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: RedoxSeeds.amber),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              PrimaryButton(label: 'Adresle', icon: RedoxIcons.sources, onPressed: busy ? null : onUrl),
-              GlassButton(label: 'Dosyadan', icon: RedoxIcons.folder, onPressed: busy ? null : onFile),
-            ],
-          ),
-          if (qr case final url?) ...[
-            const SizedBox(height: 18),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(RedoxRadius.md)),
-                  child: QrImageView(data: url, size: 120, padding: EdgeInsets.zero, backgroundColor: Colors.white),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Telefonla ekle',
-                        style: t.titleMedium!.copyWith(color: RedoxSeeds.amber, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'QR\'ı telefonun kamerasıyla okutun; açılan sayfadan adres yapıştırın ya da dosya seçin.',
-                        style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 6),
-                      Text('Aynı Wi-Fi ağında olun.', style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
       ),
     );
   }

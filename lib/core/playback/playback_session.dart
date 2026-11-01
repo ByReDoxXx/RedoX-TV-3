@@ -32,6 +32,7 @@ class PlaybackSession extends ChangeNotifier {
     this.startupTimeout = defaultStartupTimeout,
     this.staleErrorWindow = const Duration(seconds: 1),
     this.rank,
+    this.resolve,
   }) : assert(channels.isNotEmpty) {
     engine.state.addListener(_onEngine);
     _errorSubscription = engine.errors.listen(_onError);
@@ -59,6 +60,11 @@ class PlaybackSession extends ChangeNotifier {
 
   /// Akış sıralayıcı; null ise listedeki sıra.
   final StreamRanker? rank;
+
+  /// Açmadan önce adresi çözer (STB portalının kısa ömürlü bağlantıları:
+  /// UserSources.resolve); null ise adres olduğu gibi açılır. Çözülemeyen
+  /// akış hata sayılır, sıradakine geçilir.
+  final Future<String> Function(String url)? resolve;
 
   late final StreamSubscription<String> _errorSubscription;
   Timer? _startupTimer;
@@ -132,7 +138,24 @@ class PlaybackSession extends ChangeNotifier {
     // Zamanlayıcı açılıştan önce: motor hatayı hemen bildirirse yedek akışa
     // geçiş bu zamanlayıcıyı iptal eder (sonradan kurulsaydı ortada kalırdı).
     _startupTimer = Timer(startupTimeout, _failover);
-    unawaited(engine.open(_streams[_stream]));
+    final url = _streams[_stream];
+    final resolve = this.resolve;
+    if (resolve == null) {
+      unawaited(engine.open(url));
+      return;
+    }
+    final generation = _generation;
+    final stream = _stream;
+    unawaited(
+      resolve(url).then(
+        (real) {
+          if (!_disposed && generation == _generation && stream == _stream) unawaited(engine.open(real));
+        },
+        onError: (Object _) {
+          if (!_disposed && generation == _generation && stream == _stream) _failover();
+        },
+      ),
+    );
   }
 
   void _setStatus(PlaybackStatus status) {

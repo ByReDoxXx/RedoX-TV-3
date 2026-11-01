@@ -39,7 +39,7 @@ void main() {
 
   test('adresle eklenir ve yenilenir; ad boşsa dosya adı; silinir', () async {
     var text = _m3u;
-    final s = await UserSources.open(await _dir(), fetch: (uri) async => utf8.encode(text));
+    final s = await UserSources.open(await _dir(), fetch: (uri, _) async => utf8.encode(text));
     final added = await s.addUrl('', 'http://ornek.com/listeler/spor.m3u');
     expect(added.name, 'spor');
     expect(added.refreshable, isTrue);

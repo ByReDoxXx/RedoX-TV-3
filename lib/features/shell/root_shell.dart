@@ -229,6 +229,8 @@ class _RootShellState extends State<RootShell> {
           engineFactory: widget.engineFactory,
           rank: widget.rank,
           onWatched: from == null ? (watched) => widget.history?.record(watched.number) : null,
+          // Klasör kanalları: STB portalının bağlantıları oynatma anında çözülür.
+          resolve: from == null ? null : widget.sources?.resolve,
         ),
       );
     } finally {
