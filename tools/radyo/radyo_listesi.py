@@ -3,7 +3,7 @@
 Uygulama kodu değildir; listeyi yeniden üretilebilir kılmak için burada durur.
 Depo kökünden çalıştırılır:
 
-    python -I tools/radyo/radyo_listesi.py
+    python -I tools/radyo/radyo_listesi.py [--eski <radios.json>]
 
 Çıktı: assets/radios/radios.m3u (kanal listesiyle aynı biçim: group-title tür,
 aynı adlı kayıtlar tek istasyonun yedek yayınları). Uygulamaya şifreli paket
@@ -14,8 +14,16 @@ Seçim (eski uygulamadaki listeyle aynı yöntem): Türkiye kayıtları; son
 sınamada çalışan (lastcheckok) yayınlar; oy + tıklama puanına göre ilk
 LIMIT istasyon. Aynı adlı kayıtlar birleşir (HTTPS önce). Tür, etiket ve
 addaki anahtar sözcüklerden.
+
+--eski: eski uygulamanın elle ayıklanmış, Türkiye'den iki turda sınanmış
+listesi (radios.enc'nin çözülmüş JSON'u; kullanıcı kararı 2026-11-01: "Eski +
+yeni eklenenler"). Eski istasyonlar numara, tür, logo ve yayın sırasıyla aynen
+kalır; Radio Browser'dan yalnız eski listede olmayanlar sona eklenir. Eşleşme
+"Türkiye/Turkey/Radyo/Radio/FM" eklerini yok sayar ("Virgin Radio Türkiye" =
+"Virgin Radio"). Çözülmüş dosya ve eski şifre depoya konmaz.
 """
 
+import argparse
 import json
 import re
 import unicodedata
@@ -44,8 +52,29 @@ GENRES = [
 ]
 FALLBACK_GENRE = "Karışık"
 
-# Eski listedeki gibi dışlananlar: siyasi ya da doğrulanamayan yayıncılar.
-EXCLUDE = ["rojava", "mezopotamya"]
+# Eski listedeki gibi dışlananlar (yayıncıya göre, dile göre değil): siyasi ya
+# da doğrulanamayan yayıncılar, yabancı devlet yayın organları, TV kanalının
+# sesi. Eşleşme key() üzerinden (ad içinde geçerse).
+EXCLUDE = [
+    "rojava",
+    "mezopotamya",
+    "kurd1",
+    "azadi",
+    "medradyo",
+    "denge",
+    "sputnik",
+    "halktv",
+    "radioava",
+    "tezene",
+]
+
+# Eşleştirmede yok sayılan ekler.
+NOISE = {"turkey", "turkiye", "radyo", "radio", "fm", "tr"}
+
+# Eski listede başka yazılışla bulunanlar (loose_key başı) ve Radio Browser'da
+# yanlışlıkla Türkiye'ye kayıtlı yabancı istasyonlar: eklenmez.
+SAME_AS_OLD = ["45lik", "turkuazanadolu", "max", "bloomberght", "powerturk2", "pal"]
+FOREIGN = ["fg938"]
 
 
 def fold(s):
@@ -58,6 +87,29 @@ def key(name):
     return re.sub(r"[^a-z0-9]", "", fold(name))
 
 
+def loose_key(name):
+    """Eski/yeni liste eşleşmesi: ekler atılmış anahtar."""
+    words = [w for w in re.split(r"[^a-z0-9]+", fold(name)) if w and w not in NOISE]
+    return "".join(words) or key(name)
+
+
+def load_old(path):
+    """Eski listenin istasyonları (numara sırasıyla), M3U girdisi biçiminde."""
+    radios = json.loads(Path(path).read_text(encoding="utf-8"))["radios"]
+    return [
+        {
+            "number": r["number"],
+            "name": r["name"],
+            "genre": r["cat"],
+            "logo": r.get("logoUrl") or None,
+            # Eski sıra korunur (elle sınanmış: ana yayın önce).
+            "streams": [s["url"] for s in r.get("sources", []) if s.get("url")],
+            "keep_order": True,
+        }
+        for r in sorted(radios, key=lambda r: r["number"])
+    ]
+
+
 def genre(station):
     text = fold(f"{station['name']} {station['tags']}")
     for g, words in GENRES:
@@ -68,6 +120,8 @@ def genre(station):
 
 def clean_name(name):
     name = re.sub(r"\s+", " ", name).strip(" -|")
+    # Radio Browser'daki ülke eki ("Babyland Turkey"); eski listedeki adlarda yok.
+    name = re.sub(r"\s+(turkey|türkiye|turkiye)$", "", name, flags=re.IGNORECASE)
     # Tümü büyük harfli adlar başlık biçimine (Türkçe i/I korunur).
     if name.isupper() and len(name) > 4:
         name = " ".join(w if len(w) <= 3 else w[0] + w[1:].replace("İ", "i").replace("I", "ı").lower() for w in name.split())
@@ -75,6 +129,10 @@ def clean_name(name):
 
 
 def main():
+    args = argparse.ArgumentParser()
+    args.add_argument("--eski", help="eski listenin çözülmüş JSON'u (depoya konmaz)")
+    old = load_old(args.parse_args().eski) if args.parse_args().eski else []
+    old_keys = {loose_key(e["name"]) for e in old}
     req = urllib.request.Request(API, headers={"User-Agent": UA})
     stations = json.load(urllib.request.urlopen(req, timeout=60))
     ok = [s for s in stations if s.get("lastcheckok") == 1 and (s.get("url_resolved") or s.get("url"))]
@@ -97,20 +155,33 @@ def main():
         e = merged[k]
         if url not in e["streams"] and len(e["streams"]) < MAX_STREAMS:
             e["streams"].append(url)
+    # Eski listede olanlar atlanır; yeniler eski numaralardan sonra gelir.
+    def known(e):
+        k = loose_key(e["name"])
+        return k in old_keys or (old and any(k.startswith(a) for a in SAME_AS_OLD)) or any(k.startswith(f) for f in FOREIGN)
+
+    added = [e for e in merged.values() if not known(e)]
+    start = max((e["number"] for e in old), default=0) + 1
+    for n, e in enumerate(added, start=start):
+        e["number"] = n
+    entries = old + added
     lines = ["#EXTM3U"]
-    for n, e in enumerate(merged.values(), start=1):
-        # HTTPS yayınlar önce (şifresiz yayın yedekte kalsın).
-        e["streams"].sort(key=lambda u: not u.startswith("https://"))
+    for e in entries:
+        if not e.get("keep_order"):
+            # HTTPS yayınlar önce (şifresiz yayın yedekte kalsın).
+            e["streams"].sort(key=lambda u: not u.startswith("https://"))
         logo = f' tvg-logo="{e["logo"]}"' if e["logo"] else ""
         for url in e["streams"]:
-            lines.append(f'#EXTINF:-1 tvg-chno="{n}"{logo} group-title="{e["genre"]}",{e["name"]}')
+            lines.append(f'#EXTINF:-1 tvg-chno="{e["number"]}"{logo} group-title="{e["genre"]}",{e["name"]}')
             lines.append(url)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
     counts = {}
-    for e in merged.values():
+    for e in entries:
         counts[e["genre"]] = counts.get(e["genre"], 0) + 1
-    print(f"{len(merged)} istasyon, {sum(len(e['streams']) for e in merged.values())} yayın")
+    print(f"{len(entries)} istasyon ({len(old)} eski + {len(added)} yeni), {sum(len(e['streams']) for e in entries)} yayın")
+    if added:
+        print("yeni:", ", ".join(e["name"] for e in added))
     print(", ".join(f"{g} {c}" for g, c in sorted(counts.items(), key=lambda x: -x[1])))
 
 

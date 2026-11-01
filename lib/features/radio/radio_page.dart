@@ -61,6 +61,7 @@ class RadioPage extends StatefulWidget {
     'Haber & Spor',
     'Dini',
     'Karışık',
+    'Yerel',
   ];
 
   /// "Favoriler" çipinin süzgeç adı.
