@@ -72,6 +72,20 @@ ALIAS = {
     "gzt": "GZT TV",
     "tjktv": "TJK 1",
     "tjktv2": "TJK 2",
+    "cine1tv": "Cine 1",
+}
+
+# Listedeki aynı kanalın farklı adları: tek kanalda birleşir (adresler
+# toplanır; numara ve logo küçük numaralıdan). Ad, yayın akışındakiyle aynı
+# seçildi (TV+: "Number 1 TV").
+YENI_AD = {
+    "NR1 TV": "Number 1 TV",
+    "NR1 DANCE": "Number 1 Dance",
+    "NR1 ASK": "Number 1 Aşk",
+    "NR1 RAP": "Number 1 Rap",
+    "Number One Rap": "Number 1 Rap",
+    "CİNE 1": "Cine 1",
+    "Cine 1 TV": "Cine 1",
 }
 
 # Yeni listenin grupları → bizim kategoriler.
@@ -142,6 +156,26 @@ def parse(text):
     return out
 
 
+def merge_renamed(entries):
+    """YENI_AD'a göre yeniden adlandırır; aynı adı alanları küçük numaralıda
+    toplar."""
+
+    def number(e):
+        n = e[0].get("tvg-chno", "")
+        return int(n) if n.isdigit() else 1 << 30
+
+    out, by_name = [], {}
+    for attrs, name, streams in sorted(entries, key=number):
+        name = YENI_AD.get(name, name)
+        if name in by_name:
+            kept = by_name[name][2]
+            kept.extend(u for u in streams if u not in kept)
+            continue
+        by_name[name] = (attrs, name, list(streams))
+        out.append(by_name[name])
+    return out
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     new_path = Path(sys.argv[1])
@@ -150,7 +184,7 @@ def main():
     # Baştaki açıklama satırları (kaynak notları) korunur.
     header = [l for l in text.splitlines()[1:] if l.startswith("# ")]
     header = header[: next((i for i, l in enumerate(text.splitlines()[1:]) if not l.startswith("# ")), len(header))]
-    ours = parse(text)
+    ours = merge_renamed(parse(text))
     by_key = {key(n): (a, n, s) for a, n, s in ours}
     added, alt, skipped = [], [], []
     for attrs, name, streams in parse(new_path.read_text(encoding="utf-8")):
@@ -162,7 +196,7 @@ def main():
         if k in DISLA:
             skipped.append(name)
             continue
-        target = by_key.get(key(ALIAS[k])) if k in ALIAS else by_key.get(k)
+        target = (by_key.get(key(ALIAS[k])) if k in ALIAS else None) or by_key.get(k)
         if target:
             fresh = [u for u in streams if u not in target[2]]
             target[2].extend(fresh)
