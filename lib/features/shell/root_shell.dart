@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/user_sources.dart';
 import '../../core/content/profiles.dart';
 import '../../core/content/watch_history.dart';
 import '../../core/playback/frame_grabber.dart';
@@ -25,6 +26,7 @@ import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
+import '../sources/sources_page.dart';
 import '../split_screen/split_screen.dart';
 import '../split_screen/split_screen_page.dart';
 import '../tv/tv_page.dart';
@@ -46,6 +48,7 @@ class RootShell extends StatefulWidget {
     this.rank,
     this.radio,
     this.favorites,
+    this.sources,
     this.profile,
     this.onSwitchProfile,
   });
@@ -87,6 +90,9 @@ class RootShell extends StatefulWidget {
 
   /// Profilin favorileri (kanal ve radyo).
   final Favorites? favorites;
+
+  /// Kullanıcının M3U listeleri; null ise Kaynaklar "yakında" sayfasıdır.
+  final UserSources? sources;
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -205,7 +211,11 @@ class _RootShellState extends State<RootShell> {
 
   /// Kanalı tam ekran açar; görüntü gelince geçmişe yazılır. Oynatıcıda ▲▼
   /// bütün kanallarda gezer (kategori süzgecinden bağımsız).
-  Future<void> _watch(BuildContext context, LiveChannel c) async {
+  /// [from]: kanalın listesi (Kaynaklar'daki klasör); null ise TV kanalları.
+  /// Klasör kanalları izleme geçmişine yazılmaz (numaraları ana listeyle
+  /// çakışır).
+  Future<void> _watch(BuildContext context, LiveChannel c, {List<LiveChannel>? from}) async {
+    final list = from ?? _tv.channels;
     _watching = true;
     // TV kanalı başlayınca radyo susar.
     unawaited(widget.radio?.stop());
@@ -213,12 +223,12 @@ class _RootShellState extends State<RootShell> {
     try {
       await Navigator.of(context).push(
         PlayerPage.route(
-          channels: _tv.channels,
-          initialIndex: _tv.channels.indexOf(c),
+          channels: list,
+          initialIndex: list.indexOf(c),
           clock: _clock,
           engineFactory: widget.engineFactory,
           rank: widget.rank,
-          onWatched: (watched) => widget.history?.record(watched.number),
+          onWatched: from == null ? (watched) => widget.history?.record(watched.number) : null,
         ),
       );
     } finally {
@@ -274,6 +284,15 @@ class _RootShellState extends State<RootShell> {
       profileName: _home.profileName,
       engineFactory: widget.engineFactory,
       onWatch: (c) => _watch(context, c),
+      onHome: () => _go(AppSection.home),
+      onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
+    ),
+    AppSection.sources when widget.sources != null && !_kids => SourcesPage(
+      sources: widget.sources!,
+      clock: _clock,
+      profileName: _home.profileName,
+      onWatch: (list, i) => _watch(context, list[i], from: list),
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,

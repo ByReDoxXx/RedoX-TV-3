@@ -307,6 +307,14 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
   - **Doğrulanmadı:** Chromecast'te aynı anda kaç donanım çözücünün (kopyasız yüzey) açılabildiği. 4 karo sığmazsa 4'lü düzen sınırlanacak.
   - Kanıt: `split_screen_test.dart`; görüntüler `build/bolunmus/`.
 
+- **Kaynaklar (`SourcesPage`, `UserSources`, `SourceReceiver`; kullanıcı kararı 2026-11-01: "Adres, dosya, QR").** Eski "M3U ve Dosya" ile "Özel M3U" ekranlarının uyarlaması (tv-05, tv-06, tv-12). Eklenen her M3U listesi bir klasördür; kartta ad, kanal sayısı ve kaynağı (Adres, Dosya, Telefon). Klasöre girince numaralı kanal listesi; OK tam ekran açar, ▲▼ o klasörün kanallarında gezer. Klasör kanalları izleme geçmişine yazılmaz (numaraları ana listeyle çakışır). Üstte Yenile (adresle eklenenler) ve Sil (onaylı).
+  - **Adresle:** TV'de uygulamanın klavyesi (sistem klavyesi kumandayla gezilemiyor); adres alanında sembol satırı (: / . - _ ? = & @ %), "https://" ve ".m3u" kısayolları, kendiliğinden büyük harf kapalı. Ad isteğe bağlı (boşsa dosya adı).
+  - **Dosyadan:** sistem dosya seçicisi (`file_picker`). Chromecast'te dosya seçici uygulaması olmayabilir; açılamazsa "Telefondan QR ile ekleyin" iletisi.
+  - **Telefonla (QR, yalnız TV/tablet):** sayfa açıkken yerel ağda küçük HTTP sunucusu. Telefon QR'ı okutur, açılan Türkçe sayfada adres yapıştırır ya da telefondaki M3U dosyasını seçer, klasör TV'de belirir. Güvenlik: her istek QR'daki rastgele anahtarı ister (yoksa 403), en çok 50 MB, sunucu sayfadan çıkınca kapanır.
+  - **Saklama:** liste metinleri uygulama klasöründe dosya (`kaynaklar/<id>.m3u`), dizin `kaynaklar.json`; cihaz başınadır (profillerden bağımsız). Geçersiz metin (kanal yok) reddedilir.
+  - **Android:** `usesCleartextTraffic="true"`: IPTV listelerinin çoğu http://; dart:io bu ayara uyar.
+  - Kanıt: `user_sources_test.dart` (ekle, yenile, sil, kalıcılık, QR sunucusu: anahtar, sayfa, ekleme, hata), `sources_page_test.dart`; görüntüler `build/kaynaklar/`. Cihazda (QR, dosya seçici) henüz denenmedi.
+
 ## 6. Logo
 
 **Kaynak:** kullanıcının Logo-3'ü (alevli boğa, koyu lacivert zemin; kullanıcı isteği, 2026-11-01: "yeni logomuz"), `assets/brand/redox-logo-source.jpg` (2000 px). Önceki logolar (Logo-1, Logo-2: geometrik kızıl boğa, siyah zemin) git geçmişinde.

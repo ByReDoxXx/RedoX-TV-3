@@ -14,11 +14,27 @@ import 'redox_icon.dart';
 /// davranış" diye kapattı). Bu klavye uygulamanın kendi odak düzeniyle gezilir.
 /// Fiziksel klavyenin ve kumandanın rakam tuşları da [controller]'a yazar.
 class TvKeyboard extends StatefulWidget {
-  const TvKeyboard({super.key, required this.controller, this.maxLength, this.autofocus = false});
+  const TvKeyboard({
+    super.key,
+    required this.controller,
+    this.maxLength,
+    this.autofocus = false,
+    this.symbols = false,
+    this.autoCapitalize = true,
+  });
 
   final TextEditingController controller;
   final int? maxLength;
   final bool autofocus;
+
+  /// Adres yazımı: sembol satırı (: / . - _ ? = & @ %) ve "https://", ".m3u"
+  /// kısayolları.
+  final bool symbols;
+
+  /// Kelime başında kendiliğinden büyük harf (adlar); adreste kapalı.
+  final bool autoCapitalize;
+
+  static const symbolRow = [':', '/', '.', '-', '_', '?', '=', '&', '@', '%'];
 
   /// Tek tuşun kapladığı genişlik (tuş + iki yandaki boşluk).
   static const keyExtent = _Key.size + _Key.gap * 2;
@@ -45,16 +61,17 @@ class _TvKeyboardState extends State<TvKeyboard> {
   /// Büyük harf: kelime başında kendiliğinden açıktır; ⇧ tersine çevirir.
   bool _shiftOverride = false;
 
-  static final _typable = RegExp(r'^[\p{L}\p{N} .\-]$', unicode: true);
+  /// Fiziksel klavyeden yazılabilen tek karakter (denetim karakterleri hariç).
+  static final _typable = RegExp(r'^[^\x00-\x1F\x7F]$');
 
   String get _text => widget.controller.text;
 
   bool get _atWordStart => _text.isEmpty || _text.endsWith(' ');
 
-  bool get _upper => _atWordStart != _shiftOverride;
+  bool get _upper => (widget.autoCapitalize && _atWordStart) != _shiftOverride;
 
   void _insert(String s) {
-    if (widget.maxLength case final max? when _text.characters.length >= max) return;
+    if (widget.maxLength case final max? when _text.characters.length + s.characters.length > max) return;
     widget.controller.text = _text + s;
     setState(() => _shiftOverride = false);
   }
@@ -81,6 +98,9 @@ class _TvKeyboardState extends State<TvKeyboard> {
     return KeyEventResult.ignored;
   }
 
+  /// [n] tuş genişliğinde geniş tuş (aradaki boşluklar dahil).
+  static double _units(int n) => _Key.size * n + _Key.gap * 2 * (n - 1);
+
   @override
   Widget build(BuildContext context) {
     final upper = _upper;
@@ -89,6 +109,11 @@ class _TvKeyboardState extends State<TvKeyboard> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (widget.symbols)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [for (final c in TvKeyboard.symbolRow) _Key(label: c, onPressed: () => _insert(c))],
+            ),
           for (final (r, row) in TvKeyboard.rows.indexed)
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -111,7 +136,12 @@ class _TvKeyboardState extends State<TvKeyboard> {
                 width: _Key.size * 2 + _Key.gap * 2,
                 onPressed: () => setState(() => _shiftOverride = !_shiftOverride),
               ),
-              _Key(label: 'Boşluk', width: _Key.size * 8 + _Key.gap * 14, onPressed: () => _insert(' ')),
+              if (widget.symbols) ...[
+                _Key(label: 'https://', width: _units(2), onPressed: () => _insert('https://')),
+                _Key(label: 'Boşluk', width: _units(4), onPressed: () => _insert(' ')),
+                _Key(label: '.m3u', width: _units(2), onPressed: () => _insert('.m3u')),
+              ] else
+                _Key(label: 'Boşluk', width: _units(8), onPressed: () => _insert(' ')),
               _Key(
                 icon: RedoxIcons.backspace,
                 semantics: 'Sil',

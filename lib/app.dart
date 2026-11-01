@@ -5,6 +5,7 @@ import 'core/layout/form_factor.dart';
 import 'core/theme/redox_theme.dart';
 import 'core/content/profiles.dart';
 import 'core/content/favorites.dart';
+import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
@@ -23,6 +24,7 @@ class RedoxApp extends StatefulWidget {
     this.profiles,
     this.history,
     this.favorites,
+    this.sources,
     this.radio,
     this.frames,
     this.rank,
@@ -40,6 +42,9 @@ class RedoxApp extends StatefulWidget {
 
   /// Profilin favorileri (kanal ve radyo).
   final Favorites Function(String profileId)? favorites;
+
+  /// Kullanıcının M3U listeleri (Kaynaklar; cihaz başına, profillerden bağımsız).
+  final UserSources? sources;
 
   /// Radyo (uygulama boyunca tek).
   final RadioController? radio;
@@ -131,6 +136,7 @@ class _RedoxAppState extends State<RedoxApp> {
         history: widget.history?.call(profile?.id ?? ProfileStore.defaults.first.id),
         favorites: widget.favorites?.call(profile?.id ?? ProfileStore.defaults.first.id),
         radio: widget.radio,
+        sources: widget.sources,
         frames: widget.frames,
         rank: widget.rank,
         onSwitchProfile: store == null ? null : _switchProfile,
