@@ -326,6 +326,7 @@ void main() {
     await _settle(tester);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 700));
     await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
     await _settle(tester);

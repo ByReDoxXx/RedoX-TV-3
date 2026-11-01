@@ -201,7 +201,8 @@ class ChannelPreviewHint extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Aynı kanalda tekrar ${touch ? 'dokunmak' : 'OK'} tam ekran açar.',
+              'Aynı kanalda tekrar ${touch ? 'dokunmak' : 'OK'} tam ekran açar. '
+              '${touch ? 'Yıldız' : 'Uzun OK'} favorilere ekler.',
               textAlign: TextAlign.center,
               style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
             ),

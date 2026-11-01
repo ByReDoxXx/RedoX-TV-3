@@ -388,6 +388,8 @@ class _FavoriteRow extends StatelessWidget {
                 child: LongPressSelect(
                   onPressed: onPressed,
                   onLongPress: onLongPress,
+                  // Taşıma kipi: sıralama simgesi.
+                  icon: RedoxIcons.menu,
                   child: InkWell(
                     onTap: onPressed,
                     onLongPress: onLongPress,
