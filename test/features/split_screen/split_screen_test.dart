@@ -53,8 +53,8 @@ void main() {
     expect(s.add(_channels[4]), -1);
   });
 
-  test("TV: en çok 2 yayın (Chromecast ölçümü); 4'lüye geçmez", () {
-    final s = SplitScreen(maxLayout: SplitScreen.tvMaxLayout);
+  test("en geniş düzen 2 ise 4'lüye geçmez", () {
+    final s = SplitScreen(maxLayout: 2);
     expect(s.layout, 2);
     expect(s.add(_channels[0]), 0);
     expect(s.add(_channels[1]), 1);

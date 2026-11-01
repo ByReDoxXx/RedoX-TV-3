@@ -170,7 +170,7 @@ class _SplitScreenPageState extends State<SplitScreenPage> {
             padding: const EdgeInsets.only(top: 14, bottom: 12),
             child: Row(
               children: [
-                // TV'de en çok 2 yayın (SplitScreen.maxLayout): anahtar yok.
+                // En geniş düzen 2 ise (SplitScreen.maxLayout) anahtar yok.
                 if (_split.maxLayout > 2) ...[
                   SegmentedToggle(
                     segments: const [

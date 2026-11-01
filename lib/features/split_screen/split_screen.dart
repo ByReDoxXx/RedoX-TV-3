@@ -6,17 +6,15 @@ import '../../core/content/live_channel.dart';
 /// Oturum boyunca durur (bölüm değişince karolar kalır; uygulama kapanınca
 /// boşalır).
 ///
-/// [maxLayout]: cihazın aynı anda oynatabildiği yayın. Chromecast with Google
-/// TV'de ölçüldü (2026-11-01): iki yayın sorunsuz, üçüncü siyah kalır
-/// (donanım çözücü yok), dördüncüde arayüz 5 sn donar ve sistem uygulamayı
-/// kapatır (ANR). TV'de 2'dir.
+/// [maxLayout]: en geniş düzen (2 ya da 4). Her biçimde 4: TV'de de 2x2
+/// (kullanıcı isteği, 2026-11-01). Uyarı: Chromecast with Google TV'de
+/// ölçüldü, iki yayın sorunsuz, üçüncü siyah kalır (donanım çözücü yok),
+/// dördüncüde arayüz 5 sn donar ve sistem uygulamayı kapatabilir (ANR).
+/// Kullanıcı bunu bilerek dördünün de oynamasını seçti.
 class SplitScreen extends ChangeNotifier {
   SplitScreen({this.maxLayout = maxSlots}) : assert(maxLayout == 2 || maxLayout == maxSlots), _layout = maxLayout;
 
   static const maxSlots = 4;
-
-  /// TV'de aynı anda en çok yayın (yukarıdaki ölçüm).
-  static const tvMaxLayout = 2;
 
   final int maxLayout;
   final List<LiveChannel?> _slots = List.filled(maxSlots, null);
