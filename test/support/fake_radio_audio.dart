@@ -40,6 +40,16 @@ class FakeRadioAudio implements RadioAudio {
     _title.value = null;
   }
 
+  /// Cızırtı açık mı ve kaç kez açıldı.
+  bool noise = false;
+  int noiseStarts = 0;
+
+  @override
+  Future<void> setNoise(bool on) async {
+    if (on && !noise) noiseStarts++;
+    noise = on;
+  }
+
   @override
   Future<void> play() async {
     final url = opened.lastOrNull;

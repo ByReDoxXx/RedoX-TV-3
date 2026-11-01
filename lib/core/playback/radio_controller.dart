@@ -68,6 +68,32 @@ class RadioController extends ChangeNotifier {
     null => null,
   };
 
+  /// Radyo cızırtısı (eski uygulamadaki seçenek; kullanıcı isteği: geçişlerde
+  /// cızırtı): kadran çevrilirken ve yayın bağlanırken çalar, ses gelince
+  /// susar.
+  bool get noise => _noiseEnabled;
+  bool _noiseEnabled = true;
+
+  set noise(bool on) {
+    _noiseEnabled = on;
+    if (!on) unawaited(_audio?.setNoise(false));
+    _notify();
+  }
+
+  /// Kadranda gezinirken kısa cızırtı (yeni istasyon çalınca bağlanma
+  /// cızırtısına döner, değilse [tuneNoise] sonra susar).
+  static const tuneNoise = Duration(milliseconds: 1200);
+  Timer? _tuneTimer;
+
+  void tuning() {
+    if (!_noiseEnabled) return;
+    unawaited(_ensureAudio().setNoise(true));
+    _tuneTimer?.cancel();
+    _tuneTimer = Timer(tuneNoise, () {
+      if (_status != RadioStatus.connecting) unawaited(_audio?.setNoise(false));
+    });
+  }
+
   /// Uyku zamanlayıcısı seçenekleri (dakika).
   static const sleepChoices = [30, 60, 90];
 
@@ -106,10 +132,11 @@ class RadioController extends ChangeNotifier {
       _set(RadioStatus.failed);
       return;
     }
+    // Oynatıcı durumdan önce: "bağlanıyor" cızırtısı ilk çalışta da duyulsun.
+    final audio = _ensureAudio();
     _set(RadioStatus.connecting);
     _connectTimer?.cancel();
     _connectTimer = Timer(connectTimeout, _nextStream);
-    final audio = _ensureAudio();
     await audio.open(station.streams[_stream]);
     await audio.play();
   }
@@ -179,6 +206,9 @@ class RadioController extends ChangeNotifier {
 
   void _set(RadioStatus s) {
     _status = s;
+    // Bağlanırken cızırtı; ses gelince, duraklayınca ya da kapanınca susar.
+    final noisy = _noiseEnabled && s == RadioStatus.connecting;
+    if (noisy || !(_tuneTimer?.isActive ?? false)) unawaited(_audio?.setNoise(noisy));
     _notify();
   }
 
@@ -190,6 +220,7 @@ class RadioController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _connectTimer?.cancel();
+    _tuneTimer?.cancel();
     _cancelSleep();
     for (final s in _subscriptions) {
       unawaited(s.cancel());

@@ -7,7 +7,7 @@ import 'package:redox_tv/core/content/source_receiver.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
-import 'package:redox_tv/core/ui/tv_keyboard.dart';
+import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/features/settings/settings_page.dart';
 import 'package:redox_tv/features/sources/add_source_tab.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
@@ -138,24 +138,29 @@ void main() {
     expect(receiver.stopped, isTrue);
   });
 
-  testWidgets('Xtream formu: uygulamanın klavyesi, şifre noktalı; Ekle zorunlu alanlar dolunca', (tester) async {
+  testWidgets('Xtream formu (TV): alan OK ile sistem klavyesini açar; şifre noktalı görünür', (tester) async {
     await _size(tester, const Size(960, 540));
+    final asked = <(String, TextKind)>[];
+    SystemTextInput.debugOverride = (title, value, kind) async {
+      asked.add((title, kind));
+      return 'abc';
+    };
+    addTearDown(() => SystemTextInput.debugOverride = null);
     final s = await _sources(tester, empty: true);
     await tester.pumpWidget(_app(FormFactor.tv, s));
     await _settle(tester);
     await tester.tap(find.text(AddMethod.xtream.title));
     await _settle(tester);
     expect(tester.takeException(), isNull);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.byType(TvKeyboard), findsOneWidget);
+    expect(find.byType(TextField), findsNothing, reason: 'TV: Flutter metin alanı yok');
 
     await tester.tap(find.text('Şifre'));
     await tester.pump();
-    for (final k in ['a', 'b', 'c']) {
-      await tester.tap(find.bySemanticsLabel(k));
-    }
+    expect(asked.single, ('Şifre', TextKind.secret));
+    expect(find.text('•••'), findsOneWidget);
+    await tester.tap(find.text('Sunucu'));
     await tester.pump();
-    expect(find.text('•••|'), findsOneWidget);
+    expect(asked.last.$2, TextKind.url);
   });
 
   testWidgets('MediaHub: biçim eklenene kadar açıklama', (tester) async {

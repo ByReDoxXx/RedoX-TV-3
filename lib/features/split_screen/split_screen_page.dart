@@ -170,15 +170,18 @@ class _SplitScreenPageState extends State<SplitScreenPage> {
             padding: const EdgeInsets.only(top: 14, bottom: 12),
             child: Row(
               children: [
-                SegmentedToggle(
-                  segments: const [
-                    ToggleSegment("2'li", RedoxIcons.cardView),
-                    ToggleSegment("4'lü", RedoxIcons.splitScreen),
-                  ],
-                  selectedIndex: _split.layout == 2 ? 0 : 1,
-                  onChanged: (i) => _split.layout = i == 0 ? 2 : SplitScreen.maxSlots,
-                ),
-                const SizedBox(width: 16),
+                // TV'de en çok 2 yayın (SplitScreen.maxLayout): anahtar yok.
+                if (_split.maxLayout > 2) ...[
+                  SegmentedToggle(
+                    segments: const [
+                      ToggleSegment("2'li", RedoxIcons.cardView),
+                      ToggleSegment("4'lü", RedoxIcons.splitScreen),
+                    ],
+                    selectedIndex: _split.layout == 2 ? 0 : 1,
+                    onChanged: (i) => _split.layout = i == 0 ? 2 : SplitScreen.maxSlots,
+                  ),
+                  const SizedBox(width: 16),
+                ],
                 Flexible(
                   child: Text(
                     phone

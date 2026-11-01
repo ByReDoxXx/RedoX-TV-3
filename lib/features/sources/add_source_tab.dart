@@ -9,11 +9,29 @@ import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
+import '../../core/ui/category_chip.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_icon.dart';
 import 'widgets/phone_qr_dialog.dart';
 import 'widgets/source_form_dialog.dart';
 import 'widgets/source_widgets.dart';
+
+/// Eklenen kaynağın içeriği. Canlı TV hazır; Film ve Dizi, o bölümlerin
+/// tasarımı yapılınca aynı yöntemlerle (M3U, Xtream, portal…) eklenecek
+/// (kullanıcı isteği: "kaynak ekle altına dizi ve film eklemede gelecek").
+enum SourceContent {
+  live('Canlı TV', RedoxIcons.television, ready: true),
+  film('Film', RedoxIcons.film),
+  series('Dizi', RedoxIcons.series);
+
+  const SourceContent(this.label, this.icon, {this.ready = false});
+
+  final String label;
+  final RedoxIcons icon;
+
+  /// Bu içerik için ekleme yapılabiliyor mu.
+  final bool ready;
+}
 
 /// Ekleme yöntemi (kutu).
 enum AddMethod {
@@ -57,6 +75,7 @@ class AddSourceTab extends StatefulWidget {
 
 class _AddSourceTabState extends State<AddSourceTab> {
   bool _busy = false;
+  SourceContent _content = SourceContent.live;
 
   UserSources get _sources => widget.sources;
 
@@ -212,19 +231,56 @@ class _AddSourceTabState extends State<AddSourceTab> {
                   )
                 : null,
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Eklenen her liste Kaynaklar bölümünde bir klasör olur.',
-            style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
-          ),
-          const SizedBox(height: 12),
-          TileGrid(
-            columns: phone ? 2 : 3,
+          const SizedBox(height: 10),
+          // İçerik: Canlı TV, Film, Dizi.
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
             children: [
-              for (final (i, m) in methods.indexed)
-                _MethodTile(method: m, compact: phone, autofocus: i == 0, onPressed: _busy ? null : () => _choose(m)),
+              for (final c in SourceContent.values)
+                CategoryChip(
+                  label: c.ready ? c.label : '${c.label} · yakında',
+                  selected: c == _content,
+                  onPressed: () => setState(() => _content = c),
+                ),
             ],
           ),
+          const SizedBox(height: 12),
+          if (_content.ready) ...[
+            Text(
+              'Eklenen her liste Kaynaklar bölümünde bir klasör olur.',
+              style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            TileGrid(
+              columns: phone ? 2 : 3,
+              children: [
+                for (final (i, m) in methods.indexed)
+                  _MethodTile(method: m, compact: phone, autofocus: i == 0, onPressed: _busy ? null : () => _choose(m)),
+              ],
+            ),
+          ] else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: RedoxRoles.surfaceContainer,
+                borderRadius: BorderRadius.circular(RedoxRadius.lg),
+              ),
+              child: Row(
+                children: [
+                  RedoxIcon(_content.icon, color: RedoxSeeds.gold, size: 28),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      '${_content.label} kaynakları, ${_content.label} bölümü tasarlanınca buradan aynı yöntemlerle '
+                      '(M3U, Xtream, portal…) eklenecek.',
+                      style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

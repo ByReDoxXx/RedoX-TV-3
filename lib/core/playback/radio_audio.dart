@@ -19,6 +19,11 @@ abstract class RadioAudio {
   Stream<String> get errors;
 
   Future<void> open(String url);
+
+  /// Radyo cızırtısı (istasyon geçişi, bağlanırken): döngüde çalar ya da
+  /// susar. Yayının sesinden ayrı oynatıcıdır.
+  Future<void> setNoise(bool on);
+
   Future<void> play();
   Future<void> pause();
   Future<void> stop();
@@ -42,6 +47,16 @@ class MediaKitRadioAudio implements RadioAudio {
   static const userAgent = 'RedoXTV/3.0';
 
   final _player = Player(configuration: const PlayerConfiguration(title: 'RedoX TV Radyo'));
+
+  /// Cızırtı sesi (assets/sounds/radyo_cizirti.wav, tools/ses/radyo_cizirti.py);
+  /// ilk kullanımda kurulur.
+  Player? _noise;
+  bool _noiseOn = false;
+
+  static const noiseAsset = 'asset:///assets/sounds/radyo_cizirti.wav';
+
+  /// Cızırtı yayının altında kalsın: kısık.
+  static const noiseVolume = 45.0;
   final _playing = ValueNotifier(false);
   final _buffering = ValueNotifier(false);
   final _title = ValueNotifier<String?>(null);
@@ -81,6 +96,27 @@ class MediaKitRadioAudio implements RadioAudio {
   }
 
   @override
+  Future<void> setNoise(bool on) async {
+    if (on == _noiseOn) return;
+    _noiseOn = on;
+    if (!on) {
+      await _noise?.pause();
+      return;
+    }
+    var noise = _noise;
+    if (noise == null) {
+      noise = _noise = Player(configuration: const PlayerConfiguration(title: 'RedoX TV Cızırtı'));
+      final native = noise.platform;
+      if (native is NativePlayer) await native.setProperty('vid', 'no');
+      await noise.setPlaylistMode(PlaylistMode.loop);
+      await noise.setVolume(noiseVolume);
+      await noise.open(Media(noiseAsset));
+    } else {
+      await noise.play();
+    }
+  }
+
+  @override
   Future<void> play() => _player.play();
 
   @override
@@ -98,6 +134,7 @@ class MediaKitRadioAudio implements RadioAudio {
       await s.cancel();
     }
     await _errors.close();
+    await _noise?.dispose();
     await _player.dispose();
   }
 }

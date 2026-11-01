@@ -76,6 +76,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
   void _turn(int step) {
     if (_list.isEmpty) return;
     setState(() => _tuned = (_tuned + step) % _list.length);
+    _radio.tuning();
     _tune?.cancel();
     _tune = Timer(RadioPlayerPage.tuneDelay, _playTuned);
   }

@@ -47,6 +47,7 @@ flutter:
     # Şifreli kanal listesi (DataPack). Kaynak tr.m3u uygulamaya konmaz.
     - assets/channels/channels.bin
     - assets/radios/radios.bin
+    - assets/sounds/radyo_cizirti.wav
 
   fonts:
     # Değişken yazı tipi (OFL), tek eksen: wght 100–800. FontWeight -> wght.

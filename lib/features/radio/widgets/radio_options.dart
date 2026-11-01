@@ -104,6 +104,12 @@ class RadioOptions extends StatelessWidget {
                 autofocus: station == null || favorites == null,
                 onPressed: () => radio.setSleep(nextSleep(radio.sleepLeft)),
               ),
+              _Item(
+                icon: RedoxIcons.volume,
+                label: 'Radyo cızırtısı',
+                value: radio.noise ? 'Açık' : 'Kapalı',
+                onPressed: () => radio.noise = !radio.noise,
+              ),
               const Divider(height: 16, indent: 20, endIndent: 20, color: RedoxRoles.outlineVariant),
               _Item(
                 icon: RedoxIcons.close,

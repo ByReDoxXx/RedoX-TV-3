@@ -145,7 +145,9 @@ class _RootShellState extends State<RootShell> {
   bool _watching = false;
 
   /// Bölünmüş Ekran karoları (oturum boyunca).
-  final _split = SplitScreen();
+  late final _split = SplitScreen(
+    maxLayout: FormFactor.current == FormFactor.tv ? SplitScreen.tvMaxLayout : SplitScreen.maxSlots,
+  );
 
   /// Televizyon önizlemesindeki "2x2 Ekrana ekle".
   void _addToSplit(BuildContext context, LiveChannel c) {

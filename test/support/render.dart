@@ -10,8 +10,7 @@ import 'package:redox_tv/core/theme/redox_type.dart';
 /// Sora'yı test ortamına yükler (yüklenmezse metin Ahem kutularıyla çizilir).
 Future<void> loadSora(WidgetTester tester) async {
   await tester.runAsync(() async {
-    final loader = FontLoader(RedoxType.family)
-      ..addFont(rootBundle.load('assets/fonts/Sora-Variable.ttf'));
+    final loader = FontLoader(RedoxType.family)..addFont(rootBundle.load('assets/fonts/Sora-Variable.ttf'));
     await loader.load();
   });
 }

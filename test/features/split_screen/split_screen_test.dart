@@ -53,6 +53,16 @@ void main() {
     expect(s.add(_channels[4]), -1);
   });
 
+  test("TV: en çok 2 yayın (Chromecast ölçümü); 4'lüye geçmez", () {
+    final s = SplitScreen(maxLayout: SplitScreen.tvMaxLayout);
+    expect(s.layout, 2);
+    expect(s.add(_channels[0]), 0);
+    expect(s.add(_channels[1]), 1);
+    expect(s.add(_channels[2]), -1);
+    s.layout = SplitScreen.maxSlots;
+    expect(s.layout, 2);
+  });
+
   testWidgets('karolar açılır; ses yalnız odaktakinden; kaldırınca motor kapanır', (tester) async {
     await _size(tester, const Size(960, 540));
     final split = SplitScreen()

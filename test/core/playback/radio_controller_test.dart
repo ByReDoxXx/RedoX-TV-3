@@ -94,4 +94,36 @@ void main() {
       expect(radio.sleepLeft, isNull);
     });
   });
+
+  group('radyo cızırtısı', () {
+    test('bağlanırken çalar, ses gelince susar', () {
+      fakeAsync((async) {
+        final (radio, audio) = _radio(autoPlay: false);
+        radio.play(_a);
+        async.flushMicrotasks();
+        expect(audio.noise, isTrue, reason: 'bağlanıyor');
+        audio.autoPlay = true;
+        radio.toggle();
+        async.flushMicrotasks();
+        expect(audio.noise, isFalse);
+      });
+    });
+
+    test('kadran çevrilince kısa süre çalar; kapalıysa hiç çalmaz', () {
+      fakeAsync((async) {
+        final (radio, audio) = _radio();
+        radio.tuning();
+        async.flushMicrotasks();
+        expect(audio.noise, isTrue);
+        async.elapse(RadioController.tuneNoise + const Duration(milliseconds: 100));
+        expect(audio.noise, isFalse);
+
+        radio.noise = false;
+        radio.tuning();
+        radio.play(_b);
+        async.flushMicrotasks();
+        expect(audio.noiseStarts, 1, reason: 'seçenek kapalı');
+      });
+    });
+  });
 }

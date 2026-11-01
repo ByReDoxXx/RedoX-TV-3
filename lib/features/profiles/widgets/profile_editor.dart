@@ -8,7 +8,7 @@ import '../../../core/theme/redox_shapes.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
-import '../../../core/ui/tv_keyboard.dart';
+import '../../../core/platform/system_text_input.dart';
 import 'profile_avatar.dart';
 
 /// Düzenleyicinin sonucu: kaydet (ad, renk, çocuk mu) ya da sil.
@@ -133,93 +133,95 @@ class _ProfileEditorState extends State<ProfileEditor> {
       backgroundColor: RedoxRoles.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RedoxRadius.xl)),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: tv ? 880 : 460),
+        constraints: const BoxConstraints(maxWidth: 460),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          // TV: solda ad ve uygulamanın ekran klavyesi, sağda renk ve düğmeler
-          // (540 dp yüksekliğe sığsın diye iki sütun).
-          child: tv
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: _keyboardWidth, child: header),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: _keyboardWidth,
-                          child: _NameDisplay(text: _name.text),
-                        ),
-                        const SizedBox(height: 12),
-                        TvKeyboard(controller: _name, maxLength: ProfileEditor.maxName, autofocus: true),
-                      ],
-                    ),
-                    const SizedBox(width: 28),
-                    SizedBox(
-                      width: 240,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [const SizedBox(height: 80), ...colors, const SizedBox(height: 24), buttons],
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    header,
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _name,
-                      autofocus: _adding,
-                      maxLength: ProfileEditor.maxName,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _save(),
-                      decoration: const InputDecoration(labelText: 'Ad'),
-                    ),
-                    const SizedBox(height: 8),
-                    ...colors,
-                    const SizedBox(height: 20),
-                    buttons,
-                  ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              header,
+              const SizedBox(height: 16),
+              // TV: OK cihazın kendi klavyesiyle yerel kutuyu açar
+              // (SystemTextInput; kullanıcı isteği: varsayılan klavye).
+              if (tv)
+                _NameButton(text: _name.text, onPressed: _editName)
+              else
+                TextField(
+                  controller: _name,
+                  autofocus: _adding,
+                  maxLength: ProfileEditor.maxName,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _save(),
+                  decoration: const InputDecoration(labelText: 'Ad'),
                 ),
+              const SizedBox(height: 8),
+              ...colors,
+              const SizedBox(height: 20),
+              buttons,
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// En geniş klavye satırı: 12 tuş.
-  static const _keyboardWidth = 12 * TvKeyboard.keyExtent;
+  Future<void> _editName() async {
+    final text = await SystemTextInput.ask(title: 'Ad', value: _name.text, maxLength: ProfileEditor.maxName);
+    if (text != null && mounted) _name.text = text.trim();
+  }
 }
 
-/// TV'de ad alanı: yazılamaz, yalnız gösterir (yazı TvKeyboard'dan gelir).
-class _NameDisplay extends StatelessWidget {
-  const _NameDisplay({required this.text});
+/// TV'de ad alanı: OK/dokunma sistem klavyesini açar.
+class _NameButton extends StatelessWidget {
+  const _NameButton({required this.text, required this.onPressed});
 
   final String text;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return InputDecorator(
-      isFocused: true,
-      decoration: InputDecoration(labelText: 'Ad', counterText: '${text.characters.length}/${ProfileEditor.maxName}'),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(text: text),
-            const TextSpan(
-              text: '|',
-              style: TextStyle(color: RedoxSeeds.amber),
-            ),
-          ],
+    final radius = BorderRadius.circular(RedoxRadius.md);
+    return FocusGlow(
+      borderRadius: radius,
+      scale: 1,
+      builder: (context, active) => Material(
+        color: active ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(color: active ? RedoxSeeds.amber : RedoxRoles.outlineVariant, width: active ? 2 : 1),
         ),
-        style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),
+        child: InkWell(
+          onTap: onPressed,
+          autofocus: true,
+          borderRadius: radius,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ad', style: t.labelMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                      const SizedBox(height: 2),
+                      Text(
+                        text.isEmpty ? 'Ad yazmak için OK' : text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodyLarge!.copyWith(color: text.isEmpty ? RedoxRoles.outline : RedoxRoles.onSurface),
+                      ),
+                    ],
+                  ),
+                ),
+                RedoxIcon(RedoxIcons.edit, size: 20, color: active ? RedoxSeeds.amber : RedoxRoles.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
