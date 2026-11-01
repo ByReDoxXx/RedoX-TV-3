@@ -48,8 +48,18 @@ void main() {
     test('TV: hiçbir tema yazısı 16 altında değil', () {
       final t = RedoxType.textTheme(FormFactor.tv);
       for (final s in [
-        t.displayLarge, t.headlineLarge, t.headlineMedium, t.headlineSmall, t.titleLarge,
-        t.titleMedium, t.bodyLarge, t.bodyMedium, t.bodySmall, t.labelLarge, t.labelMedium, t.labelSmall,
+        t.displayLarge,
+        t.headlineLarge,
+        t.headlineMedium,
+        t.headlineSmall,
+        t.titleLarge,
+        t.titleMedium,
+        t.bodyLarge,
+        t.bodyMedium,
+        t.bodySmall,
+        t.labelLarge,
+        t.labelMedium,
+        t.labelSmall,
       ]) {
         expect(s!.fontSize, greaterThanOrEqualTo(RedoxType.tvMinSize));
       }

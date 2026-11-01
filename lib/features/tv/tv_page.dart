@@ -410,6 +410,20 @@ class _TvPageState extends State<TvPage> {
     );
   }
 
+  void _toggleFavorite(Favorites fav, LiveChannel c) {
+    fav.toggleChannel(c.number);
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            fav.hasChannel(c.number) ? '${c.name} favorilere eklendi.' : '${c.name} favorilerden çıkarıldı.',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   Widget _gridOf(List<LiveChannel> channels, double gutter, bool preview, int columns) {
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -421,13 +435,20 @@ class _TvPageState extends State<TvPage> {
       delegate: SliverChildBuilderDelegate((context, i) {
         final c = channels[i];
         // Odaktaki kartın satırı ortaya kayar: kenarda büyüyen kart kesiliyordu.
+        final fav = widget.favorites;
         return CenterOnFocus(
-          child: ChannelTile(
-            channel: c,
-            selected: preview && _previewed == c,
-            // İlk OK/dokunma önizler, aynı kanalda ikincisi tam ekran açar.
-            // Telefonda panel yok: doğrudan tam ekran.
-            onPressed: () => preview && _previewed != c ? _preview(c) : unawaited(_watch(c)),
+          child: ListenableBuilder(
+            listenable: fav ?? const _Silent(),
+            builder: (context, _) => ChannelTile(
+              channel: c,
+              selected: preview && _previewed == c,
+              // İlk OK/dokunma önizler, aynı kanalda ikincisi tam ekran açar.
+              // Telefonda panel yok: doğrudan tam ekran.
+              onPressed: () => preview && _previewed != c ? _preview(c) : unawaited(_watch(c)),
+              // Uzun OK / yıldız: favori.
+              favorite: fav?.hasChannel(c.number) ?? false,
+              onFavorite: fav == null ? null : () => _toggleFavorite(fav, c),
+            ),
           ),
         );
       }, childCount: channels.length),

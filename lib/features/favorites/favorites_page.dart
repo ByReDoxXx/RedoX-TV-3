@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
+import '../../core/navigation/double_back_to_exit.dart';
 import '../../core/playback/radio_controller.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
@@ -16,6 +18,7 @@ import '../../core/ui/app_header.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/icon_action_button.dart';
+import '../../core/ui/long_press_select.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
 import '../radio/radio_player_page.dart';
@@ -82,6 +85,63 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   /// Klasörler sekmesi açık.
   bool _folders = false;
+
+  /// Taşınan kayıt (kanal/istasyon numarası; kullanıcı isteği: "OK uzun
+  /// basılınca kanal sırası değiştirilebilsin"). ▲▼ taşır, OK/Geri bitirir.
+  int? _moving;
+
+  DoubleBackToExitState? _back;
+
+  bool _onBack() {
+    if (_moving == null || !mounted) return false;
+    setState(() => _moving = null);
+    return true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final back = DoubleBackToExit.maybeOf(context);
+    if (back != _back) {
+      _back?.removeHandler(_onBack);
+      _back = back?..addHandler(_onBack);
+    }
+  }
+
+  @override
+  void dispose() {
+    _back?.removeHandler(_onBack);
+    super.dispose();
+  }
+
+  /// Uzun OK/dokunma: taşıma kipi ("Sıram"a geçer).
+  void _startMove(LiveChannel c) => setState(() {
+    _sort = FavoriteSort.custom;
+    _moving = c.number;
+  });
+
+  /// Taşıma kipinde ▲▼ taşır, OK bitirir.
+  KeyEventResult _onMoveKey(FocusNode _, KeyEvent e) {
+    final moving = _moving;
+    if (moving == null || e is KeyUpEvent) return KeyEventResult.ignored;
+    final key = e.logicalKey;
+    final items = _items();
+    final i = items.indexWhere((c) => c.number == moving);
+    if (i < 0) return KeyEventResult.ignored;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      if (i > 0) _move(items[i], i - 1);
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      if (i < items.length - 1) _move(items[i], i + 1);
+    } else if (LongPressSelect.isSelect(key) && e is KeyDownEvent) {
+      setState(() => _moving = null);
+    } else if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
+      // Taşırken satırdan çıkılmaz.
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
   FavoriteSort _sort = FavoriteSort.custom;
 
   Favorites get _fav => widget.favorites;
@@ -213,33 +273,47 @@ class _FavoritesPageState extends State<FavoritesPage> {
                           style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
                         ),
                       )
-                    : ListView.builder(
-                        padding: EdgeInsets.fromLTRB(
-                          padding.left - FavoritesPage.ringRoom,
-                          6,
-                          padding.right,
-                          phone ? padding.bottom : 16,
+                    : Focus(
+                        canRequestFocus: false,
+                        skipTraversal: true,
+                        onKeyEvent: _onMoveKey,
+                        child: ListView.builder(
+                          padding: EdgeInsets.fromLTRB(
+                            padding.left - FavoritesPage.ringRoom,
+                            6,
+                            padding.right,
+                            phone ? padding.bottom : 16,
+                          ),
+                          itemExtent: _FavoriteRow.height + 8,
+                          itemCount: items.length,
+                          // Taşınan satırın odağı onunla gider (anahtar: numara).
+                          findChildIndexCallback: (key) {
+                            final i = items.indexWhere((c) => ValueKey(c.number) == key);
+                            return i < 0 ? null : i;
+                          },
+                          itemBuilder: (context, i) {
+                            final c = items[i];
+                            final custom = _sort == FavoriteSort.custom;
+                            final moving = _moving == c.number;
+                            return Padding(
+                              key: ValueKey(c.number),
+                              padding: const EdgeInsets.fromLTRB(FavoritesPage.ringRoom, 0, 0, 8),
+                              child: _FavoriteRow(
+                                channel: c,
+                                moving: moving,
+                                onLongPress: () => moving ? setState(() => _moving = null) : _startMove(c),
+                                position: i + 1,
+                                radio: _radio,
+                                compact: phone,
+                                autofocus: i == 0,
+                                onPressed: () => moving ? setState(() => _moving = null) : _open(c, items),
+                                onUp: custom && i > 0 ? () => _move(c, i - 1) : null,
+                                onDown: custom && i < items.length - 1 ? () => _move(c, i + 1) : null,
+                                onRemove: () => _remove(c),
+                              ),
+                            );
+                          },
                         ),
-                        itemExtent: _FavoriteRow.height + 8,
-                        itemCount: items.length,
-                        itemBuilder: (context, i) {
-                          final c = items[i];
-                          final custom = _sort == FavoriteSort.custom;
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(FavoritesPage.ringRoom, 0, 0, 8),
-                            child: _FavoriteRow(
-                              channel: c,
-                              position: i + 1,
-                              radio: _radio,
-                              compact: phone,
-                              autofocus: i == 0,
-                              onPressed: () => _open(c, items),
-                              onUp: custom && i > 0 ? () => _move(c, i - 1) : null,
-                              onDown: custom && i < items.length - 1 ? () => _move(c, i + 1) : null,
-                              onRemove: () => _remove(c),
-                            ),
-                          );
-                        },
                       ),
               ),
             ],
@@ -260,6 +334,8 @@ class _FavoriteRow extends StatelessWidget {
     required this.onRemove,
     this.onUp,
     this.onDown,
+    this.onLongPress,
+    this.moving = false,
     this.autofocus = false,
   });
 
@@ -275,17 +351,30 @@ class _FavoriteRow extends StatelessWidget {
   final VoidCallback? onDown;
   final VoidCallback onRemove;
 
+  /// Uzun OK/dokunma: taşıma kipini aç/kapat.
+  final VoidCallback? onLongPress;
+
+  /// Taşınıyor: altın kenarlık, ▲▼ yönergesi; dokunmatikte yukarı/aşağı.
+  final bool moving;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final c = channel;
     final radius = BorderRadius.circular(RedoxRadius.md);
-    final subtitle = radio ? c.category : (c.programTitle ?? c.category);
+    final touch = Theme.of(context).extension<RedoxMetrics>()!.formFactor != FormFactor.tv;
+    final subtitle = moving
+        ? (touch ? 'Yukarı/aşağı ile taşıyın, bitirmek için dokunun' : 'Yukarı/aşağı ile taşıyın, OK ile bitirin')
+        : radio
+        ? c.category
+        : (c.programTitle ?? c.category);
     return Container(
       decoration: BoxDecoration(
-        color: RedoxRoles.surfaceContainer,
+        color: moving ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainer,
         borderRadius: radius,
-        border: Border.all(color: RedoxRoles.outlineVariant.withValues(alpha: 0.4)),
+        border: moving
+            ? Border.all(color: RedoxSeeds.gold, width: 2)
+            : Border.all(color: RedoxRoles.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -296,60 +385,65 @@ class _FavoriteRow extends StatelessWidget {
               builder: (context, active) => Material(
                 color: active ? RedoxRoles.surfaceContainerHighest : Colors.transparent,
                 borderRadius: radius,
-                child: InkWell(
-                  onTap: onPressed,
-                  autofocus: autofocus,
-                  borderRadius: radius,
-                  focusColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        StationAvatar(station: c, size: 44, radius: RedoxRadius.sm),
-                        const SizedBox(width: 14),
-                        if (!compact) ...[
-                          Text(
-                            '$position',
-                            style: t.labelLarge!.copyWith(
-                              color: RedoxRoles.onSurfaceVariant,
-                              fontFeatures: RedoxType.tabular,
+                child: LongPressSelect(
+                  onPressed: onPressed,
+                  onLongPress: onLongPress,
+                  child: InkWell(
+                    onTap: onPressed,
+                    onLongPress: onLongPress,
+                    autofocus: autofocus,
+                    borderRadius: radius,
+                    focusColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          StationAvatar(station: c, size: 44, radius: RedoxRadius.sm),
+                          const SizedBox(width: 14),
+                          if (!compact) ...[
+                            Text(
+                              '$position',
+                              style: t.labelLarge!.copyWith(
+                                color: RedoxRoles.onSurfaceVariant,
+                                fontFeatures: RedoxType.tabular,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  c.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.titleMedium!.copyWith(
+                                    color: RedoxRoles.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 10),
                         ],
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                c.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.titleMedium!.copyWith(
-                                  color: RedoxRoles.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          // Telefonda yer yok: yalnız "kaldır"; sıra çiplerle seçilir.
-          if (!compact) ...[
+          // Telefonda yer yok: yalnız "kaldır" (taşırken yukarı/aşağı da).
+          if (!compact || moving) ...[
             _Action(icon: RedoxIcons.expandLess, label: 'Yukarı taşı', onPressed: onUp),
             const SizedBox(width: 6),
             _Action(icon: RedoxIcons.expandMore, label: 'Aşağı taşı', onPressed: onDown),

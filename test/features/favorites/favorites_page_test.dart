@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
@@ -115,6 +116,34 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       }
     });
+  });
+
+  testWidgets('TV: uzun OK taşıma kipini açar; aşağı/yukarı sırayı değiştirir, OK bitirir', (tester) async {
+    await _size(tester, const Size(960, 540));
+    final ids = [_channels[0].number, _channels[1].number, _channels[2].number];
+    final fav = Favorites(channels: ids);
+    await tester.pumpWidget(_app(FormFactor.tv, fav, onWatch: (_) => fail('taşırken açılmamalı')));
+    await tester.pump();
+    // Odak ilk satırda (autofocus); uzun OK.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(find.textContaining('OK ile bitirin'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(fav.channels, [ids[1], ids[2], ids[0]]);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(fav.channels, [ids[1], ids[0], ids[2]]);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(find.textContaining('OK ile bitirin'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   group('Klasörler', () {

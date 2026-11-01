@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../content/live_channel.dart';
+import '../layout/form_factor.dart';
 import '../theme/redox_colors.dart';
 import '../theme/redox_elevation.dart';
+import '../theme/redox_metrics.dart';
 import '../theme/redox_shapes.dart';
 import '../theme/redox_type.dart';
 import 'channel_logo.dart';
 import 'focus_glow.dart';
+import 'long_press_select.dart';
+import 'redox_icon.dart';
 import 'redox_progress_bar.dart';
 import 'status_badge.dart';
 
@@ -16,7 +20,15 @@ import 'status_badge.dart';
 /// Yazılar sıktır (12/14 dp): TV'nin 16 dp yazı tabanının bilinçli istisnası
 /// (kullanıcı isteği); 960 dp tuvalde 12 dp, 1080p ekranda 24 px eder.
 class ChannelTile extends StatelessWidget {
-  const ChannelTile({super.key, required this.channel, this.selected = false, this.onPressed, this.focused});
+  const ChannelTile({
+    super.key,
+    required this.channel,
+    this.selected = false,
+    this.onPressed,
+    this.focused,
+    this.favorite = false,
+    this.onFavorite,
+  });
 
   final LiveChannel channel;
 
@@ -24,6 +36,13 @@ class ChannelTile extends StatelessWidget {
   final bool selected;
   final VoidCallback? onPressed;
   final bool? focused;
+
+  /// Favoride: yıldız dolu.
+  final bool favorite;
+
+  /// Favori ekle/çıkar (kullanıcı isteği): TV'de uzun OK, dokunmatikte
+  /// yıldıza dokunma ya da uzun dokunma. null ise yıldız yok.
+  final VoidCallback? onFavorite;
 
   static const _padding = 12.0;
   static const _logo = 40.0;
@@ -50,7 +69,8 @@ class ChannelTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = channel;
     final radius = BorderRadius.circular(RedoxRadius.lg);
-    return FocusGlow(
+    final touch = Theme.of(context).extension<RedoxMetrics>()?.formFactor != FormFactor.tv;
+    final tile = FocusGlow(
       borderRadius: radius,
       focused: focused,
       builder: (context, active) => Material(
@@ -66,6 +86,7 @@ class ChannelTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
+          onLongPress: onFavorite,
           focusColor: Colors.transparent,
           hoverColor: Colors.transparent,
           child: Padding(
@@ -117,11 +138,20 @@ class ChannelTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: _gap),
-                Text(
-                  c.name,
-                  style: _name.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        c.name,
+                        style: _name.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // Yıldız adın satırında: dar kartta (4 sütun) üst satıra sığmıyordu.
+                    if (onFavorite != null && (touch || favorite))
+                      _Star(filled: favorite, onPressed: touch ? onFavorite : null),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -137,6 +167,37 @@ class ChannelTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+    return onFavorite == null ? tile : LongPressSelect(onPressed: onPressed, onLongPress: onFavorite, child: tile);
+  }
+}
+
+/// Favori yıldızı: dokunmatikte düğme, TV'de yalnız favorideyse işaret.
+class _Star extends StatelessWidget {
+  const _Star({required this.filled, this.onPressed});
+
+  final bool filled;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = RedoxIcon(
+      RedoxIcons.star,
+      filled: filled,
+      size: 20,
+      color: filled ? RedoxSeeds.gold : RedoxRoles.onSurfaceVariant,
+    );
+    if (onPressed == null) return icon;
+    return Semantics(
+      button: true,
+      label: filled ? 'Favorilerden çıkar' : 'Favorilere ekle',
+      excludeSemantics: true,
+      child: InkResponse(
+        onTap: onPressed,
+        radius: 20,
+        canRequestFocus: false,
+        child: SizedBox(width: 28, height: 20, child: Center(child: icon)),
       ),
     );
   }

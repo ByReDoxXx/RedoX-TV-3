@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
@@ -23,21 +24,26 @@ import 'package:redox_tv/features/tv/widgets/epg_grid.dart';
 import '../../support/fake_engine.dart';
 import '../../support/render.dart';
 
-Widget _app(FormFactor f, {Key? boundary, TvContent content = TvContent.preview, List<FakeEngine>? engines}) =>
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: RedoxTheme.dark(formFactor: f),
-      home: RepaintBoundary(
-        key: boundary,
-        child: RootShell(
-          tv: content,
-          initial: AppSection.tv,
-          favorites: Favorites(),
-          // Yerel video kütüphanesi testte yok: sahte motor.
-          engineFactory: () => FakeEngine()..addTo(engines),
-        ),
-      ),
-    );
+Widget _app(
+  FormFactor f, {
+  Key? boundary,
+  TvContent content = TvContent.preview,
+  List<FakeEngine>? engines,
+  Favorites? favorites,
+}) => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: RedoxTheme.dark(formFactor: f),
+  home: RepaintBoundary(
+    key: boundary,
+    child: RootShell(
+      tv: content,
+      initial: AppSection.tv,
+      favorites: favorites ?? Favorites(),
+      // Yerel video kütüphanesi testte yok: sahte motor.
+      engineFactory: () => FakeEngine()..addTo(engines),
+    ),
+  ),
+);
 
 Future<void> _size(WidgetTester tester, Size size) async {
   tester.view.physicalSize = size;
@@ -306,4 +312,47 @@ void main() {
       await maybeSnapshot(tester, key, 'build/tv/epg-${f.name}-${size.width.toInt()}.png', pixelRatio: 2);
     });
   }
+
+  testWidgets('TV: uzun OK kanalı favorilere ekler, kısa OK önizler; yıldız işareti çıkar', (tester) async {
+    await loadSora(tester);
+    await _size(tester, const Size(960, 540));
+    final fav = Favorites();
+    await tester.pumpWidget(_app(FormFactor.tv, favorites: fav));
+    await _settle(tester);
+    final first = TvContent.preview.channels.first;
+    // Odak ilk kartta (kumandada D-pad ile gelinir).
+    final inside = find.descendant(of: find.byType(ChannelTile).first, matching: find.byType(Column)).first;
+    Focus.of(tester.element(inside)).requestFocus();
+    await _settle(tester);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await _settle(tester);
+    expect(fav.hasChannel(first.number), isTrue);
+    expect(find.textContaining('favorilere eklendi'), findsOneWidget);
+
+    // Kısa OK favoriye dokunmaz.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await _settle(tester);
+    expect(fav.hasChannel(first.number), isTrue);
+  });
+
+  testWidgets('telefon: yıldıza dokunma favoriye ekler/çıkarır', (tester) async {
+    await loadSora(tester);
+    await _size(tester, const Size(390, 844));
+    final fav = Favorites();
+    await tester.pumpWidget(_app(FormFactor.phone, favorites: fav));
+    await _settle(tester);
+    final first = TvContent.preview.channels.first;
+    final star = find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Favorilere ekle');
+    await tester.tap(star.first);
+    await _settle(tester);
+    expect(fav.hasChannel(first.number), isTrue);
+    await tester.tap(find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Favorilerden çıkar').first);
+    await _settle(tester);
+    expect(fav.hasChannel(first.number), isFalse);
+  });
 }

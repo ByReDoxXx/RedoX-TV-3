@@ -93,10 +93,7 @@ void main() {
     final b = ByteData.sublistView(File('windows/runner/resources/app_icon.ico').readAsBytesSync());
     expect(b.getUint16(2, Endian.little), 1, reason: 'ICO türü');
     final count = b.getUint16(4, Endian.little);
-    final sizes = [
-      for (var i = 0; i < count; i++)
-        b.getUint8(6 + i * 16) == 0 ? 256 : b.getUint8(6 + i * 16),
-    ]..sort();
+    final sizes = [for (var i = 0; i < count; i++) b.getUint8(6 + i * 16) == 0 ? 256 : b.getUint8(6 + i * 16)]..sort();
     expect(sizes, [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]);
   });
 
@@ -109,10 +106,7 @@ void main() {
         child: Center(
           child: RepaintBoundary(
             key: key,
-            child: ColoredBox(
-              color: magenta,
-              child: SvgPicture.asset(BrandAssets.logo, width: 200, height: 200),
-            ),
+            child: ColoredBox(color: magenta, child: SvgPicture.asset(BrandAssets.logo, width: 200, height: 200)),
           ),
         ),
       ),
