@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/content/profiles.dart';
+import '../../../core/layout/form_factor.dart';
 import '../../../core/theme/redox_colors.dart';
+import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
+import '../../../core/ui/tv_keyboard.dart';
 import 'profile_avatar.dart';
 
 /// Düzenleyicinin sonucu: kaydet (ad, renk, çocuk mu) ya da sil.
@@ -73,89 +76,150 @@ class _ProfileEditorState extends State<ProfileEditor> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final tv = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
     final preview = Profile(id: '', name: _name.text.isEmpty ? '?' : _name.text, color: _color, kids: _kids);
+    final header = Row(
+      children: [
+        ProfileAvatar(profile: preview, diameter: 64),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            _adding ? 'Profil ekle' : 'Profili düzenle',
+            style: t.headlineSmall!.copyWith(color: RedoxRoles.onSurface),
+          ),
+        ),
+      ],
+    );
+    final colors = [
+      Text('Renk', style: t.titleMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          for (var i = 0; i < ProfileAvatar.colors.length; i++)
+            _Swatch(color: ProfileAvatar.colors[i], selected: i == _color, onPressed: () => setState(() => _color = i)),
+        ],
+      ),
+      if (_adding) ...[
+        const SizedBox(height: 12),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _kids,
+          onChanged: (v) => setState(() => _kids = v),
+          title: Text('Çocuk profili', style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
+          subtitle: Text(
+            'Yalnız Çocuk kategorisi; çıkışta PIN sorulur.',
+            style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+          ),
+        ),
+      ],
+    ];
+    final buttons = Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        PrimaryButton(label: 'Kaydet', icon: RedoxIcons.check, onPressed: _name.text.trim().isEmpty ? null : _save),
+        GlassButton(label: 'Vazgeç', onPressed: () => Navigator.pop(context)),
+        if (!_adding && widget.canDelete)
+          GlassButton(
+            label: 'Sil',
+            icon: RedoxIcons.close,
+            onPressed: () => Navigator.pop(context, const ProfileDeleted()),
+          ),
+      ],
+    );
     return Dialog(
       backgroundColor: RedoxRoles.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(RedoxRadius.xl)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
+        constraints: BoxConstraints(maxWidth: tv ? 880 : 460),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  ProfileAvatar(profile: preview, diameter: 64),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      _adding ? 'Profil ekle' : 'Profili düzenle',
-                      style: t.headlineSmall!.copyWith(color: RedoxRoles.onSurface),
+          // TV: solda ad ve uygulamanın ekran klavyesi, sağda renk ve düğmeler
+          // (540 dp yüksekliğe sığsın diye iki sütun).
+          child: tv
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: _keyboardWidth, child: header),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: _keyboardWidth,
+                          child: _NameDisplay(text: _name.text),
+                        ),
+                        const SizedBox(height: 12),
+                        TvKeyboard(controller: _name, maxLength: ProfileEditor.maxName, autofocus: true),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _name,
-                autofocus: _adding,
-                maxLength: ProfileEditor.maxName,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _save(),
-                decoration: const InputDecoration(labelText: 'Ad'),
-              ),
-              const SizedBox(height: 8),
-              Text('Renk', style: t.titleMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (var i = 0; i < ProfileAvatar.colors.length; i++)
-                    _Swatch(
-                      color: ProfileAvatar.colors[i],
-                      selected: i == _color,
-                      onPressed: () => setState(() => _color = i),
+                    const SizedBox(width: 28),
+                    SizedBox(
+                      width: 240,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [const SizedBox(height: 80), ...colors, const SizedBox(height: 24), buttons],
+                      ),
                     ),
-                ],
-              ),
-              if (_adding) ...[
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _kids,
-                  onChanged: (v) => setState(() => _kids = v),
-                  title: Text('Çocuk profili', style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
-                  subtitle: Text(
-                    'Yalnız Çocuk kategorisi; çıkışta PIN sorulur.',
-                    style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                  ),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    header,
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _name,
+                      autofocus: _adding,
+                      maxLength: ProfileEditor.maxName,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _save(),
+                      decoration: const InputDecoration(labelText: 'Ad'),
+                    ),
+                    const SizedBox(height: 8),
+                    ...colors,
+                    const SizedBox(height: 20),
+                    buttons,
+                  ],
                 ),
-              ],
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  PrimaryButton(
-                    label: 'Kaydet',
-                    icon: RedoxIcons.check,
-                    onPressed: _name.text.trim().isEmpty ? null : _save,
-                  ),
-                  GlassButton(label: 'Vazgeç', onPressed: () => Navigator.pop(context)),
-                  if (!_adding && widget.canDelete)
-                    GlassButton(
-                      label: 'Sil',
-                      icon: RedoxIcons.close,
-                      onPressed: () => Navigator.pop(context, const ProfileDeleted()),
-                    ),
-                ],
-              ),
-            ],
-          ),
         ),
+      ),
+    );
+  }
+
+  /// En geniş klavye satırı: 12 tuş.
+  static const _keyboardWidth = 12 * TvKeyboard.keyExtent;
+}
+
+/// TV'de ad alanı: yazılamaz, yalnız gösterir (yazı TvKeyboard'dan gelir).
+class _NameDisplay extends StatelessWidget {
+  const _NameDisplay({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return InputDecorator(
+      isFocused: true,
+      decoration: InputDecoration(labelText: 'Ad', counterText: '${text.characters.length}/${ProfileEditor.maxName}'),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: text),
+            const TextSpan(
+              text: '|',
+              style: TextStyle(color: RedoxSeeds.amber),
+            ),
+          ],
+        ),
+        style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),
       ),
     );
   }

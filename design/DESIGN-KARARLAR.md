@@ -285,7 +285,8 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
   - **Ebeveyn PIN'i (kullanıcı seçimi: 4 hane):** çocuk profili PIN yokken ilk açılışta iki kez girilerek belirlenir. Son profil çocuk profiliyse yetişkin profiline geçmek PIN ister; böylece çocuk ne profil hapından ne de uygulamayı kapatıp açarak çıkabilir. Ekleme, düzenleme ve silme de PIN ister. PIN cihazda düz değil, rastgele 16 baytlık tuzla SHA-256 özeti olarak saklanır. Pencerede ekran tuş takımı var; kumandanın ve klavyenin rakam tuşları da çalışır.
   - **Geçmiş profil başına:** her profilin "Son izlenen kanallar" listesi ayrıdır (`izlenen_kanallar_<id>`). Profillerden önceki tek liste ilk profile ('p1') geçer.
   - **Kareler önceden (kullanıcı isteği):** "uygulama açılınca anasayfadaki dinamik kanallardan alınacak fotoğraflar alınır, kullanıcı giriş yapana kadar yüklenmiş olur." Seçim ekranı dururken `FrameStore` önce son profilin, sonra diğer profillerin Anasayfa rafındaki kanalların karesini alır. Profil seçilince kabuk aynı kanalları ister; taze olanlar yeniden alınmaz.
-  - Kanıt: `profiles_test.dart`, `profile_picker_test.dart`; görüntüler `build/profiller/` (`REDOX_SNAPSHOT=1`).
+  - **TV'de ad yazma: uygulamanın kendi klavyesi (`TvKeyboard`).** Kullanıcı Chromecast'te "Ad" alanına yazamadığını bildirdi. Neden: Flutter metin alanı açıkken Android TV ekran klavyesi kumandanın yön ve OK tuşlarını alamıyor (cihazda doğrulandı; flutter/flutter#154924, Flutter "beklenen davranış" diye kapattı). TV düzenleyicisinde sistem metin alanı yok; solda ad ve Türkçe Q klavye (rakamlar, ç ğ ı ö ş ü, ⇧, boşluk, sil), sağda renk ve düğmeler. Kelime başı kendiliğinden büyük harf ("i" → "İ"). Fiziksel klavye ve kumanda rakamları da yazar. Telefon ve tablette sistem klavyesi kalır.
+  - Kanıt: `profiles_test.dart`, `profile_picker_test.dart`, `tv_keyboard_test.dart`; görüntüler `build/profiller/` (`REDOX_SNAPSHOT=1`).
 
 ## 6. Logo
 
