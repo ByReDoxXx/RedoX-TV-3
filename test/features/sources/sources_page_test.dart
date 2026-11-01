@@ -8,6 +8,8 @@ import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/tv_keyboard.dart';
+import 'package:redox_tv/features/settings/settings_page.dart';
+import 'package:redox_tv/features/sources/add_source_tab.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
 import 'package:redox_tv/features/sources/widgets/phone_qr_dialog.dart';
 
@@ -54,13 +56,26 @@ Future<void> _size(WidgetTester tester, Size size) async {
   addTearDown(tester.view.reset);
 }
 
+/// Ayarlar > Kaynak ekle (ekleme yöntemleri).
 Widget _app(FormFactor f, UserSources s, {GlobalKey? boundary, SourceReceiver? receiver}) => RepaintBoundary(
   key: boundary,
   child: MaterialApp(
     debugShowCheckedModeBanner: false,
     theme: RedoxTheme.dark(formFactor: f),
     home: Scaffold(
-      body: SourcesPage(sources: s, clock: '20:45', profileName: 'Profil 1', receiver: receiver ?? _FakeReceiver(s)),
+      body: SettingsPage(sources: s, clock: '20:45', profileName: 'Profil 1', receiver: receiver ?? _FakeReceiver(s)),
+    ),
+  ),
+);
+
+/// Kaynaklar bölümü (eklenen listeler).
+Widget _list(FormFactor f, UserSources s, {GlobalKey? boundary, VoidCallback? onAdd}) => RepaintBoundary(
+  key: boundary,
+  child: MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: RedoxTheme.dark(formFactor: f),
+    home: Scaffold(
+      body: SourcesPage(sources: s, clock: '20:45', profileName: 'Profil 1', onAdd: onAdd ?? () {}),
     ),
   ),
 );
@@ -71,18 +86,40 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('TV: ekleme yöntemleri ve klasörler taşmasız; QR sayfada değil', (tester) async {
+  testWidgets('Ayarlar > Kaynak ekle: ekleme yöntemleri taşmasız; QR sayfada değil, klasörler burada değil', (
+    tester,
+  ) async {
     await _size(tester, const Size(960, 540));
     final s = await _sources(tester);
     await tester.pumpWidget(_app(FormFactor.tv, s));
     await _settle(tester);
     expect(tester.takeException(), isNull);
+    expect(find.text('Ayarlar'), findsOneWidget);
+    expect(find.text(SettingsTab.addSource.label), findsOneWidget);
     for (final m in AddMethod.values) {
       expect(find.text(m.title), findsOneWidget, reason: m.title);
     }
+    expect(find.byType(QrImageView), findsNothing);
+    expect(find.text('Spor listem'), findsNothing);
+  });
+
+  testWidgets("Kaynaklar: klasörler ve toplam; 'Kaynak ekle' Ayarlar'a götürür; boşken yönerge", (tester) async {
+    await _size(tester, const Size(960, 540));
+    final s = await _sources(tester);
+    var asked = 0;
+    await tester.pumpWidget(_list(FormFactor.tv, s, onAdd: () => asked++));
+    await _settle(tester);
+    expect(tester.takeException(), isNull);
     expect(find.text('Spor listem'), findsOneWidget);
     expect(find.text('4 liste · 250 kanal'), findsOneWidget);
-    expect(find.byType(QrImageView), findsNothing);
+    expect(find.text(AddMethod.xtream.title), findsNothing);
+    await tester.tap(find.text('Kaynak ekle'));
+    expect(asked, 1);
+
+    final empty = await _sources(tester, empty: true);
+    await tester.pumpWidget(_list(FormFactor.tv, empty));
+    await _settle(tester);
+    expect(find.textContaining('Ayarlar > Kaynak ekle'), findsOneWidget);
   });
 
   testWidgets('Telefondan: QR penceresi açılır, kapanınca sunucu durur', (tester) async {
@@ -138,6 +175,9 @@ void main() {
     await _settle(tester);
     expect(tester.takeException(), isNull);
     expect(find.text(AddMethod.phone.title), findsNothing);
+    await tester.pumpWidget(_list(FormFactor.phone, s));
+    await _settle(tester);
+    expect(tester.takeException(), isNull);
     expect(find.text('Çocuk ve Aile'), findsOneWidget);
   });
 
@@ -152,7 +192,7 @@ void main() {
         final key = GlobalKey();
         await tester.pumpWidget(_app(f, s, boundary: key));
         await settleAssets(tester, rounds: 2);
-        await maybeSnapshot(tester, key, 'build/kaynaklar/$name-1.png', pixelRatio: 2);
+        await maybeSnapshot(tester, key, 'build/kaynaklar/$name-1-ekle.png', pixelRatio: 2);
         expect(tester.takeException(), isNull);
         for (final (m, file) in [(AddMethod.xtream, '2-xtream'), (AddMethod.portal, '3-portal')]) {
           await tester.tap(find.text(m.title));
@@ -169,7 +209,13 @@ void main() {
           await settleAssets(tester, rounds: 2);
           await maybeSnapshot(tester, key, 'build/kaynaklar/$name-4-qr.png', pixelRatio: 2);
           expect(tester.takeException(), isNull);
+          await tester.tap(find.text('Kapat'));
+          await _settle(tester);
         }
+        await tester.pumpWidget(_list(f, s, boundary: key));
+        await settleAssets(tester, rounds: 2);
+        await maybeSnapshot(tester, key, 'build/kaynaklar/$name-0-listeler.png', pixelRatio: 2);
+        expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       }
     });

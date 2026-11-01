@@ -26,6 +26,7 @@ import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
+import '../settings/settings_page.dart';
 import '../sources/sources_page.dart';
 import '../split_screen/split_screen.dart';
 import '../split_screen/split_screen_page.dart';
@@ -295,6 +296,15 @@ class _RootShellState extends State<RootShell> {
       clock: _clock,
       profileName: _home.profileName,
       onWatch: (list, i) => _watch(context, list[i], from: list),
+      onAdd: () => _go(AppSection.settings),
+      onHome: () => _go(AppSection.home),
+      onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
+    ),
+    AppSection.settings when widget.sources != null && !_kids => SettingsPage(
+      sources: widget.sources!,
+      clock: _clock,
+      profileName: _home.profileName,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,
