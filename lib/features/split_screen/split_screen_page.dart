@@ -184,7 +184,7 @@ class _SplitScreenPageState extends State<SplitScreenPage> {
                 ],
                 Flexible(
                   child: Text(
-                    phone
+                    metrics.formFactor != FormFactor.tv
                         ? 'Ses seçili karodan gelir.'
                         : 'Ses odaktaki karodan gelir. OK: kanal ekle, tam ekran ya da kaldır.',
                     maxLines: 2,

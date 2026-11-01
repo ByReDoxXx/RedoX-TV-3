@@ -45,7 +45,8 @@ class HeroBanner extends StatelessWidget {
     final primary = PrimaryButton(
       label: 'Canlı yayına gir',
       icon: RedoxIcons.play,
-      keyHint: phone ? null : 'OK',
+      // Tuş ipucu yalnız kumandalı TV'de (tablet ve açık Fold dokunmatik).
+      keyHint: Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.tv ? 'OK' : null,
       onPressed: onWatch,
       focused: primaryFocused,
       autofocus: primaryFocused == null,

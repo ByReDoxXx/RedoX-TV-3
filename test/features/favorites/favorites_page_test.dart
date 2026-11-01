@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
+import 'package:redox_tv/core/navigation/double_back_to_exit.dart';
 import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/core/playback/radio_controller.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -188,6 +189,44 @@ void main() {
       await tester.tap(find.text('Sil'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(fav.folders.child('Diziler'), isNull);
+    });
+
+    testWidgets('Geri alt klasörden bir üst klasöre çıkar; kökte kabuğa bırakır', (tester) async {
+      await _size(tester, const Size(960, 540));
+      var shellBack = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+          home: DoubleBackToExit(
+            onBack: () {
+              shellBack++;
+              return true;
+            },
+            child: Scaffold(
+              body: FavoritesPage(favorites: tree(), channels: _channels, clock: '20:45', profileName: 'Profil 1'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Klasörler'));
+      await tester.pump();
+      await tester.tap(find.text('Diziler'));
+      await tester.pump();
+      await tester.tap(find.text('Dizi İsmi'));
+      await tester.pump();
+      expect(find.text('Klasörler › Diziler › Dizi İsmi'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.text('Klasörler › Diziler'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.text('Klasörler'), findsWidgets);
+      expect(shellBack, 0);
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(shellBack, 1, reason: 'kökte Geri kabuğun');
     });
   });
 }

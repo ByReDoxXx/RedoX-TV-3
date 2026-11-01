@@ -6,6 +6,7 @@ import '../../core/content/favorite_folders.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/user_sources.dart';
+import '../../core/navigation/double_back_to_exit.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_shapes.dart';
 import '../../core/ui/channel_logo.dart';
@@ -50,6 +51,32 @@ class _FavoriteFoldersViewState extends State<FavoriteFoldersView> {
   bool _busy = false;
 
   Favorites get _fav => widget.favorites;
+
+  /// Geri (kumanda, telefon): alt klasördeyse bir üst klasöre çıkar; kökteyse
+  /// kabuğa bırakır (Anasayfa'ya döner).
+  DoubleBackToExitState? _back;
+
+  bool _onBack() {
+    if (_path.isEmpty || !mounted) return false;
+    setState(() => _path.removeLast());
+    return true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final back = DoubleBackToExit.maybeOf(context);
+    if (back != _back) {
+      _back?.removeHandler(_onBack);
+      _back = back?..addHandler(_onBack);
+    }
+  }
+
+  @override
+  void dispose() {
+    _back?.removeHandler(_onBack);
+    super.dispose();
+  }
 
   void _toast(String text) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(text)));
 

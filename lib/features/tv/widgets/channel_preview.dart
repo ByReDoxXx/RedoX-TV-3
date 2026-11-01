@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/content/live_channel.dart';
+import '../../../core/layout/form_factor.dart';
+import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
@@ -136,7 +138,8 @@ class ChannelPreview extends StatelessWidget {
                     child: PrimaryButton(
                       label: 'Tam ekran',
                       icon: RedoxIcons.fullscreen,
-                      keyHint: 'OK',
+                      // Tuş ipucu yalnız kumandalı TV'de.
+                      keyHint: Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.tv ? 'OK' : null,
                       onPressed: onWatch,
                     ),
                   ),
