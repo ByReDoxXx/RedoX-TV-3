@@ -149,7 +149,7 @@ class _RootShellState extends State<RootShell> {
     maxLayout: FormFactor.current == FormFactor.tv ? SplitScreen.tvMaxLayout : SplitScreen.maxSlots,
   );
 
-  /// Televizyon önizlemesindeki "2x2 Ekrana ekle".
+  /// Televizyon önizlemesindeki "Bölünmüş ekrana ekle".
   void _addToSplit(BuildContext context, LiveChannel c) {
     final i = _split.add(c);
     ScaffoldMessenger.of(context).showSnackBar(

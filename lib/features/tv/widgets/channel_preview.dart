@@ -36,7 +36,7 @@ class ChannelPreview extends StatelessWidget {
   final bool favorite;
   final VoidCallback? onFavorite;
 
-  /// 2x2 ekrana ekle; null ise düğme yok.
+  /// Bölünmüş ekrana ekle; null ise düğme yok.
   final VoidCallback? onSplit;
 
   /// 540 dp TV yüksekliğinde düğmeler dahil sığacak genişlik (16:9 görsel).
@@ -153,7 +153,7 @@ class ChannelPreview extends StatelessWidget {
                 if (onSplit != null) ...[
                   const SizedBox(width: 8),
                   GlassButton(
-                    label: '2x2 Ekrana ekle',
+                    label: 'Bölünmüş ekrana ekle',
                     icon: RedoxIcons.splitScreen,
                     iconOnly: true,
                     onPressed: onSplit,

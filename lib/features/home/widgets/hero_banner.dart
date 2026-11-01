@@ -17,7 +17,7 @@ import '../home_content.dart';
 
 /// Vitrin: şu an yayında olan öne çıkan kanal. rounded-xl, arkada kromatik
 /// ışık (DESIGN.md "Chromatic Backlight Flares"; zip'teki tasarımın hero hâlesi).
-/// "Çoklu ekrana ekle" 2x2 ekran yazılana kadar gösterilmez.
+/// "Çoklu ekrana ekle" bölünmüş ekran yazılana kadar gösterilmez.
 class HeroBanner extends StatelessWidget {
   const HeroBanner({super.key, required this.hero, this.primaryFocused, this.onWatch, this.onGuide, this.frame});
 

@@ -12,6 +12,7 @@ import 'package:redox_tv/features/settings/settings_page.dart';
 import 'package:redox_tv/features/sources/add_source_tab.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
 import 'package:redox_tv/features/sources/widgets/phone_qr_dialog.dart';
+import 'package:redox_tv/features/sources/widgets/source_form_dialog.dart';
 
 import '../../support/render.dart';
 
@@ -161,6 +162,49 @@ void main() {
     await tester.tap(find.text('Sunucu'));
     await tester.pump();
     expect(asked.last.$2, TextKind.url);
+  });
+
+  testWidgets('form (telefon): adres alanında otomatik düzeltme yok; klavyenin eklediği boşluklar silinir', (
+    tester,
+  ) async {
+    await _size(tester, const Size(390, 844));
+    Map<String, String>? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.phone),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => result = await showSourceForm(
+              context,
+              title: 'M3U',
+              description: 'Adres',
+              fields: const [
+                FormFieldSpec('url', 'Adres', kind: FieldKind.url),
+                FormFieldSpec('mac', 'MAC', kind: FieldKind.mac),
+                FormFieldSpec('name', 'Ad', required: false),
+              ],
+            ),
+            child: const Text('aç'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('aç'));
+    await _settle(tester);
+    final fields = tester.widgetList<TextField>(find.byType(TextField)).toList();
+    expect([for (final f in fields) f.autocorrect], [false, false, true]);
+    expect([for (final f in fields) f.enableSuggestions], [false, false, true]);
+
+    await tester.enterText(find.byType(TextField).at(0), 'https://iptv-org.github. io/iptv/tr. m3u ');
+    await tester.enterText(find.byType(TextField).at(1), '00:1a:79 :12:34:56');
+    await tester.enterText(find.byType(TextField).at(2), ' Spor listem ');
+    await tester.tap(find.text('Ekle'));
+    await _settle(tester);
+    expect(result, {
+      'url': 'https://iptv-org.github.io/iptv/tr.m3u',
+      'mac': '00:1A:79:12:34:56',
+      'name': 'Spor listem',
+    });
   });
 
   testWidgets('MediaHub: biçim eklenene kadar açıklama', (tester) async {

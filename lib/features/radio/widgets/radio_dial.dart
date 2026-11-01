@@ -24,6 +24,10 @@ class RadioDial extends StatelessWidget {
   /// Ortadan her yana gösterilen istasyon.
   static const _side = 2;
 
+  /// İstasyon başına bundan dar kadranda (telefon) yan adlar sığmaz
+  /// ("Metro ...", "Radyo Ş..."): yalnız ortadaki ad, kadran boyunca yazılır.
+  static const labelStep = 96.0;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -47,6 +51,7 @@ class RadioDial extends StatelessWidget {
           final small = height * 0.28;
           final tileTop = height * 0.14;
           final ticksTop = height * 0.66;
+          final labels = step >= labelStep;
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -60,7 +65,20 @@ class RadioDial extends StatelessWidget {
               ),
               if (stations.isNotEmpty)
                 for (var d = -_side - 1; d <= _side + 1; d++)
-                  _station(context, t, d, w, step, big, small, tileTop, ticksTop),
+                  _station(context, t, d, w, step, big, small, tileTop, labels),
+              if (!labels && stations.isNotEmpty)
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: height * 0.04,
+                  child: Text(
+                    stations[index % stations.length].name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                  ),
+                ),
               // İbre: ortada kızıl dikey çizgi ve üstte üçgen.
               Positioned(
                 left: w / 2 - 1,
@@ -92,7 +110,7 @@ class RadioDial extends StatelessWidget {
     double big,
     double small,
     double tileTop,
-    double ticksTop,
+    bool label,
   ) {
     final n = stations.length;
     final i = ((index + d) % n + n) % n;
@@ -126,19 +144,20 @@ class RadioDial extends StatelessWidget {
                 child: StationAvatar(station: s, size: size, radius: RedoxRadius.lg),
               ),
               const Spacer(),
-              Padding(
-                padding: EdgeInsets.only(bottom: height * 0.04),
-                child: Text(
-                  s.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: (center ? t.titleMedium : t.bodyMedium)!.copyWith(
-                    color: center ? RedoxRoles.onSurface : RedoxRoles.onSurfaceVariant,
-                    fontWeight: center ? FontWeight.w700 : FontWeight.w400,
+              if (label)
+                Padding(
+                  padding: EdgeInsets.only(bottom: height * 0.04),
+                  child: Text(
+                    s.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: (center ? t.titleMedium : t.bodyMedium)!.copyWith(
+                      color: center ? RedoxRoles.onSurface : RedoxRoles.onSurfaceVariant,
+                      fontWeight: center ? FontWeight.w700 : FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

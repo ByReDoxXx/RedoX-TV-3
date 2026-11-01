@@ -85,7 +85,7 @@ class TvPage extends StatefulWidget {
   /// Profilin favorileri: önizleme panelinde favori düğmesi.
   final Favorites? favorites;
 
-  /// Kanalı 2x2 ekrana ekler; null ise düğme yok.
+  /// Kanalı bölünmüş ekrana ekler; null ise düğme yok.
   final ValueChanged<LiveChannel>? onSplit;
 
   /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam

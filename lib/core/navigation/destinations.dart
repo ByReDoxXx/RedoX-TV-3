@@ -10,7 +10,7 @@ enum AppSection {
   film(RedoxIcons.film, 'Film'),
   series(RedoxIcons.series, 'Dizi'),
   favorites(RedoxIcons.favorites, 'Favoriler', short: 'Favori'),
-  splitScreen(RedoxIcons.splitScreen, '2x2 Ekran'),
+  splitScreen(RedoxIcons.splitScreen, 'Bölünmüş ekran'),
   sources(RedoxIcons.sources, 'Kaynaklar'),
   settings(RedoxIcons.settings, 'Ayarlar'),
 

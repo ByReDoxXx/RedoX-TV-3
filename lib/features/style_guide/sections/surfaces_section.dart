@@ -76,11 +76,22 @@ class SurfacesSection extends StatelessWidget {
           const GroupLabel('Hikâye halkası · görülmemiş / görülmüş / odakta'),
           const Row(
             children: [
-              StoryAvatar(label: 'Yeni kanal', child: ArtworkFallback(name: 'Yeni Kanal', icon: RedoxIcons.television)),
+              StoryAvatar(
+                label: 'Yeni kanal',
+                child: ArtworkFallback(name: 'Yeni Kanal', icon: RedoxIcons.television),
+              ),
               SizedBox(width: 16),
-              StoryAvatar(label: 'Radyo', seen: true, child: ArtworkFallback(name: 'Radyo', icon: RedoxIcons.radio)),
+              StoryAvatar(
+                label: 'Radyo',
+                seen: true,
+                child: ArtworkFallback(name: 'Radyo', icon: RedoxIcons.radio),
+              ),
               SizedBox(width: 16),
-              StoryAvatar(label: 'Özellik', focused: true, child: ArtworkFallback(name: '2x2 Ekran',icon: RedoxIcons.splitScreen)),
+              StoryAvatar(
+                label: 'Özellik',
+                focused: true,
+                child: ArtworkFallback(name: 'Bölünmüş ekran', icon: RedoxIcons.splitScreen),
+              ),
             ],
           ),
           const GroupLabel('Gezinme rayı (M3 Expressive) · odaktaki öğe sağa açılır / menüyle açık ray'),

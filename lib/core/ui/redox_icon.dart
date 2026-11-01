@@ -10,7 +10,7 @@ enum RedoxIcons {
   film('movie', 'Film'),
   series('video_library', 'Dizi'),
   favorites('favorite', 'Favoriler'),
-  splitScreen('grid_view', '2x2 Ekran'),
+  splitScreen('grid_view', 'Bölünmüş ekran'),
   sources('dns', 'Kaynaklar'),
   settings('settings', 'Ayarlar'),
   remote('settings_remote', 'Kumanda'),

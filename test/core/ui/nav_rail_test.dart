@@ -149,4 +149,59 @@ void main() {
     expect(_labelOpacity(tester, 'Televizyon'), 1);
     expect(_labelOpacity(tester, 'Anasayfa'), 0);
   });
+
+  testWidgets('kumanda: yukarı/aşağı rayda kalır, açılan hapın yanındaki içerik kutusuna atlamaz', (tester) async {
+    _tv(tester);
+    // Kutu, alt bölümdeki Ayarlar'ın açık hapıyla aynı dikey bantta ve
+    // ondan önceki ray öğesinden daha yakında (Chromecast'teki durum).
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: RedoxNavRail(
+                  items: AppDestinations.main,
+                  footer: AppDestinations.footer,
+                  // Ayarlar seçili: raya girişte odak oraya gelir.
+                  selectedIndex: AppDestinations.main.length,
+                  onSelected: (_) {},
+                ),
+              ),
+              Positioned(
+                left: 110,
+                top: 452,
+                width: 200,
+                height: 40,
+                child: TextButton(onPressed: () {}, child: const Text('kutu')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    final nodes = [
+      for (final e in find.descendant(of: find.byType(RedoxNavRail), matching: find.byType(InkWell)).evaluate())
+        (e.widget as InkWell).focusNode!,
+    ];
+    final last = nodes.length - 1;
+    nodes[last].requestFocus();
+    // Tuş olayı kumanda kipine geçirir: odaktaki öğenin hapı açılır.
+    await tester.sendKeyEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(nodes[last - 1].hasPrimaryFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(nodes[last].hasPrimaryFocus, isTrue);
+  });
 }

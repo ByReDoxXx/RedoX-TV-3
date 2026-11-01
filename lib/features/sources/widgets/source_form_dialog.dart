@@ -83,12 +83,18 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
 
   void _submit() {
     if (!_ready) return;
-    Navigator.pop(context, {
-      for (final f in widget.fields)
-        f.key: f.kind == FieldKind.mac
-            ? _controllers[f.key]!.text.trim().toUpperCase()
-            : _controllers[f.key]!.text.trim(),
-    });
+    Navigator.pop(context, {for (final f in widget.fields) f.key: _value(f)});
+  }
+
+  /// Gönderilen değer. Adres ve MAC'te boşluk olamaz: telefon klavyesi
+  /// noktadan sonra boşluk ekleyebiliyor ("github. io"; cihazda görüldü).
+  String _value(FormFieldSpec f) {
+    final text = _controllers[f.key]!.text.trim();
+    return switch (f.kind) {
+      FieldKind.url => text.replaceAll(RegExp(r'\s'), ''),
+      FieldKind.mac => text.replaceAll(RegExp(r'\s'), '').toUpperCase(),
+      _ => text,
+    };
   }
 
   static int _max(FieldKind k) => switch (k) {
@@ -169,6 +175,9 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
           controller: _controllers[f.key],
           autofocus: i == 0,
           obscureText: f.kind == FieldKind.secret,
+          // Adres, MAC, şifre: otomatik düzeltme ve öneri yok.
+          autocorrect: f.kind == FieldKind.text,
+          enableSuggestions: f.kind == FieldKind.text,
           keyboardType: f.kind == FieldKind.url ? TextInputType.url : TextInputType.text,
           textCapitalization: f.kind == FieldKind.mac ? TextCapitalization.characters : TextCapitalization.none,
           decoration: InputDecoration(labelText: f.required ? f.label : '${f.label} (isteğe bağlı)', hintText: f.hint),

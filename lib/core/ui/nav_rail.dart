@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../layout/form_factor.dart';
 import '../theme/m3e_motion.dart';
@@ -123,6 +124,25 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
     if (!target.hasPrimaryFocus) target.requestFocus();
   }
 
+  /// Rayda yukarı/aşağı ray öğeleri arasında kalır. Odaktaki öğenin hapı
+  /// içeriğin üstüne açıldığından varsayılan yön araması yandaki içerik
+  /// kutusunu daha yakın bulup oraya atlıyordu (Chromecast'te Ayarlar'dan
+  /// yukarı → sayfadaki kutu). Uçlarda varsayılan gezinmeye bırakır.
+  KeyEventResult _onRailKey(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final step = switch (event.logicalKey) {
+      LogicalKeyboardKey.arrowUp => -1,
+      LogicalKeyboardKey.arrowDown => 1,
+      _ => 0,
+    };
+    if (step == 0) return KeyEventResult.ignored;
+    final current = _nodes.indexWhere((n) => n.hasPrimaryFocus);
+    final next = current + step;
+    if (current < 0 || next < 0 || next >= widget.items.length + widget.footer.length) return KeyEventResult.ignored;
+    _node(next).requestFocus();
+    return KeyEventResult.handled;
+  }
+
   Duration get _duration => MediaQuery.maybeDisableAnimationsOf(context) == true ? Duration.zero : M3EMotion.medium4;
 
   @override
@@ -139,6 +159,7 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
       skipTraversal: true,
       includeSemantics: false,
       onFocusChange: _onRailFocus,
+      onKeyEvent: _onRailKey,
       child: _rail(expanded, menuButton, collapsedLabel, count),
     );
   }

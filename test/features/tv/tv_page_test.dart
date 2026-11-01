@@ -90,7 +90,7 @@ void main() {
         of: find.byType(ChannelPreview),
         matching: find.byWidgetPredicate((w) => w is PrimaryButton || w is GlassButton),
       );
-      // Tam ekran, favori ve 2x2 ekrana ekle.
+      // Tam ekran, favori ve bölünmüş ekrana ekle.
       expect(buttons, findsNWidgets(3));
       for (final rect in buttons.evaluate().map((e) => tester.getRect(find.byWidget(e.widget)))) {
         expect(rect.bottom, lessThanOrEqualTo(panel.bottom));

@@ -18,6 +18,7 @@ import '../../core/ui/status_badge.dart';
 import 'widgets/radio_dial.dart';
 import 'widgets/radio_options.dart';
 import 'widgets/sound_wave.dart';
+import 'widgets/station_avatar.dart';
 
 /// Tam ekran radyo: "Kadran" (eski uygulamada seçilen K2; tv-16 görüntüsünün
 /// bizim temaya uyarlaması). Üstte durum ve yayın, ortada büyük istasyon adı
@@ -193,6 +194,19 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
             ],
           ),
           const Spacer(),
+          // Telefonda dikey boşluk geniş: istasyonun logosu büyük gösterilir.
+          if (phone && tuned != null) ...[
+            AnimatedOpacity(
+              opacity: browsing ? 0.55 : 1,
+              duration: const Duration(milliseconds: 200),
+              child: StationAvatar(
+                station: tuned,
+                size: (box.maxHeight * 0.22).clamp(96.0, 200.0),
+                radius: RedoxRadius.xl,
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
           Wrap(
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,

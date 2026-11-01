@@ -41,7 +41,8 @@ class MainActivity : FlutterActivity() {
             setSelection(value.length)
             setSingleLine(true)
             inputType = when (kind) {
-                "url" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                "url" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI or
+                    InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 "secret" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
                 "mac" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or
                     InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
