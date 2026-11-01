@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/content/live_channel.dart';
@@ -80,9 +82,18 @@ class RadioDial extends StatelessWidget {
                   ),
                 ),
               // İbre: ortada kızıl dikey çizgi ve üstte üçgen.
+              // Ortadaki logonun üstünden geçmez (kullanıcı isteği): logonun
+              // üstünde ve altında iki parça. Logo çerçevesi 3 dp, payla 4.
               Positioned(
                 left: w / 2 - 1,
                 top: 0,
+                height: math.max(0, tileTop - 4),
+                width: 2,
+                child: const IgnorePointer(child: ColoredBox(color: RedoxSeeds.crimson)),
+              ),
+              Positioned(
+                left: w / 2 - 1,
+                top: tileTop + big + 6 + 4,
                 bottom: height * 0.18,
                 width: 2,
                 child: const IgnorePointer(child: ColoredBox(color: RedoxSeeds.crimson)),

@@ -105,8 +105,9 @@ void main() {
     await tester.pumpWidget(_rail(FormFactor.tablet));
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Alttaki etiket (ortalı); yandaki etiket daralmışta göstergeyle kesilir.
-    final below = find.byWidgetPredicate((w) => w is Text && w.data == 'Televizyon' && w.textAlign == TextAlign.center);
+    // Alttaki etiket kısa ad (ortalı, 96 dp'ye sığar); yandaki etiket
+    // daralmışta göstergeyle kesilir.
+    final below = find.byWidgetPredicate((w) => w is Text && w.data == 'TV' && w.textAlign == TextAlign.center);
     expect(below, findsOneWidget);
     expect(tester.getTopLeft(below).dy, greaterThan(tester.getBottomLeft(find.byType(RedoxIcon).at(2)).dy));
     expect(tester.getSize(find.byType(RedoxNavRail)).width, RedoxNavRail.collapsedWidth);

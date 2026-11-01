@@ -318,6 +318,8 @@ class _RootShellState extends State<RootShell> {
       clock: _clock,
       profileName: _home.profileName,
       onWatch: (c) => _watch(context, c),
+      sources: widget.sources,
+      onWatchList: (list, i) => _watch(context, list[i], from: list),
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,

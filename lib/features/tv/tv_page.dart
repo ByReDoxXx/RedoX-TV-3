@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -88,12 +89,23 @@ class TvPage extends StatefulWidget {
   /// Kanalı bölünmüş ekrana ekler; null ise düğme yok.
   final ValueChanged<LiveChannel>? onSplit;
 
-  /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam
-  /// genişlikte 2.
-  static int columnsFor(FormFactor formFactor) => formFactor == FormFactor.phone ? 2 : 3;
+  /// Dokunmatik ekranlarda kartın en dar hali (360 dp telefonda 2 sütun).
+  static const minTileWidth = 150.0;
 
-  /// Önizleme paneli telefonda yoktur (yer yok).
-  static bool hasPreview(FormFactor formFactor) => formFactor != FormFactor.phone;
+  /// Izgaradaki sütun: TV'de önizleme panelinin yanında 3; dokunmatik
+  /// ekranlarda [width] genişliğe sığan kadar, en az 2 (telefon 2, açık
+  /// katlanabilir telefon 4, yatay tablet panelin yanında 4).
+  static int columnsFor(FormFactor formFactor, double width, double gutter) =>
+      formFactor == FormFactor.tv ? 3 : math.max(2, ((width + gutter) / (minTileWidth + gutter)).floor());
+
+  /// Önizleme paneli: TV'de hep; telefonda yok; tablette panelin yanında en az
+  /// 3 sütun kalıyorsa ([contentWidth]: sayfa içeriğinin genişliği). Açık
+  /// katlanabilir telefonda (~840 dp) panel yerine tam genişlikte 4 sütun.
+  static bool hasPreview(FormFactor formFactor, double contentWidth, double gutter) => switch (formFactor) {
+    FormFactor.tv => true,
+    FormFactor.phone => false,
+    _ => columnsFor(formFactor, contentWidth - ChannelPreview.width - 24, gutter) >= 3,
+  };
 
   /// Odak halkası için ızgara kayma alanının iç payı (2 dp ofset + 2 dp çizgi
   /// + 1,08 büyüme).
@@ -187,9 +199,14 @@ class _TvPageState extends State<TvPage> {
       onProfile: widget.onProfile,
       kids: widget.kids,
     );
-    final phone = !TvPage.hasPreview(metrics.formFactor);
-    if (phone && _view == TvView.cards) {
-      // Telefon kart görünümü: sayfa tek parça kayar.
+    final phone = metrics.formFactor == FormFactor.phone;
+    final preview = TvPage.hasPreview(
+      metrics.formFactor,
+      MediaQuery.sizeOf(context).width - padding.left - padding.right,
+      metrics.gutter,
+    );
+    if (!preview && _view == TvView.cards) {
+      // Panelsiz kart görünümü (telefon, dar tablet): sayfa tek parça kayar.
       return CustomScrollView(
         slivers: [
           SliverPadding(
@@ -378,8 +395,6 @@ class _TvPageState extends State<TvPage> {
 
   /// Kanal ızgarası; [preview]: önizleme paneli var (TV/tablet).
   Widget _grid(BuildContext context, List<LiveChannel> channels, RedoxMetrics metrics, {required bool preview}) {
-    final gutter = metrics.gutter;
-    final columns = TvPage.columnsFor(metrics.formFactor);
     if (channels.isEmpty) {
       return SliverToBoxAdapter(
         child: Text(
@@ -388,6 +403,14 @@ class _TvPageState extends State<TvPage> {
         ),
       );
     }
+    final gutter = metrics.gutter;
+    return SliverLayoutBuilder(
+      builder: (context, box) =>
+          _gridOf(channels, gutter, preview, TvPage.columnsFor(metrics.formFactor, box.crossAxisExtent, gutter)),
+    );
+  }
+
+  Widget _gridOf(List<LiveChannel> channels, double gutter, bool preview, int columns) {
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,

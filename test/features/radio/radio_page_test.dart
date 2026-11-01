@@ -135,6 +135,8 @@ void main() {
       for (final (f, size, name) in const [
         (FormFactor.tv, Size(960, 540), 'tv'),
         (FormFactor.phone, Size(390, 844), 'telefon'),
+        // Açık katlanabilir telefon (Pixel 9 Pro Fold iç ekranı): tablet düzeni.
+        (FormFactor.tablet, Size(840, 800), 'fold-acik'),
       ]) {
         await _size(tester, size);
         final (radio, audio, fav) = _setup();

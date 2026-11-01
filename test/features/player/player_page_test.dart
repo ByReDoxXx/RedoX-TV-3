@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
+import 'package:redox_tv/core/platform/device_controls.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/playback/playback_session.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/channel_drawer.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
 import 'package:redox_tv/features/player/widgets/player_options.dart';
+import 'package:redox_tv/features/player/widgets/touch_controls.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
 
 import '../../support/fake_engine.dart';
@@ -16,16 +18,23 @@ import '../../support/render.dart';
 final _channels = TvContent.preview.channels;
 
 /// Oynatıcı, boş bir sayfanın üstüne açılır (Geri ile çıkış sınansın diye).
-Future<FakeEngine> _open(WidgetTester tester, {int index = 0, FakeEngine? engine, Key? boundary}) async {
+Future<FakeEngine> _open(
+  WidgetTester tester, {
+  int index = 0,
+  FakeEngine? engine,
+  Key? boundary,
+  FormFactor formFactor = FormFactor.tv,
+  Size size = const Size(960, 540),
+}) async {
   await loadSora(tester);
-  tester.view.physicalSize = const Size(960, 540);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final e = engine ?? FakeEngine();
   await tester.pumpWidget(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+      theme: RedoxTheme.dark(formFactor: formFactor),
       // Görüntü sınırı gezgini sarar: oynatıcı üstüne açılan ayrı bir sayfadır.
       builder: (context, child) => RepaintBoundary(key: boundary, child: child),
       home: Builder(
@@ -272,4 +281,78 @@ void main() {
       await maybeSnapshot(tester, key, 'build/player/oynatici-kanal-listesi-4k.png', pixelRatio: 4);
     }),
   );
+
+  group('dokunmatik (telefon, tablet)', () {
+    setUp(() => DeviceControls.debugValues = {'ses': 0.5, 'parlaklik': 0.5});
+    tearDown(() => DeviceControls.debugValues = null);
+
+    Offset center(WidgetTester tester, String label) => tester.getCenter(find.bySemanticsLabel(label));
+
+    testWidgets('kumanda çubuğu yok; düğmeler ortada, tuş ipucu yok', (tester) async {
+      await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      expect(find.byType(PlayerBar), findsNothing);
+      expect(find.byType(PlayerHints), findsNothing);
+      expect(find.byType(TouchControls), findsOneWidget);
+      final play = center(tester, 'Duraklat');
+      expect(play.dx, closeTo(422, 1));
+      expect(play.dy, closeTo(195, 40));
+      expect(center(tester, 'Önceki kanal').dx, lessThan(play.dx));
+      expect(center(tester, 'Sonraki kanal').dx, greaterThan(play.dx));
+      expect(center(tester, 'Önceki kanal').dy, closeTo(play.dy, 1));
+    });
+
+    testWidgets('dokunma katmanı kapar/açar; yatay kaydırma kanal değiştirir', (tester) async {
+      final e = await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      await tester.pump(PlayerPage.announceDuration);
+      await _settle(tester);
+      expect(find.byType(TouchControls), findsNothing);
+
+      // Sola kaydırma: sonraki kanal.
+      await tester.dragFrom(const Offset(600, 200), const Offset(-200, 0));
+      await _settle(tester);
+      expect(e.opened.last, _channels[1].streams.first);
+      // Sağa: önceki (ortadaki durum kartının dışından).
+      final before = e.opened.length;
+      await tester.dragFrom(const Offset(300, 30), const Offset(200, 0));
+      await _settle(tester);
+      expect(e.opened.skip(before), contains(_channels[0].streams.first));
+    });
+
+    testWidgets('sağda dikey kaydırma ses, solda parlaklık; çift dokunma ekranı doldurur', (tester) async {
+      await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      // Yukarı: artar (ekran yüksekliğinin %80'i tam aralık).
+      await tester.dragFrom(const Offset(700, 300), const Offset(0, -156));
+      await tester.pump();
+      expect(DeviceControls.debugValues!['ses'], closeTo(1, 0.1));
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+
+      await tester.dragFrom(const Offset(150, 100), const Offset(0, 156));
+      await tester.pump();
+      expect(DeviceControls.debugValues!['parlaklik'], closeTo(0, 0.1));
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.tapAt(const Offset(250, 250));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tapAt(const Offset(250, 250));
+      await _settle(tester);
+      expect(find.text(VideoScale.fill.label), findsWidgets);
+    });
+
+    testWidgets('görüntü: telefon yatay ve açık Fold', (tester) async {
+      await withRealShadows(() async {
+        for (final (name, f, size) in [
+          ('telefon', FormFactor.phone, const Size(844, 390)),
+          ('fold', FormFactor.tablet, const Size(840, 800)),
+        ]) {
+          final key = GlobalKey();
+          await _open(tester, formFactor: f, size: size, boundary: key);
+          expect(tester.takeException(), isNull);
+          await maybeSnapshot(tester, key, 'build/oynatici/dokunmatik-$name.png', pixelRatio: 2);
+          await tester.pumpWidget(const SizedBox());
+        }
+      });
+    });
+  });
 }

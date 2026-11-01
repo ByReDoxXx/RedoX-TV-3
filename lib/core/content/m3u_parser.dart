@@ -15,6 +15,9 @@ import 'live_channel.dart';
 /// kullanıcının ekleyeceği M3U kaynakları ("Kaynaklar" bölümü, QR ile kaynak)
 /// ve testler içindir.
 abstract final class M3uParser {
+  /// `group-title` olmayan kanalın kategorisi.
+  static const noGroup = 'Diğer';
+
   static final _attr = RegExp(r'([\w-]+)="([^"]*)"');
 
   static List<LiveChannel> parse(String text) {
@@ -32,11 +35,13 @@ abstract final class M3uParser {
           name: line.substring(comma + 1).trim(),
           number: int.tryParse(attrs['tvg-chno'] ?? ''),
           logo: _nonEmpty(attrs['tvg-logo']),
-          category: _nonEmpty(attrs['group-title']) ?? 'Diğer',
+          category: _nonEmpty(attrs['group-title']) ?? noGroup,
           order: ++order,
         );
       } else if (!line.startsWith('#') && pending != null) {
-        final key = _nonEmpty(pending.id) ?? pending.name;
+        // Aynı gruptaki aynı ad yedek akıştır; farklı gruptaki aynı ad ayrı
+        // kayıttır (dizi listesinde her sezonun "Bölüm01"i).
+        final key = _nonEmpty(pending.id) ?? '${pending.category}\u0000${pending.name}';
         (byKey[key] ??= pending).streams.add(line);
         pending = null;
       }

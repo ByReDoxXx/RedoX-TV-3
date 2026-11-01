@@ -56,7 +56,9 @@ class EpgGrid extends StatelessWidget {
   static const _title = RedoxType.labelLg;
   static const _meta = RedoxType.bodySm;
 
-  double get _channelColumn => compact ? 56 : 176;
+  /// Kanal sütunu. Telefonda da ad görünür (kullanıcı isteği: "EPG
+  /// görünümünde kanal isimleri telefonda görülmüyor"): logo, numara, ad.
+  double get _channelColumn => compact ? 112 : 176;
 
   /// Satır yüksekliği: blokta başlık + saat satırı sığsın (yazı ölçeği dahil;
   /// blok iç payı 2 × 6, satır içi dikey pay 2 × 4).
@@ -224,14 +226,34 @@ class _ChannelCell extends StatelessWidget {
     final logo = ClipRRect(
       borderRadius: BorderRadius.circular(RedoxRadius.sm),
       child: SizedBox.square(
-        dimension: compact ? 32 : 40,
+        dimension: compact ? 28 : 40,
         child: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 1, alignment: Alignment.center),
       ),
     );
     return Padding(
-      padding: const EdgeInsets.only(left: 6, right: 8),
+      padding: EdgeInsets.only(left: compact ? 4 : 6, right: compact ? 6 : 8),
       child: compact
-          ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [logo, const SizedBox(height: 2), number])
+          ? Row(
+              children: [
+                logo,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      number,
+                      Text(
+                        c.name,
+                        style: RedoxType.labelSm.copyWith(color: c.accent.text, fontWeight: FontWeight.w700),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
           : Row(
               children: [
                 logo,

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
+import '../../core/platform/device_controls.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/playback/engine/media_kit_engine.dart';
@@ -15,6 +17,7 @@ import 'widgets/channel_drawer.dart';
 import 'widgets/player_bar.dart';
 import 'widgets/player_options.dart';
 import 'widgets/player_overlays.dart';
+import 'widgets/touch_controls.dart';
 
 /// Tam ekran oynatıcı (eski sürümün özellikleriyle). Kumanda:
 /// - OK: alt çubuğu açar, odak oynat/duraklatta.
@@ -128,6 +131,9 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   void dispose() {
+    // Jestle değişen parlaklık oynatıcıyla sınırlı: sistemin değerine dön
+    // (değişmediyse etkisiz; dispose'da tema okunamaz, biçime bakılmaz).
+    unawaited(DeviceControls.setBrightness(null));
     _barTimer?.cancel();
     _digitTimer?.cancel();
     _noticeTimer?.cancel();
@@ -304,6 +310,30 @@ class _PlayerPageState extends State<PlayerPage> {
     }
   }
 
+  void _setScale(VideoScale v) {
+    setState(() => _scale = v);
+    _notify(v.label);
+  }
+
+  Widget _optionsPanel(EngineState e, PlaybackSession s) => FocusScope(
+    child: PlayerOptions(
+      key: _optionsKey,
+      engine: e,
+      scale: _scale,
+      onScale: (v) => setState(() => _scale = v),
+      streamLabel: 'Akış ${s.streamIndex + 1}/${s.streamCount}',
+      onVideoTrack: (id) => unawaited(_engine.selectVideoTrack(id)),
+      onAudioTrack: (id) => unawaited(_engine.selectAudioTrack(id)),
+      onSubtitleTrack: (id) => unawaited(_engine.selectSubtitleTrack(id)),
+      previousChannelName: s.previousChannel?.name,
+      onPreviousChannel: () {
+        _closeOptions();
+        s.openPrevious();
+      },
+      onExit: () => Navigator.of(context).pop(),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final s = _session;
@@ -325,13 +355,58 @@ class _PlayerPageState extends State<PlayerPage> {
               builder: (context, e, _) => Stack(
                 fit: StackFit.expand,
                 children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _bar ? _hideBar() : _showBar(),
-                    child: _engine.view(fit: _scale.fit),
-                  ),
+                  if (_keys)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _bar ? _hideBar() : _showBar(),
+                      child: _engine.view(fit: _scale.fit),
+                    )
+                  else
+                    PlayerGestures(
+                      onTap: () => _bar ? _hideBar() : _showBar(),
+                      onDoubleTap: () => _setScale(_scale == VideoScale.fill ? VideoScale.original : VideoScale.fill),
+                      onPinch: (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
+                      onZap: s.zap,
+                      child: _engine.view(fit: _scale.fit),
+                    ),
                   if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
-                  if (_bar) ...[
+                  if (_bar && !_keys)
+                    TouchControls(
+                      channel: s.channel,
+                      playing: e.playing,
+                      showCenter: s.status == PlaybackStatus.playing,
+                      resolution: e.hasVideo ? '${e.height}p' : null,
+                      streamIndex: s.streamIndex,
+                      streamCount: s.streamCount,
+                      scaleLabel: _scale.label,
+                      clock: widget.clock,
+                      onClose: () => Navigator.of(context).pop(),
+                      onPlayPause: () {
+                        _restartBarTimer();
+                        unawaited(_engine.playOrPause());
+                      },
+                      onPreviousChannel: () => s.zap(-1),
+                      onNextChannel: () => s.zap(1),
+                      onChannelList: _openDrawer,
+                      onNextStream: s.nextStream,
+                      onScale: () => _setScale(VideoScale.values[(_scale.index + 1) % VideoScale.values.length]),
+                      onOptions: _openOptions,
+                    ),
+                  if (_bar && !_keys && _options)
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: SafeArea(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+                            maxWidth: math.min(360, MediaQuery.sizeOf(context).width - 32),
+                          ),
+                          child: _optionsPanel(e, s),
+                        ),
+                      ),
+                    ),
+                  if (_bar && _keys) ...[
                     Positioned(top: 16, right: 24, child: PlayerClock(widget.clock)),
                     Positioned(
                       left: 24,
@@ -348,24 +423,7 @@ class _PlayerPageState extends State<PlayerPage> {
                                 alignment: Alignment.centerRight,
                                 child: ConstrainedBox(
                                   constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
-                                  child: FocusScope(
-                                    child: PlayerOptions(
-                                      key: _optionsKey,
-                                      engine: e,
-                                      scale: _scale,
-                                      onScale: (v) => setState(() => _scale = v),
-                                      streamLabel: 'Akış ${s.streamIndex + 1}/${s.streamCount}',
-                                      onVideoTrack: (id) => unawaited(_engine.selectVideoTrack(id)),
-                                      onAudioTrack: (id) => unawaited(_engine.selectAudioTrack(id)),
-                                      onSubtitleTrack: (id) => unawaited(_engine.selectSubtitleTrack(id)),
-                                      previousChannelName: s.previousChannel?.name,
-                                      onPreviousChannel: () {
-                                        _closeOptions();
-                                        s.openPrevious();
-                                      },
-                                      onExit: () => Navigator.of(context).pop(),
-                                    ),
-                                  ),
+                                  child: _optionsPanel(e, s),
                                 ),
                               ),
                               const SizedBox(height: 12),

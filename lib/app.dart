@@ -149,7 +149,11 @@ class _RedoxAppState extends State<RedoxApp> {
     return MaterialApp(
       title: 'RedoX TV',
       debugShowCheckedModeBanner: false,
-      theme: RedoxTheme.dark(formFactor: FormFactor.current),
+      // Katlanabilir telefon açılıp kapanınca düzen değişir (FormFactor.forWindow).
+      // Geçiş animasyonsuz: ara karede tablet düzeni telefon genişliğinde
+      // çizilip taşıyordu (renkler değişmez, yalnız ölçüler).
+      themeAnimationDuration: Duration.zero,
+      theme: RedoxTheme.dark(formFactor: FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context))),
       themeMode: ThemeMode.dark,
       home: Builder(builder: _home),
     );

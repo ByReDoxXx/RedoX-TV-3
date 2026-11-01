@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/playback/radio_controller.dart';
@@ -18,6 +19,7 @@ import '../../core/ui/icon_action_button.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
 import '../radio/radio_player_page.dart';
+import 'favorite_folders_view.dart';
 import '../radio/widgets/station_avatar.dart';
 
 /// Favori sırası (eski uygulamadaki "Sırala" çipleri; "Sıram" elle dizilen).
@@ -44,7 +46,9 @@ class FavoritesPage extends StatefulWidget {
     required this.clock,
     required this.profileName,
     this.radio,
+    this.sources,
     this.onWatch,
+    this.onWatchList,
     this.onHome,
     this.onMore,
     this.onProfile,
@@ -56,6 +60,11 @@ class FavoritesPage extends StatefulWidget {
   final List<LiveChannel> channels;
   final RadioController? radio;
   final ValueChanged<LiveChannel>? onWatch;
+
+  /// Klasörler sekmesi: aktarılacak listeler (Kaynaklar) ve klasörün
+  /// kayıtlarıyla oynatıcı.
+  final UserSources? sources;
+  final void Function(List<LiveChannel> list, int index)? onWatchList;
   final String clock;
   final String profileName;
   final VoidCallback? onHome;
@@ -70,6 +79,9 @@ class FavoritesPage extends StatefulWidget {
 
 class _FavoritesPageState extends State<FavoritesPage> {
   bool _radio = false;
+
+  /// Klasörler sekmesi açık.
+  bool _folders = false;
   FavoriteSort _sort = FavoriteSort.custom;
 
   Favorites get _fav => widget.favorites;
@@ -141,30 +153,57 @@ class _FavoritesPageState extends State<FavoritesPage> {
                       CategoryChip(
                         label: 'TV kanalları',
                         count: _fav.channels.length,
-                        selected: !_radio,
-                        onPressed: () => setState(() => _radio = false),
+                        selected: !_radio && !_folders,
+                        onPressed: () => setState(() {
+                          _radio = false;
+                          _folders = false;
+                        }),
                       ),
                       if (widget.radio != null) ...[
                         const SizedBox(width: 12),
                         CategoryChip(
                           label: 'Radyo',
                           count: _fav.radios.length,
-                          selected: _radio,
-                          onPressed: () => setState(() => _radio = true),
+                          selected: _radio && !_folders,
+                          onPressed: () => setState(() {
+                            _radio = true;
+                            _folders = false;
+                          }),
                         ),
                       ],
-                      const SizedBox(width: 24),
-                      Text('Sırala:', style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
-                      for (final s in FavoriteSort.values) ...[
-                        const SizedBox(width: 12),
-                        CategoryChip(label: s.label, selected: s == _sort, onPressed: () => setState(() => _sort = s)),
+                      const SizedBox(width: 12),
+                      CategoryChip(
+                        label: 'Klasörler',
+                        count: _fav.folders.total,
+                        selected: _folders,
+                        onPressed: () => setState(() => _folders = true),
+                      ),
+                      if (!_folders) ...[
+                        const SizedBox(width: 24),
+                        Text('Sırala:', style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                        for (final s in FavoriteSort.values) ...[
+                          const SizedBox(width: 12),
+                          CategoryChip(
+                            label: s.label,
+                            selected: s == _sort,
+                            onPressed: () => setState(() => _sort = s),
+                          ),
+                        ],
                       ],
                     ],
                   ),
                 ),
               ),
               Expanded(
-                child: items.isEmpty
+                child: _folders
+                    ? FavoriteFoldersView(
+                        favorites: _fav,
+                        sources: widget.sources,
+                        onWatch: widget.onWatchList,
+                        compact: phone,
+                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, phone ? padding.bottom : 16),
+                      )
+                    : items.isEmpty
                     ? Padding(
                         padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 0),
                         child: Text(

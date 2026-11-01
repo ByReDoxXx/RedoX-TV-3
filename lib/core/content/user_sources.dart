@@ -170,6 +170,17 @@ class UserSources extends ChangeNotifier {
     );
   }
 
+  /// Adresteki listeyi indirip kanallarını verir, Kaynaklar'a eklemez
+  /// (Favoriler › Klasörler'e aktarım).
+  Future<List<LiveChannel>> fetch(String url) async {
+    final uri = _httpUri(url);
+    final channels = SourceFormats.detect(await _download(uri), base: uri);
+    if (channels.isEmpty) {
+      throw const SourceException('Kanal bulunamadı: M3U, JSON ya da yayın bağlantılı HTML değil.');
+    }
+    return channels;
+  }
+
   /// Metni ekler (dosya, telefon); biçim içerikten anlaşılır.
   Future<UserSource> addText(String name, String text, {required SourceOrigin origin, String? url}) =>
       _store(name, SourceFormats.detect(text), origin: origin, url: url, raw: text);

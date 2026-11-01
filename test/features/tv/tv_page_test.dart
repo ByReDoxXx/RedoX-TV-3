@@ -273,19 +273,23 @@ void main() {
     }),
   );
 
-  for (final (f, size) in [
-    (FormFactor.phone, const Size(360, 780)),
-    (FormFactor.phone, const Size(411, 891)),
-    (FormFactor.tablet, const Size(1280, 800)),
+  // Açık katlanabilir telefon (840 dp, tablet düzeni): panel yerine 4 sütun.
+  for (final (f, size, columns, preview) in [
+    (FormFactor.phone, const Size(360, 780), 2, false),
+    (FormFactor.phone, const Size(411, 891), 2, false),
+    (FormFactor.tablet, const Size(840, 800), 4, false),
+    (FormFactor.tablet, const Size(1280, 800), 4, true),
   ]) {
-    final columns = TvPage.columnsFor(f);
-    testWidgets('${f.name} ${size.width.toInt()} dp: $columns sütun, taşmasız', (tester) async {
+    testWidgets('${f.name} ${size.width.toInt()} dp: $columns sütun, önizleme ${preview ? 'var' : 'yok'}, taşmasız', (
+      tester,
+    ) async {
       await loadSora(tester);
       await _size(tester, size);
-      await tester.pumpWidget(_app(f));
+      final key = GlobalKey();
+      await tester.pumpWidget(_app(f, boundary: key));
       await _settle(tester);
       expect(tester.takeException(), isNull);
-      expect(find.byType(ChannelPreviewHint), TvPage.hasPreview(f) ? findsOneWidget : findsNothing);
+      expect(find.byType(ChannelPreviewHint), preview ? findsOneWidget : findsNothing);
       final cards = find.byType(ChannelTile);
       final top = tester.getTopLeft(cards.at(0)).dy;
       expect(tester.getTopLeft(cards.at(columns - 1)).dy, top);
@@ -297,6 +301,9 @@ void main() {
       await _settle(tester);
       expect(tester.takeException(), isNull);
       expect(find.byType(EpgGrid), findsOneWidget);
+      // Kanal adı her biçimde görünür (telefonda da).
+      expect(find.descendant(of: find.byType(EpgGrid), matching: find.text('ULUSAL 1 HD')), findsOneWidget);
+      await maybeSnapshot(tester, key, 'build/tv/epg-${f.name}-${size.width.toInt()}.png', pixelRatio: 2);
     });
   }
 }

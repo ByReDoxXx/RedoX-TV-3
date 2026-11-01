@@ -87,6 +87,7 @@ abstract final class SourceFormats {
     r'''(?:https?:)?//[^\s"'<>]+?\.(?:m3u8|ts|mpd|mp4)(?:\?[^\s"'<>]*)?''',
     caseSensitive: false,
   );
+
   /// Öznitelikteki (href, src, data-src, file) göreli ya da tam yayın adresi.
   static final _attrLink = RegExp(
     r'''(?:href|src|data-src|file)\s*=\s*["']([^"'\s]+?\.(?:m3u8|ts|mpd|mp4)(?:\?[^"'\s]*)?)["']''',

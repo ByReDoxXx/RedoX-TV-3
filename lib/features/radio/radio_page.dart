@@ -417,7 +417,9 @@ class _NowPlayingCard extends StatelessWidget {
             Text('Henüz bir istasyon çalmıyor', style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
             const SizedBox(height: 4),
             Text(
-              'Listeden bir istasyon seçip OK\'a basın.',
+              Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv
+                  ? 'Listeden bir istasyon seçip OK\'a basın.'
+                  : 'Listeden bir istasyona dokunun.',
               style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
             ),
           ],

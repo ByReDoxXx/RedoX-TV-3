@@ -10,7 +10,7 @@ enum AppSection {
   film(RedoxIcons.film, 'Film'),
   series(RedoxIcons.series, 'Dizi'),
   favorites(RedoxIcons.favorites, 'Favoriler', short: 'Favori'),
-  splitScreen(RedoxIcons.splitScreen, 'Bölünmüş ekran'),
+  splitScreen(RedoxIcons.splitScreen, 'Bölünmüş ekran', short: 'Bölünmüş'),
   sources(RedoxIcons.sources, 'Kaynaklar'),
   settings(RedoxIcons.settings, 'Ayarlar'),
 
@@ -65,12 +65,14 @@ abstract final class AppDestinations {
   /// Televizyon durur.
   static const kidsPhoneMoreSections = [AppSection.tv];
 
-  static final main = [for (final s in railSections) NavRailItem(s.icon, s.label)];
-  static final footer = [for (final s in railFooterSections) NavRailItem(s.icon, s.label)];
+  static final main = [for (final s in railSections) NavRailItem(s.icon, s.label, short: s.shortLabel)];
+  static final footer = [for (final s in railFooterSections) NavRailItem(s.icon, s.label, short: s.shortLabel)];
   static final phoneBar = [for (final s in phoneBarSections) NavRailItem(s.icon, s.shortLabel)];
   static final phoneMore = [for (final s in phoneMoreSections) NavRailItem(s.icon, s.label)];
 
-  static List<NavRailItem> items(List<AppSection> sections) => [for (final s in sections) NavRailItem(s.icon, s.label)];
+  static List<NavRailItem> items(List<AppSection> sections) => [
+    for (final s in sections) NavRailItem(s.icon, s.label, short: s.shortLabel),
+  ];
 
   /// Bölümün raydaki dizini (ana bölümler, sonra alt bölüm).
   static int railIndexOf(

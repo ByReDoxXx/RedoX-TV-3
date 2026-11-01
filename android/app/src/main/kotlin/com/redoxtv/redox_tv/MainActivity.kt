@@ -1,6 +1,9 @@
 package com.redoxtv.redox_tv
 
 import android.app.AlertDialog
+import android.content.Context
+import android.media.AudioManager
+import android.provider.Settings
 import android.text.InputFilter
 import android.text.InputType
 import android.view.WindowManager
@@ -25,6 +28,37 @@ class MainActivity : FlutterActivity() {
                 )
             } else {
                 result.notImplemented()
+            }
+        }
+        // Oynatıcı jestleri (telefon/tablet): cihaz sesi ve bu pencerenin
+        // parlaklığı. Parlaklık yalnız uygulama penceresinindir, sistem ayarı
+        // değişmez; null verilince sistemin parlaklığına döner.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "redox/cihaz").setMethodCallHandler { call, result ->
+            val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+            when (call.method) {
+                "sesAl" -> result.success(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toDouble() / max)
+                "sesVer" -> {
+                    val v = (call.arguments as Double).coerceIn(0.0, 1.0)
+                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, Math.round(v * max).toInt(), 0)
+                    result.success(null)
+                }
+                "parlaklikAl" -> {
+                    val own = window.attributes.screenBrightness
+                    result.success(
+                        if (own >= 0) own.toDouble()
+                        else Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128) / 255.0,
+                    )
+                }
+                "parlaklikVer" -> {
+                    val v = call.arguments as Double?
+                    window.attributes = window.attributes.apply {
+                        screenBrightness = v?.toFloat()?.coerceIn(0.01f, 1f)
+                            ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    }
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
         }
     }

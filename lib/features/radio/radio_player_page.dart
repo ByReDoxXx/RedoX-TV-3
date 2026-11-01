@@ -145,6 +145,9 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
 
   Widget _body(BuildContext context, BoxConstraints box, bool phone) {
     final t = Theme.of(context).textTheme;
+    // Dokunmatik ekran (telefon, tablet, açık katlanabilir telefon): kapat
+    // düğmesi, büyük logo, kaydırma yönergesi. Tuş ipuçları yalnız TV'de.
+    final touch = Theme.of(context).extension<RedoxMetrics>()!.formFactor != FormFactor.tv;
     final current = _radio.current;
     final tuned = _list.isEmpty ? current : _list[_tuned];
     // Gezinirken eski istasyon çalar; üstteki ad kadrandaki istasyondur, solar.
@@ -171,7 +174,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
           // Üst şerit: bölüm adı, durum, saat.
           Row(
             children: [
-              if (phone)
+              if (touch)
                 IconActionButton(icon: RedoxIcons.expandMore, onPressed: () => Navigator.maybePop(context))
               else ...[
                 const RedoxIcon(RedoxIcons.radio, color: RedoxSeeds.crimson),
@@ -194,8 +197,8 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
             ],
           ),
           const Spacer(),
-          // Telefonda dikey boşluk geniş: istasyonun logosu büyük gösterilir.
-          if (phone && tuned != null) ...[
+          // Dokunmatik ekranda dikey boşluk geniş: istasyonun logosu büyük.
+          if (touch && tuned != null) ...[
             AnimatedOpacity(
               opacity: browsing ? 0.55 : 1,
               duration: const Duration(milliseconds: 200),
@@ -233,7 +236,9 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            browsing ? 'OK ile hemen çal' : (_radio.title ?? (playing ? 'Şarkı bilgisi yok' : '')),
+            browsing
+                ? (touch ? 'Birazdan çalar' : 'OK ile hemen çal')
+                : (_radio.title ?? (playing ? 'Şarkı bilgisi yok' : '')),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -264,7 +269,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (phone)
+          if (touch)
             Text(
               'Kadranı kaydırarak istasyon değiştirin',
               style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),

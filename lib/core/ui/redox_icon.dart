@@ -20,6 +20,7 @@ enum RedoxIcons {
   previous('skip_previous', 'Önceki'),
   next('skip_next', 'Sonraki'),
   volume('volume_up', 'Ses'),
+  brightness('brightness_6', 'Parlaklık'),
   star('star', 'Yıldız'),
   folder('folder', 'Klasör'),
   qrCode('qr_code_2', 'QR kod'),

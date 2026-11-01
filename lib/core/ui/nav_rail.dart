@@ -10,10 +10,14 @@ import 'focus_glow.dart';
 import 'redox_icon.dart';
 
 class NavRailItem {
-  const NavRailItem(this.icon, this.label);
+  const NavRailItem(this.icon, this.label, {String? short}) : short = short ?? label;
 
   final RedoxIcons icon;
   final String label;
+
+  /// Daralmış raydaki ikon altı adı (96 dp'ye sığsın: "Bölünmüş ekran" →
+  /// "Bölünmüş").
+  final String short;
 }
 
 /// M3 Expressive gezinme rayı. Ölçü ve renkler Compose Material 3
@@ -366,7 +370,7 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
                     child: Text(
-                      item.label,
+                      item.short,
                       style: belowLabel,
                       textAlign: TextAlign.center,
                       maxLines: 1,
