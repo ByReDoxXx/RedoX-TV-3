@@ -25,6 +25,8 @@ import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
+import '../split_screen/split_screen.dart';
+import '../split_screen/split_screen_page.dart';
 import '../tv/tv_page.dart';
 import 'section_placeholder.dart';
 
@@ -117,6 +119,7 @@ class _RootShellState extends State<RootShell> {
   @override
   void dispose() {
     widget.history?.removeListener(_syncFrames);
+    _split.dispose();
     super.dispose();
   }
 
@@ -133,6 +136,19 @@ class _RootShellState extends State<RootShell> {
   }
 
   bool _watching = false;
+
+  /// Bölünmüş Ekran karoları (oturum boyunca).
+  final _split = SplitScreen();
+
+  /// Televizyon önizlemesindeki "2x2 Ekrana ekle".
+  void _addToSplit(BuildContext context, LiveChannel c) {
+    final i = _split.add(c);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(i < 0 ? 'Bölünmüş Ekran dolu: bir karoyu boşaltın.' : "${c.name} Bölünmüş Ekran'a eklendi."),
+      ),
+    );
+  }
 
   bool _onBack() {
     if (_section == AppSection.home) return false;
@@ -239,6 +255,7 @@ class _RootShellState extends State<RootShell> {
       rank: widget.rank,
       initialView: _tvView,
       favorites: widget.favorites,
+      onSplit: (c) => _addToSplit(context, c),
       onChannel: (c) => _watch(context, c),
     ),
     AppSection.radio when widget.radio != null => RadioPage(
@@ -246,6 +263,17 @@ class _RootShellState extends State<RootShell> {
       favorites: widget.favorites,
       clock: _clock,
       profileName: _home.profileName,
+      onHome: () => _go(AppSection.home),
+      onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
+    ),
+    AppSection.splitScreen when !_kids => SplitScreenPage(
+      split: _split,
+      channels: _tv.channels,
+      clock: _clock,
+      profileName: _home.profileName,
+      engineFactory: widget.engineFactory,
+      onWatch: (c) => _watch(context, c),
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,

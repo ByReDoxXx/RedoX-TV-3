@@ -113,6 +113,9 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> playOrPause() => _player.playOrPause();
 
   @override
+  Future<void> setMuted(bool muted) => _player.setVolume(muted ? 0 : 100);
+
+  @override
   Future<void> selectVideoTrack(String id) => _player.setVideoTrack(switch (id) {
     EngineState.autoTrack => VideoTrack.auto(),
     EngineState.noTrack => VideoTrack.no(),

@@ -94,6 +94,9 @@ abstract class PlaybackEngine {
 
   Future<void> playOrPause();
 
+  /// Sesi kapatır/açar (Bölünmüş Ekran: yalnız odaktaki karo duyulur).
+  Future<void> setMuted(bool muted);
+
   Future<void> selectVideoTrack(String id);
   Future<void> selectAudioTrack(String id);
   Future<void> selectSubtitleTrack(String id);

@@ -303,6 +303,10 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
   - **Ekleme:** TV kanalı Televizyon önizleme panelindeki kalp düğmesiyle (işlevsiz "Yayın akışı" düğmesinin yerine; EPG üstteki anahtarda), radyo listede ve kadranda kalple. 2x2 düğmesi Bölünmüş Ekran bağlanınca görünür.
   - Kanıt: `favorites_page_test.dart`; görüntüler `build/favoriler/`.
 
+- **Bölünmüş Ekran (`SplitScreenPage`, `SplitScreen`; kullanıcı isteği, 2026-11-01).** 2'li ya da 4'lü canlı yayın ızgarası (anahtar başlığın altında), karolar 16:9 ve alana sığacak en büyük boyda. Ses yalnız odaktaki karodan gelir (`PlaybackEngine.setMuted`; hoparlör rozeti). Boş karo "Kanal ekle" (numaralı kanal seçici); dolu karoda OK: Tam ekran / Kanalı değiştir / Kaldır. Televizyon önizleme panelindeki "2x2 Ekrana ekle" kanalı ilk boş karoya koyar (2'li doluysa 4'lüye geçer, bildirim çıkar). Tam ekrana geçerken karoların motorları kapatılır, dönüşte yeniden açılır (zayıf TV'de donanım çözücü sayısı sınırlı). Telefonda 2'li alt alta. Karolar oturum boyunca durur. Çocuk profilinde yok.
+  - **Doğrulanmadı:** Chromecast'te aynı anda kaç donanım çözücünün (kopyasız yüzey) açılabildiği. 4 karo sığmazsa 4'lü düzen sınırlanacak.
+  - Kanıt: `split_screen_test.dart`; görüntüler `build/bolunmus/`.
+
 ## 6. Logo
 
 **Kaynak:** kullanıcının Logo-3'ü (alevli boğa, koyu lacivert zemin; kullanıcı isteği, 2026-11-01: "yeni logomuz"), `assets/brand/redox-logo-source.jpg` (2000 px). Önceki logolar (Logo-1, Logo-2: geometrik kızıl boğa, siyah zemin) git geçmişinde.

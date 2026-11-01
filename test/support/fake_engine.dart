@@ -69,6 +69,12 @@ class FakeEngine implements PlaybackEngine {
   @override
   Future<void> playOrPause() async => _state.value = _state.value.copyWith(playing: !_state.value.playing);
 
+  /// Ses kapalı mı (Bölünmüş Ekran).
+  bool muted = false;
+
+  @override
+  Future<void> setMuted(bool muted) async => this.muted = muted;
+
   @override
   Future<void> selectVideoTrack(String id) async {
     videoSelections.add(id);
