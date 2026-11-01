@@ -1,7 +1,20 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Sürüm imzası: depoda değil, %USERPROFILE%\.redox\key.properties (ya da
+// REDOX_KEY_PROPS ortam değişkeninin gösterdiği dosya). Her derlemede aynı
+// anahtar: güncelleme imza uyuşmazlığı vermez, cihazdaki veriler kalır. Dosya
+// yoksa (GitHub derlemesi) hata ayıklama anahtarı kullanılır.
+val releaseKey = Properties().apply {
+    val path = System.getenv("REDOX_KEY_PROPS")
+        ?: "${System.getProperty("user.home")}/.redox/key.properties"
+    val file = file(path)
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -29,11 +42,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (!releaseKey.isEmpty) {
+            create("release") {
+                storeFile = file(releaseKey.getProperty("storeFile"))
+                storePassword = releaseKey.getProperty("storePassword")
+                keyAlias = releaseKey.getProperty("keyAlias")
+                keyPassword = releaseKey.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
