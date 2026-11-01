@@ -22,7 +22,9 @@ void main() {
 
   test("flavor adları Gradle productFlavors ile aynı", () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
-    final flavors = RegExp(r'create\("(\w+)"\)').allMatches(gradle).map((m) => m.group(1)).toSet();
+    // Yalnız productFlavors bloğu (signingConfigs'te de create("release") var).
+    final block = gradle.substring(gradle.indexOf('productFlavors'));
+    final flavors = RegExp(r'create\("(\w+)"\)').allMatches(block).map((m) => m.group(1)).toSet();
     expect(flavors, {'tv', 'tablet', 'phone'});
     for (final f in flavors) {
       expect(FormFactor.resolve(f, TargetPlatform.android).name, f);

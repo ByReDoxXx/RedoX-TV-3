@@ -139,6 +139,7 @@ class _RedoxAppState extends State<RedoxApp> {
         sources: widget.sources,
         frames: widget.frames,
         rank: widget.rank,
+        profiles: store,
         onSwitchProfile: store == null ? null : _switchProfile,
       ),
     );

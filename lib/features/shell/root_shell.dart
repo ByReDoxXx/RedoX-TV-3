@@ -51,6 +51,7 @@ class RootShell extends StatefulWidget {
     this.favorites,
     this.sources,
     this.profile,
+    this.profiles,
     this.onSwitchProfile,
   });
 
@@ -58,6 +59,9 @@ class RootShell extends StatefulWidget {
   /// Çocuk profilinde yalnız Çocuk kategorisi görünür, rayda Anasayfa ve
   /// Televizyon kalır, Ayarlar yoktur.
   final Profile? profile;
+
+  /// Profil deposu: Ayarlar › Ebeveyn PIN'i; null ise sekme yok.
+  final ProfileStore? profiles;
 
   /// Başlıktaki profil hapı: "Kim izliyor?" ekranına döner.
   final VoidCallback? onSwitchProfile;
@@ -305,6 +309,7 @@ class _RootShellState extends State<RootShell> {
     ),
     AppSection.settings when widget.sources != null && !_kids => SettingsPage(
       sources: widget.sources!,
+      profiles: widget.profiles,
       clock: _clock,
       profileName: _home.profileName,
       onHome: () => _go(AppSection.home),

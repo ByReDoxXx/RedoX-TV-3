@@ -42,6 +42,11 @@ void main() {
     expect(again.byId(p.id)?.color, 4);
     expect(again.lockedToKids, isTrue, reason: 'son profil çocuk profili');
     expect(await again.checkPin('1357'), isTrue);
+
+    // Kaldırılan PIN cihazdan da silinir.
+    again.clearPin();
+    await pumpEventQueue();
+    expect((await ProfileStore.load()).hasPin, isFalse);
   });
 
   test('son yetişkin profil silinemez; çocuk profili silinir', () {

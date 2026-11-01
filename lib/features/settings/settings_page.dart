@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/content/profiles.dart';
 import '../../core/content/source_receiver.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
@@ -10,12 +11,16 @@ import '../../core/ui/app_header.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/redox_icon.dart';
 import '../sources/add_source_tab.dart';
+import 'parent_pin_tab.dart';
 
 /// Ayarların sekmeleri. Kaynak ekleme burada (kullanıcı isteği: "Kaynak
 /// ekleme sekmesi Ayarlar altında olsun"; eklenen listeler Kaynaklar
 /// bölümünde); yeni ayarlar yeni sekme olur.
 enum SettingsTab {
-  addSource('Kaynak ekle', RedoxIcons.add);
+  addSource('Kaynak ekle', RedoxIcons.add),
+
+  /// Ebeveyn PIN'ini değiştir/kaldır (profil deposu verilmişse).
+  parentPin("Ebeveyn PIN'i", RedoxIcons.lock);
 
   const SettingsTab(this.label, this.icon);
 
@@ -32,6 +37,7 @@ class SettingsPage extends StatefulWidget {
     required this.clock,
     required this.profileName,
     this.receiver,
+    this.profiles,
     this.initialTab = SettingsTab.addSource,
     this.onHome,
     this.onMore,
@@ -42,6 +48,9 @@ class SettingsPage extends StatefulWidget {
 
   /// Telefondan ekleme alıcısı (testlerde sunucusuz sahtesi).
   final SourceReceiver? receiver;
+
+  /// Profiller ve ebeveyn PIN'i; null ise PIN sekmesi yok.
+  final ProfileStore? profiles;
   final SettingsTab initialTab;
   final String clock;
   final String profileName;
@@ -85,10 +94,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(width: 10),
                 Text('Ayarlar', style: t.headlineSmall!.copyWith(color: RedoxRoles.onSurface)),
                 const SizedBox(width: 24),
-                for (final tab in SettingsTab.values) ...[
-                  CategoryChip(label: tab.label, selected: tab == _tab, onPressed: () => setState(() => _tab = tab)),
-                  const SizedBox(width: 12),
-                ],
+                for (final tab in SettingsTab.values)
+                  if (tab != SettingsTab.parentPin || widget.profiles != null) ...[
+                    CategoryChip(label: tab.label, selected: tab == _tab, onPressed: () => setState(() => _tab = tab)),
+                    const SizedBox(width: 12),
+                  ],
               ],
             ),
           ),
@@ -97,6 +107,10 @@ class _SettingsPageState extends State<SettingsPage> {
               SettingsTab.addSource => AddSourceTab(
                 sources: widget.sources,
                 receiver: widget.receiver,
+                padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, phone ? 16 : padding.bottom),
+              ),
+              SettingsTab.parentPin => ParentPinTab(
+                store: widget.profiles!,
                 padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, phone ? 16 : padding.bottom),
               ),
             },

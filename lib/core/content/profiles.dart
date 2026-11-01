@@ -95,8 +95,16 @@ class ProfileStore extends ChangeNotifier {
       save: (s) async {
         await prefs.setString(_kProfiles, jsonEncode([for (final p in s.profiles) p.toJson()]));
         if (s.lastId case final id?) await prefs.setString(_kLast, id);
-        if (s._pinSalt case final salt?) await prefs.setString(_kSalt, salt);
-        if (s._pinHash case final hash?) await prefs.setString(_kHash, hash);
+        if (s._pinSalt case final salt?) {
+          await prefs.setString(_kSalt, salt);
+        } else {
+          await prefs.remove(_kSalt);
+        }
+        if (s._pinHash case final hash?) {
+          await prefs.setString(_kHash, hash);
+        } else {
+          await prefs.remove(_kHash);
+        }
       },
     );
   }
@@ -161,6 +169,14 @@ class ProfileStore extends ChangeNotifier {
     final salt = base64.encode([for (var i = 0; i < 16; i++) rnd.nextInt(256)]);
     _pinSalt = salt;
     _pinHash = await _hash(salt, pin);
+    _changed();
+  }
+
+  /// PIN'i siler (Ayarlar › Ebeveyn PIN'i; önce mevcut PIN sorulur). Çocuk
+  /// profiline sonraki girişte yenisi istenir.
+  void clearPin() {
+    _pinSalt = null;
+    _pinHash = null;
     _changed();
   }
 
