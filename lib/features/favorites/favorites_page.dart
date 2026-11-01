@@ -382,6 +382,9 @@ class _FavoriteRow extends StatelessWidget {
             child: FocusGlow(
               borderRadius: radius,
               scale: 1,
+              // Taşırken iç odak halkası yok: satırın yalnız solunu sarıyordu;
+              // altın çerçeve bütün satırı gösterir.
+              focused: moving ? false : null,
               builder: (context, active) => Material(
                 color: active ? RedoxRoles.surfaceContainerHighest : Colors.transparent,
                 borderRadius: radius,
