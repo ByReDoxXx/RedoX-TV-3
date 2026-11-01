@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/content/epg_program.dart';
+import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
@@ -48,6 +49,8 @@ class TvPage extends StatefulWidget {
     this.engineFactory,
     this.rank,
     this.initialView = TvView.cards,
+    this.favorites,
+    this.onSplit,
   });
 
   final TvContent content;
@@ -78,6 +81,12 @@ class TvPage extends StatefulWidget {
 
   /// Açılıştaki görünüm (Anasayfa'daki "Yayın akışı" EPG çizelgesini açar).
   final TvView initialView;
+
+  /// Profilin favorileri: önizleme panelinde favori düğmesi.
+  final Favorites? favorites;
+
+  /// Kanalı 2x2 ekrana ekler; null ise düğme yok.
+  final ValueChanged<LiveChannel>? onSplit;
 
   /// Izgaradaki sütun: TV/tablette önizleme panelinin yanında 3, telefonda tam
   /// genişlikte 2.
@@ -256,10 +265,18 @@ class _TvPageState extends State<TvPage> {
               width: ChannelPreview.width,
               child: previewed == null
                   ? ChannelPreviewHint(touch: metrics.formFactor != FormFactor.tv)
-                  : ChannelPreview(
-                      channel: previewed,
-                      video: _previewVideo(previewed),
-                      onWatch: () => unawaited(_watch(previewed)),
+                  : ListenableBuilder(
+                      listenable: widget.favorites ?? const _Silent(),
+                      builder: (context, _) => ChannelPreview(
+                        channel: previewed,
+                        video: _previewVideo(previewed),
+                        onWatch: () => unawaited(_watch(previewed)),
+                        favorite: widget.favorites?.hasChannel(previewed.number) ?? false,
+                        onFavorite: widget.favorites == null
+                            ? null
+                            : () => widget.favorites!.toggleChannel(previewed.number),
+                        onSplit: widget.onSplit == null ? null : () => widget.onSplit!(previewed),
+                      ),
                     ),
             ),
           ),
@@ -393,4 +410,15 @@ class _TvPageState extends State<TvPage> {
       }, childCount: channels.length),
     );
   }
+}
+
+/// Favori deposu verilmediğinde dinlenecek boş Listenable.
+class _Silent implements Listenable {
+  const _Silent();
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
 }

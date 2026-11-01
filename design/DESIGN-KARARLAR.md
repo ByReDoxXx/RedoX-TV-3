@@ -299,6 +299,10 @@ Kullanıcı yeni logoyu (Logo-3, alevli boğa, gece laciverti zemin) verdi ve pa
   - **Favoriler:** profil başına (`favori_radyo_<id>`); aynı depo TV kanalı favorilerini de tutar (`Favorites`).
   - Kanıt: `radio_controller_test.dart` (yedeğe geçiş, bağlanma süresi, duraklat, ICY, uyku), `radio_page_test.dart` (taşmasız, çip süzgeci, OK/◄►/▲, seçenekler); görüntüler `build/radyo/` (`REDOX_SNAPSHOT=1`). Gerçek yayınlarla cihazda henüz denenmedi.
 
+- **Favoriler (`FavoritesPage`, `Favorites`; kullanıcı isteği, 2026-11-01).** Eski uygulamadaki sıralanabilir listenin (phone-07, tablet-07) uyarlaması. Sekmeler: "TV kanalları" ve "Radyo" (sayılı çip); "Sırala:" Sıram (elle dizilen, kayıtlı) · A-Z · Kanal no · Kategori (yalnız gösterim, kayıtlı sırayı değiştirmez). Satır: karo, sıra, ad, şu anki program (TV) ya da tür (radyo); sağda yukarı/aşağı (yalnız "Sıram"da etkin, değilse soluk ve odak almaz) ve kaldır. OK/dokunma kanalı tam ekran açar ya da istasyonu çalıp kadranı açar. Telefonda yer yok: yalnız "kaldır" (sıra çiplerle). Favoriler profil başına saklanır (`favori_kanal_<id>`, `favori_radyo_<id>`).
+  - **Ekleme:** TV kanalı Televizyon önizleme panelindeki kalp düğmesiyle (işlevsiz "Yayın akışı" düğmesinin yerine; EPG üstteki anahtarda), radyo listede ve kadranda kalple. 2x2 düğmesi Bölünmüş Ekran bağlanınca görünür.
+  - Kanıt: `favorites_page_test.dart`; görüntüler `build/favoriler/`.
+
 ## 6. Logo
 
 **Kaynak:** kullanıcının Logo-3'ü (alevli boğa, koyu lacivert zemin; kullanıcı isteği, 2026-11-01: "yeni logomuz"), `assets/brand/redox-logo-source.jpg` (2000 px). Önceki logolar (Logo-1, Logo-2: geometrik kızıl boğa, siyah zemin) git geçmişinde.

@@ -23,6 +23,7 @@ import '../player/player_page.dart';
 import '../../core/playback/radio_controller.dart';
 import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
+import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
 import '../tv/tv_page.dart';
 import 'section_placeholder.dart';
@@ -237,6 +238,7 @@ class _RootShellState extends State<RootShell> {
       engineFactory: widget.engineFactory,
       rank: widget.rank,
       initialView: _tvView,
+      favorites: widget.favorites,
       onChannel: (c) => _watch(context, c),
     ),
     AppSection.radio when widget.radio != null => RadioPage(
@@ -244,6 +246,17 @@ class _RootShellState extends State<RootShell> {
       favorites: widget.favorites,
       clock: _clock,
       profileName: _home.profileName,
+      onHome: () => _go(AppSection.home),
+      onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
+    ),
+    AppSection.favorites when widget.favorites != null => FavoritesPage(
+      favorites: widget.favorites!,
+      channels: _tv.channels,
+      radio: widget.radio,
+      clock: _clock,
+      profileName: _home.profileName,
+      onWatch: (c) => _watch(context, c),
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,

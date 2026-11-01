@@ -16,13 +16,28 @@ import '../../../core/ui/status_badge.dart';
 /// Stitch referansından ("Canlı önizleme") esinlenildi; teknik bilgi
 /// (bit hızı, tampon) oynatıcı yazılana kadar gösterilmez.
 class ChannelPreview extends StatelessWidget {
-  const ChannelPreview({super.key, required this.channel, this.onWatch, this.video});
+  const ChannelPreview({
+    super.key,
+    required this.channel,
+    this.onWatch,
+    this.video,
+    this.favorite = false,
+    this.onFavorite,
+    this.onSplit,
+  });
 
   final LiveChannel channel;
 
   /// Canlı önizleme görüntüsü; null ise kanal logosu.
   final Widget? video;
   final VoidCallback? onWatch;
+
+  /// Kanal favorilerde mi; [onFavorite] null ise düğme yok.
+  final bool favorite;
+  final VoidCallback? onFavorite;
+
+  /// 2x2 ekrana ekle; null ise düğme yok.
+  final VoidCallback? onSplit;
 
   /// 540 dp TV yüksekliğinde düğmeler dahil sığacak genişlik (16:9 görsel).
   static const width = 280.0;
@@ -126,10 +141,24 @@ class ChannelPreview extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                GlassButton(label: '2x2 Ekrana ekle', icon: RedoxIcons.splitScreen, iconOnly: true, onPressed: () {}),
-                const SizedBox(width: 8),
-                GlassButton(label: 'Yayın akışı', icon: RedoxIcons.clock, iconOnly: true, onPressed: () {}),
+                if (onFavorite != null) ...[
+                  const SizedBox(width: 12),
+                  GlassButton(
+                    label: favorite ? 'Favorilerden çıkar' : 'Favorilere ekle',
+                    icon: RedoxIcons.favorites,
+                    iconOnly: true,
+                    onPressed: onFavorite,
+                  ),
+                ],
+                if (onSplit != null) ...[
+                  const SizedBox(width: 8),
+                  GlassButton(
+                    label: '2x2 Ekrana ekle',
+                    icon: RedoxIcons.splitScreen,
+                    iconOnly: true,
+                    onPressed: onSplit,
+                  ),
+                ],
               ],
             ),
           ],
