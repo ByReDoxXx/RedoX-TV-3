@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/xmltv.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
@@ -31,6 +32,7 @@ Widget _app(FormFactor f, {Key? boundary, TvContent content = TvContent.preview,
         child: RootShell(
           tv: content,
           initial: AppSection.tv,
+          favorites: Favorites(),
           // Yerel video kütüphanesi testte yok: sahte motor.
           engineFactory: () => FakeEngine()..addTo(engines),
         ),
@@ -88,7 +90,8 @@ void main() {
         of: find.byType(ChannelPreview),
         matching: find.byWidgetPredicate((w) => w is PrimaryButton || w is GlassButton),
       );
-      expect(buttons, findsNWidgets(3));
+      // Tam ekran ve favori (2x2, Bölünmüş Ekran bağlanınca).
+      expect(buttons, findsNWidgets(2));
       for (final rect in buttons.evaluate().map((e) => tester.getRect(find.byWidget(e.widget)))) {
         expect(rect.bottom, lessThanOrEqualTo(panel.bottom));
       }
