@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/content/epg_program.dart';
+import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/profiles.dart';
 import '../../core/content/watch_history.dart';
@@ -17,8 +20,10 @@ import '../home/home_content.dart';
 import '../home/home_page.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../player/player_page.dart';
+import '../../core/playback/radio_controller.dart';
 import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
+import '../radio/radio_page.dart';
 import '../tv/tv_page.dart';
 import 'section_placeholder.dart';
 
@@ -36,6 +41,8 @@ class RootShell extends StatefulWidget {
     this.previewFocus = false,
     this.engineFactory,
     this.rank,
+    this.radio,
+    this.favorites,
     this.profile,
     this.onSwitchProfile,
   });
@@ -71,6 +78,12 @@ class RootShell extends StatefulWidget {
 
   /// Akış sıralayıcı (StreamProbe.rank); null ise listedeki sıra (testler).
   final StreamRanker? rank;
+
+  /// Radyo; null ise Radyo bölümü "yakında" sayfasıdır (testler).
+  final RadioController? radio;
+
+  /// Profilin favorileri (kanal ve radyo).
+  final Favorites? favorites;
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -177,6 +190,8 @@ class _RootShellState extends State<RootShell> {
   /// bütün kanallarda gezer (kategori süzgecinden bağımsız).
   Future<void> _watch(BuildContext context, LiveChannel c) async {
     _watching = true;
+    // TV kanalı başlayınca radyo susar.
+    unawaited(widget.radio?.stop());
     _syncFrames();
     try {
       await Navigator.of(context).push(
@@ -223,6 +238,15 @@ class _RootShellState extends State<RootShell> {
       rank: widget.rank,
       initialView: _tvView,
       onChannel: (c) => _watch(context, c),
+    ),
+    AppSection.radio when widget.radio != null => RadioPage(
+      radio: widget.radio!,
+      favorites: widget.favorites,
+      clock: _clock,
+      profileName: _home.profileName,
+      onHome: () => _go(AppSection.home),
+      onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
     ),
     _ => SectionPlaceholder(section: _section),
   };

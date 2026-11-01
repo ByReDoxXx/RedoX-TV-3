@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'core/layout/form_factor.dart';
 import 'core/theme/redox_theme.dart';
 import 'core/content/profiles.dart';
+import 'core/content/favorites.dart';
 import 'core/content/watch_history.dart';
 import 'core/playback/frame_grabber.dart';
+import 'core/playback/radio_controller.dart';
 import 'core/playback/stream_probe.dart';
 import 'features/home/home_content.dart';
 import 'features/profiles/profile_picker_page.dart';
@@ -15,7 +17,16 @@ import 'features/tv/tv_content.dart';
 /// Açılış: "Kim izliyor?" (her açılışta). Profil seçilince kök kabuk o
 /// profille kurulur; başlıktaki profil hapı seçim ekranına döner.
 class RedoxApp extends StatefulWidget {
-  const RedoxApp({super.key, required this.tv, this.profiles, this.history, this.frames, this.rank});
+  const RedoxApp({
+    super.key,
+    required this.tv,
+    this.profiles,
+    this.history,
+    this.favorites,
+    this.radio,
+    this.frames,
+    this.rank,
+  });
 
   /// Televizyon kanalları (gömülü M3U listesinden) ve yayın akışı; her
   /// dakika yenilenir (TvGuideController, main.dart).
@@ -26,6 +37,12 @@ class RedoxApp extends StatefulWidget {
 
   /// Profilin izleme geçmişi (Anasayfa "Son izlenen kanallar").
   final WatchHistory Function(String profileId)? history;
+
+  /// Profilin favorileri (kanal ve radyo).
+  final Favorites Function(String profileId)? favorites;
+
+  /// Radyo (uygulama boyunca tek).
+  final RadioController? radio;
 
   /// Kanalların yayından alınan kareleri (Anasayfa kartları).
   final FrameStore? frames;
@@ -112,6 +129,8 @@ class _RedoxAppState extends State<RedoxApp> {
         tv: tv,
         profile: profile,
         history: widget.history?.call(profile?.id ?? ProfileStore.defaults.first.id),
+        favorites: widget.favorites?.call(profile?.id ?? ProfileStore.defaults.first.id),
+        radio: widget.radio,
         frames: widget.frames,
         rank: widget.rank,
         onSwitchProfile: store == null ? null : _switchProfile,

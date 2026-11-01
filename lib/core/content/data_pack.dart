@@ -39,6 +39,7 @@ class DataPack {
 
   static const channels = 1;
   static const epg = 2;
+  static const radios = 3;
 
   final List<int> dataKey;
   final List<int> signPublicKey;

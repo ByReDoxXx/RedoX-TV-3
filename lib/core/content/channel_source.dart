@@ -29,10 +29,11 @@ abstract final class ChannelSource {
   }
 
   /// `{"channels": [{"number", "name", "category", "logo"?, "streams"}]}`.
-  /// Paket numaraya göre sıralı gelir.
-  static List<LiveChannel> fromJson(Map<String, Object?> json) {
-    final list = json['channels'];
-    if (list is! List) throw const DataPackException('kanal listesi yok');
+  /// Paket numaraya göre sıralı gelir. Radyo paketi aynı biçimdedir, yalnız
+  /// anahtarı `radios`tur ([RadioSource]).
+  static List<LiveChannel> fromJson(Map<String, Object?> json, {String key = 'channels'}) {
+    final list = json[key];
+    if (list is! List) throw DataPackException('$key listesi yok');
     return [
       for (final (i, c) in list.indexed)
         if (c case {

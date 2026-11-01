@@ -29,6 +29,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Testlerde zaman: radyo bağlanma süresi ve uyku zamanlayıcısı.
+  fake_async: ^1.3.3
 
 flutter:
   uses-material-design: true
@@ -41,6 +43,7 @@ flutter:
     - assets/icons/
     # Şifreli kanal listesi (DataPack). Kaynak tr.m3u uygulamaya konmaz.
     - assets/channels/channels.bin
+    - assets/radios/radios.bin
 
   fonts:
     # Değişken yazı tipi (OFL), tek eksen: wght 100–800. FontWeight -> wght.

@@ -38,7 +38,15 @@ class ChannelLogo extends StatelessWidget {
               dimension: side,
               child: url == null
                   ? fallback()
-                  : Image.network(url, fit: BoxFit.contain, errorBuilder: (_, _, _) => fallback()),
+                  : Image.network(
+                      url,
+                      fit: BoxFit.contain,
+                      // Logo görünen boya küçültülerek çözülür: kaynak logolar
+                      // 512–1024 px olabiliyor, onlarca kart zayıf TV belleğini
+                      // ve işlemcisini yoruyordu.
+                      cacheWidth: (side * MediaQuery.devicePixelRatioOf(context)).ceil().clamp(1, 1024),
+                      errorBuilder: (_, _, _) => fallback(),
+                    ),
             ),
           );
         },

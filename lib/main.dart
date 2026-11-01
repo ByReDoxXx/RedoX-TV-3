@@ -9,9 +9,12 @@ import 'core/content/channel_source.dart';
 import 'core/content/data_pack.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
+import 'core/content/favorites.dart';
 import 'core/content/profiles.dart';
+import 'core/content/radio_source.dart';
 import 'core/content/watch_history.dart';
 import 'core/playback/frame_grabber.dart';
+import 'core/playback/radio_controller.dart';
 import 'core/layout/form_factor.dart';
 import 'core/playback/stream_probe.dart';
 import 'features/tv/tv_content.dart';
@@ -44,7 +47,31 @@ Future<void> main() async {
   // Profiller ve her profilin son izlenen kanalları cihazda saklanır.
   final profiles = await ProfileStore.load();
   final history = await WatchHistory.load();
+  final favorites = await Favorites.load();
+  // Radyo istasyonları da şifreli pakettir: uygulamadaki kopya hemen, güncel
+  // liste arkada iner. Radyo uygulama boyunca tektir (bölüm değişince ses sürer).
+  final stations = ValueNotifier(
+    await RadioSource.open(
+      (await rootBundle.load(RadioSource.asset)).buffer.asUint8List(),
+      pack,
+    ).catchError((Object _) => const <LiveChannel>[]),
+  );
+  unawaited(
+    RadioSource.download(pack).then((fresh) {
+      if (fresh != null) stations.value = fresh;
+    }),
+  );
   // Anasayfa kartlarında yayından gerçek kare (FrameStore); "Kim izliyor?"
   // ekranı dururken alınmaya başlar.
-  runApp(RedoxApp(tv: tv, profiles: profiles, history: history, frames: FrameStore(startDelay: const Duration(seconds: 3)), rank: StreamProbe().rank));
+  runApp(
+    RedoxApp(
+      tv: tv,
+      profiles: profiles,
+      history: history,
+      favorites: favorites,
+      radio: RadioController(stations: stations),
+      frames: FrameStore(startDelay: const Duration(seconds: 3)),
+      rank: StreamProbe().rank,
+    ),
+  );
 }
