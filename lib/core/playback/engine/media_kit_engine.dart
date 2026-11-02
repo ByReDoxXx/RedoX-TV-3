@@ -6,6 +6,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../content/app_settings.dart';
+import '../../content/diagnostics.dart';
 import '../subtitle_look.dart';
 import 'playback_engine.dart';
 
@@ -13,12 +14,21 @@ import 'playback_engine.dart';
 /// `MediaKit.ensureInitialized()` çağrılmış olmalı (main.dart).
 class MediaKitEngine implements PlaybackEngine {
   MediaKitEngine() {
+    // Görüntü denetleyicisi yayın açılmadan kurulur: donanım çözücü ve
+    // kopyasız çıkış ayarı mpv'ye ilk yayından önce verilsin. Önceden ilk
+    // çizimde kuruluyordu, yayın ondan önce açıldığı için telefonda 4K HEVC
+    // bile yazılımla çözülüyordu (hwdec-current=no; Pixel'de görüldü).
+    _video = VideoController(_player, configuration: _android ? _zeroCopy : const VideoControllerConfiguration());
     unawaited(_tune());
+    if (_android) unawaited(_watchSurface());
     final s = _player.stream;
     _subscriptions.addAll([
       s.playing.listen((v) => _update(_state.value.copyWith(playing: v))),
       s.buffering.listen((v) => _update(_state.value.copyWith(buffering: v))),
-      s.width.listen((v) => _update(_state.value.copyWith(width: () => v))),
+      s.width.listen((v) {
+        _update(_state.value.copyWith(width: () => v));
+        unawaited(_logVideo(v));
+      }),
       s.height.listen((v) => _update(_state.value.copyWith(height: () => v))),
       s.tracks.listen(_onTracks),
       s.track.listen(
@@ -33,10 +43,7 @@ class MediaKitEngine implements PlaybackEngine {
   }
 
   final _player = Player();
-  late final _video = VideoController(
-    _player,
-    configuration: _android ? _zeroCopy : const VideoControllerConfiguration(),
-  );
+  late final VideoController _video;
 
   static bool get _android => defaultTargetPlatform == TargetPlatform.android;
 
@@ -85,6 +92,126 @@ class MediaKitEngine implements PlaybackEngine {
       default:
         break;
     }
+  }
+
+  /// Yayının görüntü biçimi tanılama günlüğüne (yayın başına bir kez, ilk
+  /// boyut gelince): kodek, çözücü, renk aktarımı (HDR: pq/hlg), renk uzayı
+  /// ve Dolby Vision profili. Kopyasız yolda kareler mpv'den geçmediği için
+  /// bilgiler parça listesinden ve çözücü parametrelerinden okunur. Renk
+  /// sorunlarını (pembe/yeşil görüntü) ayırt etmek için.
+  bool _videoLogged = false;
+
+  Future<void> _logVideo(int? width) async {
+    if (_videoLogged || (width ?? 0) == 0) return;
+    _videoLogged = true;
+    // Görüntü yüzeyi bağlanınca media_kit çıkışı ve çözücüyü yeniden kurar:
+    // ölçüm ondan sonra.
+    await Future<void>.delayed(const Duration(seconds: 6));
+    final native = _player.platform;
+    if (native is! NativePlayer) return;
+    Future<String> get(String name) async {
+      try {
+        final v = await native.getProperty(name);
+        return v.isEmpty ? '-' : v;
+      } on Object {
+        return '?';
+      }
+    }
+
+    final parts = [
+      for (final name in const [
+        'video-codec',
+        'current-vo',
+        'hwdec',
+        'hwdec-current',
+        'current-tracks/video/codec',
+        'current-tracks/video/dolby-vision-profile',
+        'video-dec-params/gamma',
+        'video-dec-params/primaries',
+        'video-dec-params/colormatrix',
+        'video-dec-params/pixelformat',
+        'video-params/gamma',
+      ])
+        '$name=${await get(name)}',
+    ];
+    Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
+    await _hdrToSdr(native);
+  }
+
+  /// HDR yayında kopyasız yol pembe görüntü veriyordu (Pixel'de görüldü):
+  /// donanım çözücü HDR10/HLG kareleri (10-bit, BT.2020, PQ) doğrudan
+  /// Flutter'ın görüntü yüzeyine yazıyor, yüzey onları SDR sanıyor. HDR
+  /// yayında yol kopyalıya geçer: kareler mpv'ye gelir, mpv HDR'yi SDR'ye
+  /// ton eşler (bt.2390) ve yüzeye çizer. Daha çok işlemci ister; yalnız
+  /// HDR yayında.
+  bool _sdrPath = false;
+
+  /// media_kit'in Android denetleyicisi (yüzey ve kilit); dışa açık türü
+  /// yok, alanlarına dinamik erişilir. Bulunamazsa null.
+  dynamic _android0;
+
+  /// media_kit görüntü yüzeyi yeniden kurulunca (arka plandan dönüş, yüzey
+  /// değişimi) çıkışı yapılandırmadaki kopyasız yola döndürür; HDR
+  /// yayındaysak SDR yolu kendi kilidinde, onun ardından yeniden kurulur.
+  Future<void> _watchSurface() async {
+    try {
+      final dynamic android = await _video.platform.future;
+      _android0 = android;
+      (android.wid as ValueNotifier<int?>).addListener(() {
+        if (_sdrPath) unawaited(android.lock.synchronized(_applySdrPath) as Future<void>);
+      });
+    } on Object {
+      // media_kit iç yapısı değişti: HDR yolu yalnız açılışta kurulur.
+    }
+  }
+
+  /// Yüzey hazır mı (yoksa çıkış kurulamaz, mpv çöker).
+  bool get _surfaceReady {
+    try {
+      return ((_android0?.wid as ValueNotifier<int?>?)?.value ?? 1) != 0;
+    } on Object {
+      return true;
+    }
+  }
+
+  Future<void> _hdrToSdr(NativePlayer native) async {
+    if (!_android || _sdrPath) return;
+    final gamma = await native.getProperty('video-dec-params/gamma');
+    if (gamma != 'pq' && gamma != 'hlg') return;
+    _sdrPath = true;
+    Diagnostics.instance.log('görüntü', 'HDR ($gamma): SDR\'ye ton eşlemeli kopyalı yola geçildi');
+    await _applySdrPath();
+    // Kopyalı yolun yükü: 10 sn sonra atlanan kareler günlüğe.
+    await Future<void>.delayed(const Duration(seconds: 10));
+    if (!_sdrPath) return;
+    final drops = await native.getProperty('frame-drop-count');
+    final decoderDrops = await native.getProperty('decoder-frame-drop-count');
+    final fps = await native.getProperty('estimated-vf-fps');
+    Diagnostics.instance.log('görüntü', 'HDR→SDR 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
+  }
+
+  /// HDR yayın için kopyalı, ton eşlemeli yol.
+  Future<void> _applySdrPath() async {
+    final native = _player.platform;
+    if (native is! NativePlayer || !_surfaceReady) return;
+    await native.setProperty('vo', 'null');
+    await native.setProperty('hwdec', 'mediacodec-copy');
+    await native.setProperty('tone-mapping', 'bt.2390');
+    await native.setProperty('target-trc', 'srgb');
+    await native.setProperty('target-prim', 'bt.709');
+    await native.setProperty('vo', 'gpu');
+    await native.setProperty('vid', 'auto');
+    await _player.seek(_player.state.position);
+  }
+
+  /// Yeni yayın açılmadan HDR yolundan kopyasız yola dönüş.
+  Future<void> _leaveSdrPath() async {
+    _sdrPath = false;
+    final native = _player.platform;
+    if (native is! NativePlayer || !_surfaceReady) return;
+    await native.setProperty('vo', 'null');
+    await native.setProperty('hwdec', _zeroCopy.hwdec!);
+    await native.setProperty('vo', _zeroCopy.vo!);
   }
 
   /// Ayarlar › Kalite sınırı: yayın birden çok kalite verdiyse (HLS ana
@@ -146,11 +273,13 @@ class MediaKitEngine implements PlaybackEngine {
   }
 
   @override
-  Future<void> open(String url) {
+  Future<void> open(String url) async {
     // Yeni yayında boyut ve izler sıfırlanır: "görüntü geldi" yeniden ölçülür.
     _update(const EngineState());
     _capped = false;
-    return _player.open(Media(url));
+    _videoLogged = false;
+    if (_sdrPath) await _leaveSdrPath();
+    await _player.open(Media(url));
   }
 
   @override

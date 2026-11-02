@@ -18,7 +18,10 @@ class Diagnostics extends ChangeNotifier {
   void log(String source, String message) {
     final now = DateTime.now();
     String two(int n) => '$n'.padLeft(2, '0');
-    _lines.add('${two(now.hour)}:${two(now.minute)}:${two(now.second)} [$source] ${redact(message)}');
+    final line = '${two(now.hour)}:${two(now.minute)}:${two(now.second)} [$source] ${redact(message)}';
+    _lines.add(line);
+    // Sistem günlüğüne de (adb logcat; adresler yine gizli).
+    debugPrint('redox $line');
     if (_lines.length > limit) _lines.removeRange(0, _lines.length - limit);
     notifyListeners();
   }

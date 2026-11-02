@@ -359,7 +359,7 @@ void main() {
     await tester.tap(find.text('İzle'));
     await tester.pumpAndSettle();
     expect(watched!.$1[watched!.$2].streams.single, 'http://ornek/fb.mp4');
-    expect(find.byType(FilmDetailPage), findsNothing);
+    expect(find.byType(FilmDetailPage), findsOneWidget, reason: 'oynatıcıdan Geri film sayfasına döner');
 
     await tester.pumpWidget(
       _app(

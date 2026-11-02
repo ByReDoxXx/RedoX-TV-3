@@ -15,6 +15,9 @@ void main() {
     expect(Tmdb.cleanName('Kuzey Güney - Türkçe Dublaj'), ('Kuzey Güney', null));
     expect(Tmdb.cleanName('1917'), ('1917', null));
     expect(Tmdb.cleanName('Film A'), ('Film A', null));
+    expect(Tmdb.cleanName('┃MULTI┃ Spider-Man: Brand New Day 4K - 2026'), ('Spider-Man: Brand New Day', 2026));
+    expect(Tmdb.cleanName('|MULTI| The Birthday Gift - 2026'), ('The Birthday Gift', 2026));
+    expect(Tmdb.cleanName('[NL] |MULTI / LINGO| Tangled'), ('Tangled', null));
   });
 
   test('find: Türkçe arama, yetki başlığı, önbellek; bulunamayan da saklanır, ağ hatası saklanmaz', () async {

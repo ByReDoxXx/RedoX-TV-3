@@ -161,6 +161,7 @@ class AppSettings extends ChangeNotifier {
     this._subtitleBackground = SubtitleBackground.translucent,
     this._subtitlePosition = SubtitlePosition.lowest,
     this._subtitleBold = false,
+    this._landscapePlayer = true,
     this.onSave,
   });
 
@@ -194,6 +195,7 @@ class AppSettings extends ChangeNotifier {
       subtitleBackground: pick(SubtitleBackground.values, 'altyazi_arka', SubtitleBackground.translucent),
       subtitlePosition: pick(SubtitlePosition.values, 'altyazi_konum', SubtitlePosition.lowest),
       subtitleBold: prefs.getBool('${_prefix}altyazi_kalin') ?? false,
+      landscapePlayer: prefs.getBool('${_prefix}yatay_oynatici') ?? true,
       onSave: (s) async {
         await prefs.setString('${_prefix}yazi', s.textSize.name);
         await prefs.setBool('${_prefix}hareketler', s.gestures);
@@ -205,6 +207,7 @@ class AppSettings extends ChangeNotifier {
         await prefs.setString('${_prefix}altyazi_arka', s.subtitleBackground.name);
         await prefs.setString('${_prefix}altyazi_konum', s.subtitlePosition.name);
         await prefs.setBool('${_prefix}altyazi_kalin', s.subtitleBold);
+        await prefs.setBool('${_prefix}yatay_oynatici', s.landscapePlayer);
         await prefs.setString('${_prefix}kalite', s.quality.name);
         await prefs.setString('${_prefix}olcek', s.scale.name);
         await prefs.setString('${_prefix}onbellek', s.buffer.name);
@@ -253,6 +256,13 @@ class AppSettings extends ChangeNotifier {
   set subtitleBackground(SubtitleBackground v) => _set(() => _subtitleBackground = v);
   set subtitlePosition(SubtitlePosition v) => _set(() => _subtitlePosition = v);
   set subtitleBold(bool v) => _set(() => _subtitleBold = v);
+
+  bool _landscapePlayer;
+
+  /// Telefonda oynatıcı yatay açılır, telefon çevrilince dikeye dönmez
+  /// (çevirince görüntü yüzeyi yeniden kurulup ~2 sn donuyordu).
+  bool get landscapePlayer => _landscapePlayer;
+  set landscapePlayer(bool v) => _set(() => _landscapePlayer = v);
 
   /// Bütün uygulamada yazı boyutu.
   TextSize get textSize => _textSize;

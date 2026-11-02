@@ -162,12 +162,14 @@ class Tmdb {
 
   static final _bracketed = RegExp(r'[\[({][^\])}]*[\])}]');
   static final _year = RegExp(r'(?:^|\s)((?:19|20)\d{2})(?=\s|$)');
-  static final _prefix = RegExp(r'^(?:[A-Z]{2,3}\s*[:|\-]\s*|\|[A-Z]{2,3}\|\s*)');
+
+  /// Dil/kaynak öneki: "TR:", "|TR|", "┃MULTI┃", "[NL]" (dikey çizgi ASCII ya da kutu çizgisi).
+  static final _prefix = RegExp(r'^(?:[A-Z]{2,3}\s*[:|\-]\s*|[|┃│\[][A-Z0-9 /+-]{2,20}[|┃│\]]\s*)+');
 
   /// Kalite ve dil etiketleri (küçük harfle; kelime kelime atılır).
   static const _noise = {
     '4k', 'uhd', 'fhd', 'hd', 'sd', 'hdr', '1080p', '720p', '2160p', 'hevc', 'x264', 'x265', 'h264', 'h265', //
-    'webdl', 'web-dl', 'bluray', 'dual', 'altyazılı', 'altyazili', 'dublaj', 'tr',
+    'webdl', 'web-dl', 'bluray', 'dual', 'altyazılı', 'altyazili', 'dublaj', 'tr', 'multi', 'sdr', '-',
   };
 
   /// IPTV kayıt adından arama metni ve yıl: "TR: Başlangıç (2010) [4K]" →

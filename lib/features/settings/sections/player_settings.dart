@@ -50,6 +50,14 @@ class PlayerSettings extends StatelessWidget {
           onChanged: (v) => settings.failover = v,
         ),
         SwitchSetting(
+          title: 'Telefonda yatay oynatıcı',
+          description:
+              'Telefonda yayın yatay açılır, telefonu çevirince dikeye dönmez. Kapalıysa telefonla birlikte döner '
+              '(dönerken görüntü bir an durur).',
+          value: settings.landscapePlayer,
+          onChanged: (v) => settings.landscapePlayer = v,
+        ),
+        SwitchSetting(
           title: 'Arka planda ses',
           description:
               'Uygulamadan çıkınca ya da ekran kapanınca ses sürer. Kapalıysa yayın duraklar, dönünce devam eder. '

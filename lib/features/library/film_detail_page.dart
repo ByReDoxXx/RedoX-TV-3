@@ -138,12 +138,8 @@ class FilmDetailPage extends StatelessWidget {
               label: 'İzle',
               icon: RedoxIcons.play,
               autofocus: true,
-              onPressed: onWatch == null
-                  ? null
-                  : () {
-                      Navigator.of(context).pop();
-                      onWatch!();
-                    },
+              // Sayfa açık kalır: oynatıcıdan Geri film sayfasına döner.
+              onPressed: onWatch,
             ),
           ],
         ),

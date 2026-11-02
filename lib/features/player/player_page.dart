@@ -113,6 +113,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   final bool _gestures = AppSettings.instance.gestures;
 
+  /// Telefonda oynatıcı yatayda (biçim FormFactor.current: tema henüz yok).
+  final bool _landscape = AppSettings.instance.landscapePlayer && FormFactor.current == FormFactor.phone;
+
   /// Açılışta Ayarlar › Oynatıcı › Görüntü ölçeği.
   VideoScale _scale = VideoScale.values.byName(AppSettings.instance.scale.name);
   int _shownIndex = -1;
@@ -131,6 +134,16 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Ayarlar › Telefonda yatay oynatıcı: telefon çevrilince görüntü yüzeyi
+    // yeniden kurulup donuyordu (Pixel'de görüldü); oynatıcı yatayda kalır.
+    if (_landscape) {
+      unawaited(
+        SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]),
+      );
+    }
     _session.addListener(_onSession);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onSession());
   }
@@ -141,6 +154,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     // (değişmediyse etkisiz; dispose'da tema okunamaz, biçime bakılmaz).
     unawaited(DeviceControls.setBrightness(null));
     WidgetsBinding.instance.removeObserver(this);
+    if (_landscape) unawaited(SystemChrome.setPreferredOrientations(const []));
     _barTimer?.cancel();
     _digitTimer?.cancel();
     _noticeTimer?.cancel();
