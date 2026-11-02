@@ -112,7 +112,7 @@ class _LibraryPageState extends State<LibraryPage> {
         final inset = EdgeInsets.fromLTRB(padding.left, phone ? 4 : 16, padding.right, phone ? padding.bottom : 0);
         if (loaded.isEmpty) return Padding(padding: inset, child: _empty(context));
         if (widget.kind == SourceKind.film) {
-          final all = [for (final (_, l) in loaded) ...l];
+          final all = _films(loaded);
           return _posterGrid<LiveChannel>(
             items: all,
             categoryOf: (c) => c.category,
@@ -173,6 +173,10 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
+  /// Izgara listesinin kategorilere ayrılmışı (liste değişince yeniden).
+  Object? _groupedOf;
+  Map<String, List<Object?>> _groups = const {};
+
   /// Afiş ızgarası (Film: filmler; Dizi: diziler) ve üstte kategori
   /// çipleri (birden çok kategori varsa).
   Widget _posterGrid<T>({
@@ -185,13 +189,19 @@ class _LibraryPageState extends State<LibraryPage> {
     required EdgeInsets padding,
     required bool phone,
   }) {
-    final categories = {for (final x in items) categoryOf(x)}.toList();
-    final list = _category == null
-        ? items
-        : [
-            for (final x in items)
-              if (categoryOf(x) == _category) x,
-          ];
+    // Kategoriler ve sayıları liste başına bir kez (145 bin filmde her
+    // yeniden çizimde baştan saymak Chromecast'i donduruyordu).
+    if (!identical(items, _groupedOf)) {
+      _groupedOf = items;
+      final groups = <String, List<Object?>>{};
+      for (final x in items) {
+        groups.putIfAbsent(categoryOf(x), () => []).add(x);
+      }
+      _groups = groups;
+    }
+    final groups = _groups;
+    final categories = groups.keys.toList();
+    final list = _category == null ? items : [...?groups[_category]?.cast<T>()];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -204,7 +214,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 children: [
                   for (final (i, (c, label, count)) in [
                     (null, 'Tümü', items.length),
-                    for (final c in categories) (c, c, items.where((x) => categoryOf(x) == c).length),
+                    for (final c in categories) (c, c, groups[c]!.length),
                   ].indexed) ...[
                     if (i > 0) const SizedBox(width: 12),
                     CategoryChip(
@@ -260,6 +270,19 @@ class _LibraryPageState extends State<LibraryPage> {
           .push(FilmDetailPage.route(film: list[i], tmdb: tmdb, onWatch: () => unawaited(widget.onWatch!(list, i)))),
     );
   }
+
+  /// Film listelerinin kayıtları tek listede; yüklenen liste değişmedikçe
+  /// aynı nesne (ızgaranın kategori önbelleği ona bağlı).
+  List<LiveChannel> _films(List<(UserSource, List<LiveChannel>)> loaded) {
+    if (!identical(loaded, _filmsOf)) {
+      _filmsOf = loaded;
+      _allFilms = loaded.length == 1 ? loaded.single.$2 : [for (final (_, l) in loaded) ...l];
+    }
+    return _allFilms;
+  }
+
+  Object? _filmsOf;
+  List<LiveChannel> _allFilms = const [];
 
   /// Dizi listelerinin dizileri; yüklenen liste değişmedikçe yeniden
   /// kurulmaz (büyük listelerde on binlerce bölüm).

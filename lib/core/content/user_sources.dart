@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -179,13 +180,26 @@ class UserSources extends ChangeNotifier {
   File _file(String id) => File('${dir.path}/$id.m3u');
 
   /// Listenin kanalları (dosyadan; bellekte tutulur).
+  /// Listenin kayıtları. Dosya ayrı bir iş parçacığında okunup ayrıştırılır:
+  /// 145 bin filmlik listede ana iş parçacığı Chromecast'te 30 sn'den uzun
+  /// meşgul kalıyor, Android uygulamayı "yanıt vermiyor" diye kapatıyordu.
+  /// Aynı liste için süren okuma paylaşılır.
   Future<List<LiveChannel>> channels(UserSource s) async {
     final cached = _cache[s.id];
     if (cached != null) return cached;
-    final f = _file(s.id);
-    if (!await f.exists()) return const [];
-    return _cache[s.id] = M3uParser.parse(await f.readAsString());
+    final path = _file(s.id).path;
+    final list = await (_reading[s.id] ??=
+        Isolate.run(() {
+          final f = File(path);
+          return f.existsSync() ? M3uParser.parse(f.readAsStringSync()) : const <LiveChannel>[];
+        }).whenComplete(() {
+          // Blok gövde: ok işlevi kaldırılan Future'ı döndürür, okuma kendini bekler.
+          _reading.remove(s.id);
+        }));
+    return _cache[s.id] = list;
   }
+
+  final _reading = <String, Future<List<LiveChannel>>>{};
 
   // ---- Ekleme -------------------------------------------------------------
 
