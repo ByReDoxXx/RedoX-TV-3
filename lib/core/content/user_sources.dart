@@ -188,14 +188,13 @@ class UserSources extends ChangeNotifier {
     final cached = _cache[s.id];
     if (cached != null) return cached;
     final path = _file(s.id).path;
-    final list = await (_reading[s.id] ??=
-        Isolate.run(() {
-          final f = File(path);
-          return f.existsSync() ? M3uParser.parse(f.readAsStringSync()) : const <LiveChannel>[];
-        }).whenComplete(() {
-          // Blok gövde: ok işlevi kaldırılan Future'ı döndürür, okuma kendini bekler.
-          _reading.remove(s.id);
-        }));
+    // Statik işlev ve yalnız yol gönderilir: yerinde yazılan kapanış sürüm
+    // derlemesinde nesnenin kendisini (ve ekran ağacını) da taşımaya
+    // çalışıp "unsendable" hatası veriyordu (Chromecast'te görüldü).
+    final list = await (_reading[s.id] ??= Isolate.run(_ParseFile(path).call).whenComplete(() {
+      // Blok gövde: ok işlevi kaldırılan Future'ı döndürür, okuma kendini bekler.
+      _reading.remove(s.id);
+    }));
     return _cache[s.id] = list;
   }
 
@@ -515,5 +514,17 @@ class UserSources extends ChangeNotifier {
   Future<void> _save() async {
     await File('${dir.path}/kaynaklar.json').writeAsString(jsonEncode([for (final s in _items) s.toJson()]));
     notifyListeners();
+  }
+}
+
+/// Ayrı iş parçacığında liste dosyasını okuyup ayrıştırır (yalnız yolu taşır).
+class _ParseFile {
+  const _ParseFile(this.path);
+
+  final String path;
+
+  List<LiveChannel> call() {
+    final f = File(path);
+    return f.existsSync() ? M3uParser.parse(f.readAsStringSync()) : const [];
   }
 }

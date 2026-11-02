@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/content/content_locks.dart';
+import '../../core/content/diagnostics.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/series_catalog.dart';
@@ -71,9 +72,15 @@ class _LibraryPageState extends State<LibraryPage> {
   late Future<List<(UserSource, List<LiveChannel>)>> _loaded = _load();
   String? _category;
 
-  Future<List<(UserSource, List<LiveChannel>)>> _load() async => [
-    for (final s in widget.sources.of(widget.kind)) (s, await widget.sources.channels(s)),
-  ];
+  Future<List<(UserSource, List<LiveChannel>)>> _load() async {
+    try {
+      return [for (final s in widget.sources.of(widget.kind)) (s, await widget.sources.channels(s))];
+    } catch (e) {
+      // Okunamayan liste sessiz boş sayfa bırakıyordu: günlüğe ve ekrana.
+      Diagnostics.instance.log('liste', '${widget.kind.label} okunamadı: $e');
+      rethrow;
+    }
+  }
 
   @override
   void initState() {
@@ -108,8 +115,32 @@ class _LibraryPageState extends State<LibraryPage> {
       future: _loaded,
       builder: (context, snap) {
         final loaded = snap.data;
-        if (loaded == null) return const SizedBox.shrink();
         final inset = EdgeInsets.fromLTRB(padding.left, phone ? 4 : 16, padding.right, phone ? padding.bottom : 0);
+        if (snap.hasError) {
+          return Padding(
+            padding: inset,
+            child: Text(
+              '${widget.kind.label} listeleri okunamadı (${snap.error}).',
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: RedoxRoles.error),
+            ),
+          );
+        }
+        if (loaded == null) {
+          // Büyük liste ayrı iş parçacığında okunuyor.
+          return Padding(
+            padding: inset,
+            child: Row(
+              children: [
+                const SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                const SizedBox(width: 14),
+                Text(
+                  '${widget.kind.label} listeleri yükleniyor…',
+                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                ),
+              ],
+            ),
+          );
+        }
         if (loaded.isEmpty) return Padding(padding: inset, child: _empty(context));
         if (widget.kind == SourceKind.film) {
           final all = _films(loaded);
