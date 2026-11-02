@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/content/source_receiver.dart';
@@ -12,6 +12,7 @@ import '../../core/theme/redox_shapes.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_icon.dart';
+import 'file_browser_page.dart';
 import 'widgets/phone_qr_dialog.dart';
 import 'widgets/source_form_dialog.dart';
 import 'widgets/source_widgets.dart';
@@ -59,13 +60,16 @@ enum AddMethod {
 /// pencerede (QR ve yerel sunucu yalnız o açıkken); telefonda "Telefondan"
 /// kutusu yoktur.
 class AddSourceTab extends StatefulWidget {
-  const AddSourceTab({super.key, required this.sources, this.receiver, this.padding = EdgeInsets.zero});
+  const AddSourceTab({super.key, required this.sources, this.receiver, this.fileRoots, this.padding = EdgeInsets.zero});
 
   final UserSources sources;
 
   /// Telefondan ekleme alıcısı; null ise pencere [SourceReceiver] kurar
   /// (testlerde sunucusuz sahtesi verilir).
   final SourceReceiver? receiver;
+
+  /// Dosya gezgininin kökleri; null ise cihazınkiler (testlerde geçici klasör).
+  final List<(String, String)>? fileRoots;
 
   /// Kayma alanının iç payı (sayfa kenarları).
   final EdgeInsets padding;
@@ -198,19 +202,14 @@ class _AddSourceTabState extends State<AddSourceTab> {
     }
   }
 
+  /// Dosyadan: uygulama içi dosya gezgini (izin, kökler, klasörler).
   Future<void> _addFile() async {
-    final List<PlatformFile> files;
-    try {
-      files = await FilePicker.pickFiles();
-    } on Object {
-      _toast('Bu cihazda dosya seçici açılamadı. Telefondan QR ile ekleyin.');
-      return;
-    }
-    if (files.isEmpty) return;
-    final f = files.first;
+    final path = await Navigator.of(context).push(FileBrowserPage.route(roots: widget.fileRoots));
+    if (path == null) return;
     await _run(() async {
-      final text = await f.xFile.readAsString();
-      final name = f.name.replaceAll(RegExp(r'\.(m3u8?|json|html?)$', caseSensitive: false), '');
+      final text = await File(path).readAsString();
+      final file = path.split(RegExp(r'[/\\]')).last;
+      final name = file.replaceAll(RegExp(r'\.(m3u8?|json|html?|txt)$', caseSensitive: false), '');
       return _added(await _sources.addText(name, text, origin: SourceOrigin.file, kind: _content.kind));
     });
   }

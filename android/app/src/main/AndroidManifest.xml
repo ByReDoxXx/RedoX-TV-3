@@ -2,6 +2,11 @@
     <!-- Yayınlar ağdan oynatılır (media_kit). Hata ayıklama derlemesinde
          Flutter ekler; sürüm derlemesinde burada olmalı. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Uygulama içi dosya gezgini (Kaynak ekle › Dosyadan): Android 11+
+         "Tüm dosyalara erişim" (kullanıcı ayardan açar), daha eskide okuma
+         izni. Play Store'da bu izin ayrıca beyan ister. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <!-- usesCleartextTraffic: kullanıcının eklediği M3U listelerinin çoğu
          http:// (IPTV); dart:io HttpClient Android'in şifresiz bağlantı
          ayarına uyar, kapalıyken "Insecure HTTP is not allowed" verir. -->
