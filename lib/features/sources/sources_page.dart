@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/content/live_channel.dart';
+import '../../core/content/favorites.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
@@ -19,6 +20,7 @@ class SourcesPage extends StatelessWidget {
   const SourcesPage({
     super.key,
     required this.sources,
+    this.favorites,
     required this.clock,
     required this.profileName,
     this.onWatch,
@@ -29,6 +31,9 @@ class SourcesPage extends StatelessWidget {
   });
 
   final UserSources sources;
+
+  /// Kaynaktaki kayıtlarda yıldız (Favoriler › Kaynaklar).
+  final Favorites? favorites;
 
   /// Klasördeki kanalı tam ekran açar.
   final Future<void> Function(List<LiveChannel> channels, int index)? onWatch;
@@ -121,7 +126,7 @@ class SourcesPage extends StatelessWidget {
 
   Future<void> _open(BuildContext context, UserSource s) => Navigator.of(context).push(
     MaterialPageRoute<void>(
-      builder: (_) => SourceChannelsPage(sources: sources, source: s, onWatch: onWatch),
+      builder: (_) => SourceChannelsPage(sources: sources, source: s, onWatch: onWatch, favorites: favorites),
     ),
   );
 }

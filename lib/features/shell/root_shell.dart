@@ -330,6 +330,7 @@ class _RootShellState extends State<RootShell> {
     ),
     AppSection.sources when widget.sources != null && !_kids => SourcesPage(
       sources: widget.sources!,
+      favorites: widget.favorites,
       clock: _clock,
       profileName: _home.profileName,
       onWatch: (list, i) => _watch(context, list[i], from: list),

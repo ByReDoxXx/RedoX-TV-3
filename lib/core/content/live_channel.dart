@@ -74,6 +74,23 @@ class LiveChannel {
         streams: streams,
       );
 
+  /// Aynı kanal, başka adla (Kaynaklar'ın klasör görünümü: "Dizi/1.Sezon/
+  /// Bölüm01" → "Bölüm01").
+  LiveChannel renamed(String newName) => LiveChannel(
+    name: newName,
+    number: number,
+    category: category,
+    programTitle: programTitle,
+    timeRange: timeRange,
+    genre: genre,
+    progress: progress,
+    accent: accent,
+    live: live,
+    next: next,
+    logoUrl: logoUrl,
+    streams: streams,
+  );
+
   @override
   bool operator ==(Object other) => other is LiveChannel && other.number == number && other.name == name;
 

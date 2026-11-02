@@ -4,8 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
-import 'package:redox_tv/core/navigation/double_back_to_exit.dart';
-import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/core/playback/radio_controller.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/features/favorites/favorites_page.dart';
@@ -147,116 +145,61 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  group('Klasörler', () {
-    Favorites tree() => Favorites()
-      ..addFolder(const [], 'Diziler')
-      ..importChannels(
-        const ['Diziler'],
-        const [
-          LiveChannel(name: 'Bölüm01', number: 1, category: 'Dizi İsmi/1.Sezon', streams: ['d11']),
-          LiveChannel(name: 'Bölüm02', number: 2, category: 'Dizi İsmi/1.Sezon', streams: ['d12']),
-          LiveChannel(name: 'Bölüm01', number: 3, category: 'Dizi İsmi/2.Sezon', streams: ['d21']),
-        ],
-      );
+  group('Kaynaklar sekmesi (eski Klasörler yerine)', () {
+    Favorites withSources() => Favorites(
+      sources: const [
+        FavoriteItem(name: 'Film A', url: 'f/a'),
+        FavoriteItem(name: 'Bölüm 1', url: 'd/1'),
+        FavoriteItem(name: 'Bölüm 2', url: 'd/2'),
+      ],
+    );
 
-    for (final (f, size) in const [(FormFactor.tv, Size(960, 540)), (FormFactor.phone, Size(390, 844))]) {
-      testWidgets('${f.name}: iç içe klasörlerde gezinir, kayıt klasörün listesiyle açılır, Yukarı geri döner', (
-        tester,
-      ) async {
-        await _size(tester, size);
-        final fav = tree();
-        (List<LiveChannel>, int)? watched;
-        final key = GlobalKey();
-        await tester.pumpWidget(_app(f, fav, onWatchList: (l, i) => watched = (l, i), boundary: key));
-        await tester.pump();
-        await tester.tap(find.text('Klasörler'));
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-        expect(find.text('Diziler'), findsOneWidget);
-
-        await tester.tap(find.text('Diziler'));
-        await tester.pump();
-        await tester.tap(find.text('Dizi İsmi'));
-        await tester.pump();
-        expect(find.text('2 klasör · 3 kayıt', skipOffstage: false), findsNothing);
-        expect(find.text('Klasörler › Diziler › Dizi İsmi'), findsOneWidget);
-        await tester.tap(find.text('1.Sezon'));
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-        await maybeSnapshot(tester, key, 'build/favoriler/klasor-${f.name}.png', pixelRatio: 2);
-
-        await tester.tap(find.text('Bölüm02'));
-        expect(watched!.$2, 1);
-        expect([for (final c in watched!.$1) c.streams.single], ['d11', 'd12']);
-
-        await tester.tap(find.text('Yukarı'));
-        await tester.pump();
-        expect(find.text('2.Sezon'), findsOneWidget);
-      });
-    }
-
-    testWidgets('TV: klasör ekle sistem klavyesiyle; silme onay ister', (tester) async {
+    testWidgets('Klasörler sekmesi yok; Kaynaklar kayıtları listeler ve listeyle açar, kaldır çıkarır', (tester) async {
       await _size(tester, const Size(960, 540));
-      SystemTextInput.debugOverride = (title, value, kind) async => 'Filmler';
-      addTearDown(() => SystemTextInput.debugOverride = null);
-      final fav = tree();
-      await tester.pumpWidget(_app(FormFactor.tv, fav));
+      final fav = withSources();
+      (List<LiveChannel>, int)? watched;
+      await tester.pumpWidget(_app(FormFactor.tv, fav, onWatchList: (l, i) => watched = (l, i)));
       await tester.pump();
-      await tester.tap(find.text('Klasörler'));
+      expect(find.text('Klasörler'), findsNothing);
+      await tester.tap(find.text('Kaynaklar'));
       await tester.pump();
-      await tester.tap(find.text('Klasör ekle'));
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.text('Ad'));
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Bölüm 1'));
+      expect(watched!.$2, 1);
+      expect([for (final c in watched!.$1) c.streams.single], ['f/a', 'd/1', 'd/2']);
+      await tester.tap(find.bySemanticsLabel('Favorilerden çıkar').first);
       await tester.pump();
-      await tester.tap(find.text('Ekle'));
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(fav.folders.child('Filmler'), isNotNull);
-
-      // Diziler (ilk satır) silinir.
-      await tester.tap(find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Klasörü sil').first);
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.textContaining('silinsin mi?'), findsOneWidget);
-      await tester.tap(find.text('Sil'));
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(fav.folders.child('Diziler'), isNull);
+      expect(fav.sources.map((i) => i.url), ['d/1', 'd/2']);
     });
 
-    testWidgets('Geri alt klasörden bir üst klasöre çıkar; kökte kabuğa bırakır', (tester) async {
-      await _size(tester, const Size(960, 540));
-      var shellBack = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: RedoxTheme.dark(formFactor: FormFactor.tv),
-          home: DoubleBackToExit(
-            onBack: () {
-              shellBack++;
-              return true;
-            },
-            child: Scaffold(
-              body: FavoritesPage(favorites: tree(), channels: _channels, clock: '20:45', profileName: 'Profil 1'),
-            ),
-          ),
-        ),
-      );
+    testWidgets('telefonda "Sıram"da sürükle-bırak sırayı değiştirir', (tester) async {
+      await _size(tester, const Size(390, 844));
+      final fav = withSources();
+      await tester.pumpWidget(_app(FormFactor.phone, fav));
       await tester.pump();
-      await tester.tap(find.text('Klasörler'));
+      await tester.tap(find.text('Kaynaklar'));
       await tester.pump();
-      await tester.tap(find.text('Diziler'));
-      await tester.pump();
-      await tester.tap(find.text('Dizi İsmi'));
-      await tester.pump();
-      expect(find.text('Klasörler › Diziler › Dizi İsmi'), findsOneWidget);
-
-      await tester.binding.handlePopRoute();
-      await tester.pump();
-      expect(find.text('Klasörler › Diziler'), findsOneWidget);
-      await tester.binding.handlePopRoute();
-      await tester.pump();
-      expect(find.text('Klasörler'), findsWidgets);
-      expect(shellBack, 0);
-      await tester.binding.handlePopRoute();
-      await tester.pump();
-      expect(shellBack, 1, reason: 'kökte Geri kabuğun');
+      final handle = find.byType(ReorderableDragStartListener).first;
+      final gesture = await tester.startGesture(tester.getCenter(handle));
+      await tester.pump(const Duration(milliseconds: 100));
+      await gesture.moveBy(const Offset(0, 300));
+      await tester.pump(const Duration(milliseconds: 100));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(fav.sources.map((i) => i.url), ['d/1', 'd/2', 'f/a']);
     });
+  });
+
+  test('eski klasör favorileri Kaynaklar listesine aktarılır (ağaç sırasıyla, tekrarsız)', () {
+    const json =
+        '{"ad":"","klasorler":[{"ad":"Diziler","klasorler":[{"ad":"1.Sezon","kayitlar":['
+        '{"ad":"Bölüm01","adres":"d11"},{"ad":"Bölüm02","adres":"d12","logo":"l.png"}]}],'
+        '"kayitlar":[{"ad":"Fragman","adres":"d11"}]}],"kayitlar":[{"ad":"Film","adres":"f1"}]}';
+    expect(
+      [for (final i in Favorites.migrateFolders(json)) (i.name, i.url, i.logo)],
+      [('Film', 'f1', null), ('Fragman', 'd11', null), ('Bölüm02', 'd12', 'l.png')],
+    );
+    expect(Favorites.migrateFolders(null), isEmpty);
+    expect(Favorites.migrateFolders('bozuk'), isEmpty);
   });
 }

@@ -22,7 +22,6 @@ import '../../core/ui/long_press_select.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
 import '../radio/radio_player_page.dart';
-import 'favorite_folders_view.dart';
 import '../radio/widgets/station_avatar.dart';
 
 /// Favori sırası (eski uygulamadaki "Sırala" çipleri; "Sıram" elle dizilen).
@@ -37,10 +36,16 @@ enum FavoriteSort {
   final String label;
 }
 
+/// Favorilerin sekmesi. Eski "Klasörler" sekmesi kaldırıldı (kullanıcı
+/// isteği: klasörler Kaynaklar'da); yerine Kaynaklar'dan yıldızla eklenenler.
+enum FavoriteTab { tv, radio, sources }
+
 /// Favoriler (eski uygulamadaki sıralanabilir listenin uyarlaması): TV
-/// kanalları ve radyo istasyonları ayrı sekmede; satırda sıra, karo, ad, şu
-/// anki program (TV) ya da tür (radyo); sağda yukarı/aşağı (yalnız "Sıram"da)
-/// ve kaldır. OK/dokunma kanalı tam ekran açar ya da istasyonu çalar.
+/// kanalları, radyo istasyonları ve Kaynaklar'dan eklenenler ayrı sekmede;
+/// satırda sıra, karo, ad, şu anki program (TV) ya da tür (radyo); sağda
+/// yukarı/aşağı (yalnız "Sıram"da) ve kaldır. OK/dokunma kanalı tam ekran
+/// açar ya da istasyonu çalar. Telefon ve tablette "Sıram"da satırın solundaki
+/// tutamaçla sürükle-bırak (kullanıcı isteği).
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({
     super.key,
@@ -64,8 +69,8 @@ class FavoritesPage extends StatefulWidget {
   final RadioController? radio;
   final ValueChanged<LiveChannel>? onWatch;
 
-  /// Klasörler sekmesi: aktarılacak listeler (Kaynaklar) ve klasörün
-  /// kayıtlarıyla oynatıcı.
+  /// Kaynaklar sekmesi: verilmişse sekme görünür; kayıtlar bu listeyle
+  /// oynatıcıda açılır.
   final UserSources? sources;
   final void Function(List<LiveChannel> list, int index)? onWatchList;
   final String clock;
@@ -81,14 +86,17 @@ class FavoritesPage extends StatefulWidget {
 }
 
 class _FavoritesPageState extends State<FavoritesPage> {
-  bool _radio = false;
+  FavoriteTab _tab = FavoriteTab.tv;
 
-  /// Klasörler sekmesi açık.
-  bool _folders = false;
+  bool get _radio => _tab == FavoriteTab.radio;
 
-  /// Taşınan kayıt (kanal/istasyon numarası; kullanıcı isteği: "OK uzun
-  /// basılınca kanal sırası değiştirilebilsin"). ▲▼ taşır, OK/Geri bitirir.
-  int? _moving;
+  /// Taşınan kayıt ([_keyOf]; kullanıcı isteği: "OK uzun basılınca kanal
+  /// sırası değiştirilebilsin"). ▲▼ taşır, OK/Geri bitirir.
+  String? _moving;
+
+  /// Satırın kimliği: kanal/istasyon numarası; Kaynaklar'da adres (numara
+  /// sıradır, taşıyınca değişir).
+  String _keyOf(LiveChannel c) => _tab == FavoriteTab.sources ? c.streams.first : '${c.number}';
 
   DoubleBackToExitState? _back;
 
@@ -117,7 +125,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
   /// Uzun OK/dokunma: taşıma kipi ("Sıram"a geçer).
   void _startMove(LiveChannel c) => setState(() {
     _sort = FavoriteSort.custom;
-    _moving = c.number;
+    _moving = _keyOf(c);
   });
 
   /// Taşıma kipinde ▲▼ taşır, OK bitirir.
@@ -126,7 +134,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     if (moving == null || e is KeyUpEvent) return KeyEventResult.ignored;
     final key = e.logicalKey;
     final items = _items();
-    final i = items.indexWhere((c) => c.number == moving);
+    final i = items.indexWhere((c) => _keyOf(c) == moving);
     if (i < 0) return KeyEventResult.ignored;
     if (key == LogicalKeyboardKey.arrowUp) {
       if (i > 0) _move(items[i], i - 1);
@@ -147,9 +155,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Favorites get _fav => widget.favorites;
 
   List<LiveChannel> _items() {
-    final source = _radio ? widget.radio?.stations ?? const <LiveChannel>[] : widget.channels;
-    final byNumber = {for (final c in source) c.number: c};
-    final list = [for (final n in _radio ? _fav.radios : _fav.channels) ?byNumber[n]];
+    final List<LiveChannel> list;
+    if (_tab == FavoriteTab.sources) {
+      list = _fav.sourceChannels;
+    } else {
+      final source = _radio ? widget.radio?.stations ?? const <LiveChannel>[] : widget.channels;
+      final byNumber = {for (final c in source) c.number: c};
+      list = [for (final n in _radio ? _fav.radios : _fav.channels) ?byNumber[n]];
+    }
     switch (_sort) {
       case FavoriteSort.custom:
         break;
@@ -163,11 +176,23 @@ class _FavoritesPageState extends State<FavoritesPage> {
     return list;
   }
 
-  void _move(LiveChannel c, int to) => _radio ? _fav.moveRadio(c.number, to) : _fav.moveChannel(c.number, to);
+  void _move(LiveChannel c, int to) => switch (_tab) {
+    FavoriteTab.tv => _fav.moveChannel(c.number, to),
+    FavoriteTab.radio => _fav.moveRadio(c.number, to),
+    FavoriteTab.sources => _fav.moveSource(c.streams.first, to),
+  };
 
-  void _remove(LiveChannel c) => _radio ? _fav.toggleRadio(c.number) : _fav.toggleChannel(c.number);
+  void _remove(LiveChannel c) => switch (_tab) {
+    FavoriteTab.tv => _fav.toggleChannel(c.number),
+    FavoriteTab.radio => _fav.toggleRadio(c.number),
+    FavoriteTab.sources => _fav.toggleSource(FavoriteItem.of(c)),
+  };
 
   Future<void> _open(LiveChannel c, List<LiveChannel> list) async {
+    if (_tab == FavoriteTab.sources) {
+      widget.onWatchList?.call(list, list.indexOf(c));
+      return;
+    }
     if (!_radio) {
       widget.onWatch?.call(c);
       return;
@@ -183,8 +208,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final phone = metrics.formFactor == FormFactor.phone;
+    final touch = metrics.formFactor != FormFactor.tv;
     final padding = PageLayout.scrollPadding(context, metrics);
     final t = Theme.of(context).textTheme;
+    final tabs = [
+      (FavoriteTab.tv, 'TV kanalları', _fav.channels.length),
+      if (widget.radio != null) (FavoriteTab.radio, 'Radyo', _fav.radios.length),
+      if (widget.sources != null || _fav.sources.isNotEmpty) (FavoriteTab.sources, 'Kaynaklar', _fav.sources.length),
+    ];
     return ListenableBuilder(
       listenable: _fav,
       builder: (context, _) {
@@ -210,67 +241,56 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   padding: const EdgeInsets.fromLTRB(FavoritesPage.ringRoom, 16, 12, 6),
                   child: Row(
                     children: [
-                      CategoryChip(
-                        label: 'TV kanalları',
-                        count: _fav.channels.length,
-                        selected: !_radio && !_folders,
-                        onPressed: () => setState(() {
-                          _radio = false;
-                          _folders = false;
-                        }),
-                      ),
-                      if (widget.radio != null) ...[
-                        const SizedBox(width: 12),
+                      for (final (i, (tab, label, count)) in tabs.indexed) ...[
+                        if (i > 0) const SizedBox(width: 12),
                         CategoryChip(
-                          label: 'Radyo',
-                          count: _fav.radios.length,
-                          selected: _radio && !_folders,
+                          label: label,
+                          count: count,
+                          selected: tab == _tab,
                           onPressed: () => setState(() {
-                            _radio = true;
-                            _folders = false;
+                            _tab = tab;
+                            _moving = null;
                           }),
                         ),
                       ],
-                      const SizedBox(width: 12),
-                      CategoryChip(
-                        label: 'Klasörler',
-                        count: _fav.folders.total,
-                        selected: _folders,
-                        onPressed: () => setState(() => _folders = true),
-                      ),
-                      if (!_folders) ...[
-                        const SizedBox(width: 24),
-                        Text('Sırala:', style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
-                        for (final s in FavoriteSort.values) ...[
-                          const SizedBox(width: 12),
-                          CategoryChip(
-                            label: s.label,
-                            selected: s == _sort,
-                            onPressed: () => setState(() => _sort = s),
-                          ),
-                        ],
+                      const SizedBox(width: 24),
+                      Text('Sırala:', style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                      for (final s in FavoriteSort.values) ...[
+                        const SizedBox(width: 12),
+                        CategoryChip(label: s.label, selected: s == _sort, onPressed: () => setState(() => _sort = s)),
                       ],
                     ],
                   ),
                 ),
               ),
               Expanded(
-                child: _folders
-                    ? FavoriteFoldersView(
-                        favorites: _fav,
-                        sources: widget.sources,
-                        onWatch: widget.onWatchList,
-                        compact: phone,
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, phone ? padding.bottom : 16),
-                      )
-                    : items.isEmpty
+                child: items.isEmpty
                     ? Padding(
                         padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 0),
-                        child: Text(
-                          _radio
-                              ? 'Favori istasyon yok. Radyo listesinde ya da kadranda kalbe basarak ekleyin.'
-                              : 'Favori kanal yok. Televizyon\'da önizleme panelindeki kalbe basarak ekleyin.',
-                          style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                        child: Text(switch (_tab) {
+                          FavoriteTab.radio =>
+                            'Favori istasyon yok. Radyo listesinde ya da kadranda kalbe basarak ekleyin.',
+                          FavoriteTab.sources =>
+                            "Kaynaklardan favori yok. Kaynaklar'da bir kaydın yıldızına basarak ekleyin.",
+                          FavoriteTab.tv =>
+                            "Favori kanal yok. Televizyon'da önizleme panelindeki kalbe basarak ekleyin.",
+                        }, style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                      )
+                    : touch && _sort == FavoriteSort.custom
+                    ? ReorderableListView.builder(
+                        padding: EdgeInsets.fromLTRB(
+                          padding.left - FavoritesPage.ringRoom,
+                          6,
+                          padding.right,
+                          phone ? padding.bottom : 16,
+                        ),
+                        buildDefaultDragHandles: false,
+                        itemCount: items.length,
+                        onReorderItem: (from, to) => _move(items[from], to),
+                        itemBuilder: (context, i) => Padding(
+                          key: ValueKey(_keyOf(items[i])),
+                          padding: const EdgeInsets.fromLTRB(FavoritesPage.ringRoom, 0, 0, 8),
+                          child: SizedBox(height: _FavoriteRow.height, child: _row(items, i, phone, drag: true)),
                         ),
                       )
                     : Focus(
@@ -286,33 +306,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
                           ),
                           itemExtent: _FavoriteRow.height + 8,
                           itemCount: items.length,
-                          // Taşınan satırın odağı onunla gider (anahtar: numara).
+                          // Taşınan satırın odağı onunla gider (anahtar: kimlik).
                           findChildIndexCallback: (key) {
-                            final i = items.indexWhere((c) => ValueKey(c.number) == key);
+                            final i = items.indexWhere((c) => ValueKey(_keyOf(c)) == key);
                             return i < 0 ? null : i;
                           },
-                          itemBuilder: (context, i) {
-                            final c = items[i];
-                            final custom = _sort == FavoriteSort.custom;
-                            final moving = _moving == c.number;
-                            return Padding(
-                              key: ValueKey(c.number),
-                              padding: const EdgeInsets.fromLTRB(FavoritesPage.ringRoom, 0, 0, 8),
-                              child: _FavoriteRow(
-                                channel: c,
-                                moving: moving,
-                                onLongPress: () => moving ? setState(() => _moving = null) : _startMove(c),
-                                position: i + 1,
-                                radio: _radio,
-                                compact: phone,
-                                autofocus: i == 0,
-                                onPressed: () => moving ? setState(() => _moving = null) : _open(c, items),
-                                onUp: custom && i > 0 ? () => _move(c, i - 1) : null,
-                                onDown: custom && i < items.length - 1 ? () => _move(c, i + 1) : null,
-                                onRemove: () => _remove(c),
-                              ),
-                            );
-                          },
+                          itemBuilder: (context, i) => Padding(
+                            key: ValueKey(_keyOf(items[i])),
+                            padding: const EdgeInsets.fromLTRB(FavoritesPage.ringRoom, 0, 0, 8),
+                            child: _row(items, i, phone),
+                          ),
                         ),
                       ),
               ),
@@ -320,6 +323,38 @@ class _FavoritesPageState extends State<FavoritesPage> {
           ),
         );
       },
+    );
+  }
+
+  /// Satır. [drag]: dokunmatikte solda sürükleme tutamacı (sürükle-bırak).
+  Widget _row(List<LiveChannel> items, int i, bool phone, {bool drag = false}) {
+    final c = items[i];
+    final custom = _sort == FavoriteSort.custom;
+    final moving = _moving == _keyOf(c);
+    return _FavoriteRow(
+      channel: c,
+      moving: moving,
+      onLongPress: drag ? null : () => moving ? setState(() => _moving = null) : _startMove(c),
+      position: i + 1,
+      radio: _radio,
+      compact: phone,
+      autofocus: i == 0,
+      handle: drag
+          ? ReorderableDragStartListener(
+              index: i,
+              child: Semantics(
+                label: 'Sürükleyerek taşı',
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: RedoxIcon(RedoxIcons.menu, color: RedoxRoles.onSurfaceVariant),
+                ),
+              ),
+            )
+          : null,
+      onPressed: () => moving ? setState(() => _moving = null) : _open(c, items),
+      onUp: custom && i > 0 ? () => _move(c, i - 1) : null,
+      onDown: custom && i < items.length - 1 ? () => _move(c, i + 1) : null,
+      onRemove: () => _remove(c),
     );
   }
 }
@@ -337,9 +372,13 @@ class _FavoriteRow extends StatelessWidget {
     this.onLongPress,
     this.moving = false,
     this.autofocus = false,
+    this.handle,
   });
 
   static const height = 64.0;
+
+  /// Sürükle-bırak tutamacı (dokunmatik, "Sıram"); yoksa null.
+  final Widget? handle;
 
   final LiveChannel channel;
   final int position;
@@ -404,6 +443,7 @@ class _FavoriteRow extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
                         children: [
+                          ?handle,
                           StationAvatar(station: c, size: 44, radius: RedoxRadius.sm),
                           const SizedBox(width: 14),
                           if (!compact) ...[
@@ -448,7 +488,8 @@ class _FavoriteRow extends StatelessWidget {
             ),
           ),
           // Telefonda yer yok: yalnız "kaldır" (taşırken yukarı/aşağı da).
-          if (!compact || moving) ...[
+          // Sürükle-bırakta yukarı/aşağı gereksiz.
+          if ((!compact || moving) && handle == null) ...[
             _Action(icon: RedoxIcons.expandLess, label: 'Yukarı taşı', onPressed: onUp),
             const SizedBox(width: 6),
             _Action(icon: RedoxIcons.expandMore, label: 'Aşağı taşı', onPressed: onDown),
