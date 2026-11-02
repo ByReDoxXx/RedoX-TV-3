@@ -56,7 +56,8 @@ class SourcesPage extends StatelessWidget {
     return ListenableBuilder(
       listenable: sources,
       builder: (context, _) {
-        final items = sources.items;
+        // Film ve Dizi kaynakları kendi bölümlerinde.
+        final items = sources.of(SourceKind.live);
         final header = AppHeader(
           clock: clock,
           profileName: profileName,

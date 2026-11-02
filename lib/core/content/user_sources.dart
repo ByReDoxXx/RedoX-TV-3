@@ -29,6 +29,19 @@ enum SourceOrigin {
   final String label;
 }
 
+/// Kaynağın içeriği (Ayarlar › Kaynak ekle'deki çip): Canlı TV kaynakları
+/// Kaynaklar'da, Film kaynakları Film, Dizi kaynakları Dizi bölümünde
+/// listelenir (kullanıcı isteği).
+enum SourceKind {
+  live('Canlı TV'),
+  film('Film'),
+  series('Dizi');
+
+  const SourceKind(this.label);
+
+  final String label;
+}
+
 /// Kullanıcının eklediği liste: bir "klasör" (eski uygulamadaki "Özel M3U").
 /// Adresle, hesapla ya da portalla eklenen yenilenebilir.
 @immutable
@@ -41,6 +54,7 @@ class UserSource {
     required this.updated,
     this.url,
     this.config = const {},
+    this.kind = SourceKind.live,
   });
 
   factory UserSource.fromJson(Map<String, Object?> j) => UserSource(
@@ -51,6 +65,7 @@ class UserSource {
     updated: DateTime.parse(j['updated']! as String),
     url: j['url'] as String?,
     config: {for (final MapEntry(:key, :value) in ((j['config'] as Map?) ?? const {}).entries) '$key': '$value'},
+    kind: SourceKind.values.asNameMap()[j['kind']] ?? SourceKind.live,
   );
 
   final String id;
@@ -68,10 +83,21 @@ class UserSource {
   /// mac). Cihazda, uygulama klasöründe durur.
   final Map<String, String> config;
 
+  /// İçerik: hangi bölümde listelendiği.
+  final SourceKind kind;
+
   bool get refreshable => url != null || origin == SourceOrigin.xtream || origin == SourceOrigin.portal;
 
-  UserSource _with({required int count}) =>
-      UserSource(id: id, name: name, origin: origin, count: count, updated: DateTime.now(), url: url, config: config);
+  UserSource _with({required int count}) => UserSource(
+    id: id,
+    name: name,
+    origin: origin,
+    count: count,
+    updated: DateTime.now(),
+    url: url,
+    config: config,
+    kind: kind,
+  );
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -81,6 +107,7 @@ class UserSource {
     'updated': updated.toIso8601String(),
     'url': ?url,
     if (config.isNotEmpty) 'config': config,
+    if (kind != SourceKind.live) 'kind': kind.name,
   };
 }
 
@@ -140,6 +167,12 @@ class UserSources extends ChangeNotifier {
 
   List<UserSource> get items => List.unmodifiable(_items);
 
+  /// Türdeki kaynaklar (Kaynaklar: canlı; Film; Dizi).
+  List<UserSource> of(SourceKind kind) => [
+    for (final s in _items)
+      if (s.kind == kind) s,
+  ];
+
   /// Toplam kanal (başlıktaki rozet).
   int get channelCount => _items.fold(0, (n, s) => n + s.count);
 
@@ -158,7 +191,12 @@ class UserSources extends ChangeNotifier {
 
   /// Adresteki listeyi indirip ekler; biçim içerikten anlaşılır (M3U, JSON,
   /// HTML sayfasındaki yayın bağlantıları).
-  Future<UserSource> addUrl(String name, String url, {SourceOrigin origin = SourceOrigin.url}) async {
+  Future<UserSource> addUrl(
+    String name,
+    String url, {
+    SourceOrigin origin = SourceOrigin.url,
+    SourceKind kind = SourceKind.live,
+  }) async {
     final uri = _httpUri(url);
     final text = await _download(uri);
     return _store(
@@ -167,6 +205,7 @@ class UserSources extends ChangeNotifier {
       origin: origin,
       url: uri.toString(),
       raw: text,
+      kind: kind,
     );
   }
 
@@ -182,15 +221,21 @@ class UserSources extends ChangeNotifier {
   }
 
   /// Metni ekler (dosya, telefon); biçim içerikten anlaşılır.
-  Future<UserSource> addText(String name, String text, {required SourceOrigin origin, String? url}) =>
-      _store(name, SourceFormats.detect(text), origin: origin, url: url, raw: text);
+  Future<UserSource> addText(
+    String name,
+    String text, {
+    required SourceOrigin origin,
+    String? url,
+    SourceKind kind = SourceKind.live,
+  }) => _store(name, SourceFormats.detect(text), origin: origin, url: url, raw: text, kind: kind);
 
-  /// Xtream Codes hesabının canlı kanalları.
+  /// Xtream Codes hesabının canlı kanalları; Film türünde filmleri (VOD).
   Future<UserSource> addXtream(
     String name, {
     required String server,
     required String username,
     required String password,
+    SourceKind kind = SourceKind.live,
   }) async {
     final client = XtreamClient(
       server: server,
@@ -200,14 +245,20 @@ class UserSources extends ChangeNotifier {
     );
     return _store(
       name.trim().isEmpty ? Uri.tryParse(client.server)?.host ?? 'Xtream' : name,
-      await client.liveChannels(),
+      await client.channels(kind),
       origin: SourceOrigin.xtream,
       config: {'server': client.server, 'username': username, 'password': password},
+      kind: kind,
     );
   }
 
   /// MAC/STB portalının canlı kanalları (adresler oynatma anında çözülür).
-  Future<UserSource> addPortal(String name, {required String portal, required String mac}) async {
+  Future<UserSource> addPortal(
+    String name, {
+    required String portal,
+    required String mac,
+    SourceKind kind = SourceKind.live,
+  }) async {
     final id = _newId();
     final client = StalkerClient(portal: portal, mac: mac, fetch: _fetch);
     final channels = await client.liveChannels(id);
@@ -219,13 +270,14 @@ class UserSources extends ChangeNotifier {
       origin: SourceOrigin.portal,
       config: {'portal': portal.trim(), 'mac': client.mac},
       id: id,
+      kind: kind,
     );
   }
 
   /// Toplu ekleme: GitHub klasörü (`github.com/kullanıcı/depo[/tree/dal/yol]`)
   /// içindeki .m3u/.m3u8 dosyaları ya da satır satır adres içeren bir metin
   /// dosyası. Her liste ayrı klasör olur.
-  Future<BulkResult> addBulk(String url) async {
+  Future<BulkResult> addBulk(String url, {SourceKind kind = SourceKind.live}) async {
     final uri = _httpUri(url);
     final urls = uri.host == 'github.com' ? await _githubLists(uri) : _lines(await _download(uri));
     if (urls.isEmpty) throw const SourceException('Bu adreste M3U listesi bulunamadı.');
@@ -233,7 +285,7 @@ class UserSources extends ChangeNotifier {
     var failed = 0;
     for (final (name, u) in urls.take(maxBulk)) {
       try {
-        added.add(await addUrl(name, u, origin: SourceOrigin.bulk));
+        added.add(await addUrl(name, u, origin: SourceOrigin.bulk, kind: kind));
       } on SourceException {
         failed++;
       }
@@ -288,7 +340,7 @@ class UserSources extends ChangeNotifier {
           username: c['username']!,
           password: c['password']!,
           fetch: (u) => _fetch(u, const {}),
-        ).liveChannels();
+        ).channels(s.kind);
       case SourceOrigin.portal:
         final client = StalkerClient(portal: c['portal']!, mac: c['mac']!, fetch: _fetch);
         channels = await client.liveChannels(s.id);
@@ -363,6 +415,7 @@ class UserSources extends ChangeNotifier {
     String? raw,
     Map<String, String> config = const {},
     String? id,
+    SourceKind kind = SourceKind.live,
   }) async {
     if (channels.isEmpty) {
       throw const SourceException('Kanal bulunamadı: M3U, JSON ya da yayın bağlantılı HTML değil.');
@@ -375,6 +428,7 @@ class UserSources extends ChangeNotifier {
       updated: DateTime.now(),
       url: url,
       config: config,
+      kind: kind,
     );
     await _write(s.id, channels, raw);
     _items.add(s);

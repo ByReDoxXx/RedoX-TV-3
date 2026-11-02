@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'live_channel.dart';
 import 'user_sources.dart';
 
-/// Xtream Codes hesabı: `player_api.php` (hesap, canlı kategoriler ve canlı
-/// yayınlar). Kanal adresi `sunucu/live/kullanıcı/şifre/<stream_id>.<biçim>`;
-/// biçim hesabın izin verdiği ilk biçim (`allowed_output_formats`, yoksa ts).
+/// Xtream Codes hesabı: `player_api.php` (hesap, canlı ve film kategorileri,
+/// canlı yayınlar, filmler). Kanal adresi
+/// `sunucu/live/kullanıcı/şifre/<stream_id>.<biçim>` (biçim hesabın izin
+/// verdiği ilk biçim, `allowed_output_formats`, yoksa ts); film adresi
+/// `sunucu/movie/kullanıcı/şifre/<stream_id>.<container_extension>`.
 class XtreamClient {
   XtreamClient({required String server, required this.username, required this.password, required this.fetch})
     : server = _normalize(server);
@@ -41,13 +43,51 @@ class XtreamClient {
     }
   }
 
-  /// Hesabı doğrular ve canlı kanalları döner (kategori adlarıyla).
-  Future<List<LiveChannel>> liveChannels() async {
+  /// Türün kayıtları: Canlı TV ve Dizi canlı kanallar (Xtream dizileri
+  /// bölüm bölüm ayrı istek ister: henüz yok), Film filmler.
+  Future<List<LiveChannel>> channels(SourceKind kind) => kind == SourceKind.film ? movies() : liveChannels();
+
+  Future<Map<Object?, Object?>> _user() async {
     final info = await _get(const {});
     final user = info is Map ? info['user_info'] : null;
     if (user is! Map || '${user['auth']}' != '1') {
       throw const SourceException('Hesap doğrulanamadı: kullanıcı adı ya da şifre yanlış.');
     }
+    return user;
+  }
+
+  /// Filmler (VOD), kategori adlarıyla; afiş logodur.
+  Future<List<LiveChannel>> movies() async {
+    await _user();
+    final cats = await _get(const {'action': 'get_vod_categories'});
+    final names = {
+      if (cats is List)
+        for (final c in cats)
+          if (c is Map) '${c['category_id']}': '${c['category_name'] ?? 'Film'}',
+    };
+    final streams = await _get(const {'action': 'get_vod_streams'});
+    if (streams is! List) return const [];
+    final out = <LiveChannel>[];
+    for (final s in streams) {
+      if (s is! Map || s['stream_id'] == null) continue;
+      final ext = '${s['container_extension'] ?? 'mp4'}';
+      final poster = '${s['stream_icon'] ?? ''}';
+      out.add(
+        LiveChannel(
+          name: '${s['name'] ?? 'Film ${out.length + 1}'}'.trim(),
+          number: out.length + 1,
+          category: names['${s['category_id']}'] ?? 'Film',
+          logoUrl: poster.startsWith('http') ? poster : null,
+          streams: ['$server/movie/$username/$password/${s['stream_id']}.$ext'],
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// Hesabı doğrular ve canlı kanalları döner (kategori adlarıyla).
+  Future<List<LiveChannel>> liveChannels() async {
+    final user = await _user();
     final formats = user['allowed_output_formats'];
     final ext = formats is List && formats.isNotEmpty ? '${formats.first}' : 'ts';
     final cats = await _get(const {'action': 'get_live_categories'});

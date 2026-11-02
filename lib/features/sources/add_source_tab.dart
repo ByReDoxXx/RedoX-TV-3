@@ -16,21 +16,22 @@ import 'widgets/phone_qr_dialog.dart';
 import 'widgets/source_form_dialog.dart';
 import 'widgets/source_widgets.dart';
 
-/// Eklenen kaynağın içeriği. Canlı TV hazır; Film ve Dizi, o bölümlerin
-/// tasarımı yapılınca aynı yöntemlerle (M3U, Xtream, portal…) eklenecek
-/// (kullanıcı isteği: "kaynak ekle altına dizi ve film eklemede gelecek").
+/// Eklenen kaynağın içeriği (kullanıcı isteği: "dizi eklenirse dizide,
+/// film eklenirse filmde listelensin"). Aynı yöntemlerle (M3U, Xtream,
+/// portal…) eklenir; liste Kaynaklar, Film ya da Dizi bölümünde görünür.
 enum SourceContent {
-  live('Canlı TV', RedoxIcons.television, ready: true),
-  film('Film', RedoxIcons.film),
-  series('Dizi', RedoxIcons.series);
+  live('Canlı TV', RedoxIcons.television, SourceKind.live, 'Kaynaklar'),
+  film('Film', RedoxIcons.film, SourceKind.film, 'Film'),
+  series('Dizi', RedoxIcons.series, SourceKind.series, 'Dizi');
 
-  const SourceContent(this.label, this.icon, {this.ready = false});
+  const SourceContent(this.label, this.icon, this.kind, this.section);
 
   final String label;
   final RedoxIcons icon;
+  final SourceKind kind;
 
-  /// Bu içerik için ekleme yapılabiliyor mu.
-  final bool ready;
+  /// Listenin göründüğü bölüm.
+  final String section;
 }
 
 /// Ekleme yöntemi (kutu).
@@ -119,7 +120,9 @@ class _AddSourceTabState extends State<AddSourceTab> {
           AddMethod.html => SourceOrigin.html,
           _ => SourceOrigin.url,
         };
-        await _run(() async => _added(await _sources.addUrl(r['name']!, r['url']!, origin: origin)));
+        await _run(
+          () async => _added(await _sources.addUrl(r['name']!, r['url']!, origin: origin, kind: _content.kind)),
+        );
       case AddMethod.xtream:
         final r = await showSourceForm(
           context,
@@ -140,6 +143,7 @@ class _AddSourceTabState extends State<AddSourceTab> {
               server: r['server']!,
               username: r['username']!,
               password: r['password']!,
+              kind: _content.kind,
             ),
           ),
         );
@@ -155,7 +159,10 @@ class _AddSourceTabState extends State<AddSourceTab> {
           ],
         );
         if (r == null) return;
-        await _run(() async => _added(await _sources.addPortal(r['name']!, portal: r['portal']!, mac: r['mac']!)));
+        await _run(
+          () async =>
+              _added(await _sources.addPortal(r['name']!, portal: r['portal']!, mac: r['mac']!, kind: _content.kind)),
+        );
       case AddMethod.bulk:
         final r = await showSourceForm(
           context,
@@ -167,7 +174,7 @@ class _AddSourceTabState extends State<AddSourceTab> {
         );
         if (r == null) return;
         await _run(() async {
-          final res = await _sources.addBulk(r['url']!);
+          final res = await _sources.addBulk(r['url']!, kind: _content.kind);
           final failed = res.failed == 0 ? '' : ', ${res.failed} liste okunamadı';
           return '${res.added.length} liste eklendi$failed.';
         });
@@ -204,7 +211,7 @@ class _AddSourceTabState extends State<AddSourceTab> {
     await _run(() async {
       final text = await f.xFile.readAsString();
       final name = f.name.replaceAll(RegExp(r'\.(m3u8?|json|html?)$', caseSensitive: false), '');
-      return _added(await _sources.addText(name, text, origin: SourceOrigin.file));
+      return _added(await _sources.addText(name, text, origin: SourceOrigin.file, kind: _content.kind));
     });
   }
 
@@ -238,49 +245,22 @@ class _AddSourceTabState extends State<AddSourceTab> {
             runSpacing: 8,
             children: [
               for (final c in SourceContent.values)
-                CategoryChip(
-                  label: c.ready ? c.label : '${c.label} · yakında',
-                  selected: c == _content,
-                  onPressed: () => setState(() => _content = c),
-                ),
+                CategoryChip(label: c.label, selected: c == _content, onPressed: () => setState(() => _content = c)),
             ],
           ),
           const SizedBox(height: 12),
-          if (_content.ready) ...[
-            Text(
-              'Eklenen her liste Kaynaklar bölümünde bir klasör olur.',
-              style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            TileGrid(
-              columns: phone ? 2 : 3,
-              children: [
-                for (final (i, m) in methods.indexed)
-                  _MethodTile(method: m, compact: phone, autofocus: i == 0, onPressed: _busy ? null : () => _choose(m)),
-              ],
-            ),
-          ] else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: RedoxRoles.surfaceContainer,
-                borderRadius: BorderRadius.circular(RedoxRadius.lg),
-              ),
-              child: Row(
-                children: [
-                  RedoxIcon(_content.icon, color: RedoxSeeds.gold, size: 28),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      '${_content.label} kaynakları, ${_content.label} bölümü tasarlanınca buradan aynı yöntemlerle '
-                      '(M3U, Xtream, portal…) eklenecek.',
-                      style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          Text(
+            'Eklenen her liste ${_content.section} bölümünde bir klasör olur.',
+            style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          TileGrid(
+            columns: phone ? 2 : 3,
+            children: [
+              for (final (i, m) in methods.indexed)
+                _MethodTile(method: m, compact: phone, autofocus: i == 0, onPressed: _busy ? null : () => _choose(m)),
+            ],
+          ),
         ],
       ),
     );

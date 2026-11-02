@@ -21,6 +21,7 @@ import '../../core/ui/redox_icon.dart';
 import '../home/home_content.dart';
 import '../locks/lock_scope.dart';
 import '../home/home_page.dart';
+import '../library/library_page.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../player/player_page.dart';
 import '../../core/playback/radio_controller.dart';
@@ -348,6 +349,18 @@ class _RootShellState extends State<RootShell> {
       onProfile: widget.onSwitchProfile,
     ),
     AppSection.sources when widget.sources != null && !_kids => SourcesPage(
+      sources: widget.sources!,
+      favorites: widget.favorites,
+      clock: _clock,
+      profileName: _home.profileName,
+      onWatch: (list, i) => _watch(context, list[i], from: list),
+      onAdd: () => _go(AppSection.settings),
+      onHome: () => _go(AppSection.home),
+      onMore: () => _showMore(context),
+      onProfile: widget.onSwitchProfile,
+    ),
+    AppSection.film || AppSection.series when widget.sources != null && !_kids => LibraryPage(
+      kind: _section == AppSection.film ? SourceKind.film : SourceKind.series,
       sources: widget.sources!,
       favorites: widget.favorites,
       clock: _clock,
