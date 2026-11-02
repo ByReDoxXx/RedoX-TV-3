@@ -20,6 +20,8 @@ import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/layout/form_factor.dart';
 import 'core/playback/stream_probe.dart';
+import 'core/remote/remote_host.dart';
+import 'core/remote/remote_input.dart';
 import 'features/tv/tv_content.dart';
 import 'features/tv/tv_guide_controller.dart';
 
@@ -66,6 +68,19 @@ Future<void> main() async {
       if (fresh != null) stations.value = fresh;
     }),
   );
+  // TV: telefon kumandası (yerel ağda bulunur, ekrandaki kodla eşleşir).
+  final remoteHome = ValueNotifier(0);
+  RemoteHost? remote;
+  if (FormFactor.current == FormFactor.tv) {
+    remote = RemoteHost(
+      name: RemoteHost.deviceName(),
+      tokens: await RemoteHost.loadTokens(),
+      saveTokens: RemoteHost.storeTokens,
+      onKey: (key) => unawaited(RemoteInput.handle(key, onHome: () => remoteHome.value++)),
+      onText: RemoteInput.type,
+    );
+    unawaited(remote.start().catchError((Object _) {}));
+  }
   // Anasayfa kartlarında yayından gerçek kare (FrameStore); "Kim izliyor?"
   // ekranı dururken alınmaya başlar.
   runApp(
@@ -79,6 +94,8 @@ Future<void> main() async {
       radio: RadioController(stations: stations, songs: await SongHistory.load()),
       frames: FrameStore(startDelay: const Duration(seconds: 3)),
       rank: StreamProbe().rank,
+      remote: remote,
+      remoteHome: remoteHome,
     ),
   );
 }

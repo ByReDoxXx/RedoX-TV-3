@@ -11,8 +11,12 @@ import 'core/content/watch_history.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/playback/stream_probe.dart';
+import 'core/platform/system_text_input.dart';
+import 'core/remote/remote_host.dart';
 import 'features/home/home_content.dart';
 import 'features/profiles/profile_picker_page.dart';
+import 'features/remote/pairing_overlay.dart';
+import 'features/remote/remote_text_dialog.dart';
 import 'features/shell/root_shell.dart';
 import 'features/tv/tv_content.dart';
 
@@ -30,6 +34,8 @@ class RedoxApp extends StatefulWidget {
     this.radio,
     this.frames,
     this.rank,
+    this.remote,
+    this.remoteHome,
   });
 
   /// Televizyon kanalları (gömülü M3U listesinden) ve yayın akışı; her
@@ -60,11 +66,19 @@ class RedoxApp extends StatefulWidget {
   /// Akış sıralayıcı (StreamProbe.rank).
   final StreamRanker? rank;
 
+  /// TV: telefon kumandası sunucusu (eşleşme kodu her ekranın üstünde).
+  final RemoteHost? remote;
+
+  /// TV: kumandanın Ana sayfa tuşu.
+  final Listenable? remoteHome;
+
   @override
   State<RedoxApp> createState() => _RedoxAppState();
 }
 
 class _RedoxAppState extends State<RedoxApp> {
+  final _navigator = GlobalKey<NavigatorState>();
+
   /// İzleyen profil; null iken seçim ekranı.
   Profile? _profile;
 
@@ -75,12 +89,21 @@ class _RedoxAppState extends State<RedoxApp> {
   void initState() {
     super.initState();
     widget.tv.addListener(_prefetch);
+    // Telefon kumandası bağlıyken yazı telefondan (cihaz klavyesi açılmaz).
+    if (widget.remote case final remote?) {
+      SystemTextInput.phoneInput = (title, value, kind) {
+        final context = _navigator.currentContext;
+        if (remote.connected.value == 0 || context == null) return null;
+        return RemoteTextDialog.show(context, title: title, value: value, secret: kind == TextKind.secret);
+      };
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _prefetch());
   }
 
   @override
   void dispose() {
     widget.tv.removeListener(_prefetch);
+    if (widget.remote != null) SystemTextInput.phoneInput = null;
     super.dispose();
   }
 
@@ -147,6 +170,7 @@ class _RedoxAppState extends State<RedoxApp> {
         rank: widget.rank,
         profiles: store,
         onSwitchProfile: store == null ? null : _switchProfile,
+        homeRequests: widget.remoteHome,
       ),
     );
   }
@@ -162,6 +186,8 @@ class _RedoxAppState extends State<RedoxApp> {
       themeAnimationDuration: Duration.zero,
       theme: RedoxTheme.dark(formFactor: FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context))),
       themeMode: ThemeMode.dark,
+      builder: widget.remote == null ? null : (context, child) => PairingOverlay(host: widget.remote!, child: child!),
+      navigatorKey: _navigator,
       home: Builder(builder: _home),
     );
   }

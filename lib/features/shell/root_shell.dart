@@ -29,6 +29,7 @@ import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
+import '../remote/remote_page.dart';
 import '../radio/radio_player_page.dart';
 import '../search/search_page.dart';
 import '../../core/navigation/search_scope.dart';
@@ -60,7 +61,12 @@ class RootShell extends StatefulWidget {
     this.profile,
     this.profiles,
     this.onSwitchProfile,
+    this.homeRequests,
   });
+
+  /// TV: telefon kumandasının Ana sayfa tuşu (açık sayfalar kapanır,
+  /// Anasayfa'ya dönülür).
+  final Listenable? homeRequests;
 
   /// İzleyen profil; null ise varsayılan ad ("Profil 1"), çocuk kipi kapalı.
   /// Çocuk profilinde yalnız Çocuk kategorisi görünür, rayda Anasayfa ve
@@ -134,12 +140,14 @@ class _RootShellState extends State<RootShell> {
   void initState() {
     super.initState();
     widget.history?.addListener(_syncFrames);
+    widget.homeRequests?.addListener(_remoteHome);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncFrames());
   }
 
   @override
   void dispose() {
     widget.history?.removeListener(_syncFrames);
+    widget.homeRequests?.removeListener(_remoteHome);
     _split.dispose();
     super.dispose();
   }
@@ -174,6 +182,12 @@ class _RootShellState extends State<RootShell> {
     );
   }
 
+  void _remoteHome() {
+    if (!mounted) return;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    _go(AppSection.home);
+  }
+
   bool _onBack() {
     if (_section == AppSection.home) return false;
     _go(AppSection.home);
@@ -204,7 +218,12 @@ class _RootShellState extends State<RootShell> {
     showMoreSheet(
       context,
       items: [...AppDestinations.items(sections), if (widget.onSwitchProfile != null) _switchItem],
-      onSelected: (i) => i < sections.length ? _go(sections[i]) : widget.onSwitchProfile?.call(),
+      onSelected: (i) => switch (i < sections.length ? sections[i] : null) {
+        // Telefon kumandası tam ekran açılır (bölüm değil).
+        AppSection.remote => unawaited(Navigator.of(context).push(RemotePage.route())),
+        final AppSection s => _go(s),
+        null => widget.onSwitchProfile?.call(),
+      },
     );
   }
 

@@ -30,6 +30,10 @@ abstract final class SystemTextInput {
   @visibleForTesting
   static Future<String?> Function(String title, String value, TextKind kind)? debugOverride;
 
+  /// TV'ye telefon kumandası bağlıyken yazı telefondan gelir: uygulama bu
+  /// kancayı kurar (RemoteTextDialog). null dönerse yerel kutu açılır.
+  static Future<String?>? Function(String title, String value, TextKind kind)? phoneInput;
+
   static Future<String?> ask({
     required String title,
     String value = '',
@@ -37,6 +41,7 @@ abstract final class SystemTextInput {
     int? maxLength,
   }) {
     if (debugOverride case final f?) return f(title, value, kind);
+    if (phoneInput?.call(title, value, kind) case final fromPhone?) return fromPhone;
     return _channel.invokeMethod<String>('gir', {
       'baslik': title,
       'deger': value,

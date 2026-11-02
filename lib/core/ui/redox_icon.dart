@@ -56,7 +56,13 @@ enum RedoxIcons {
   plugin('extension', 'Eklenti'),
   bulkAdd('playlist_add', 'Toplu ekle'),
   uploadFile('upload_file', 'Dosya'),
-  link('link', 'Adres');
+  link('link', 'Adres'),
+  back('arrow_back', 'Geri'),
+  volumeDown('volume_down', 'Sesi azalt'),
+  dialpad('dialpad', 'Rakamlar'),
+  tvDevice('tv', 'TV'),
+  keyboard('keyboard', 'Klavye'),
+  send('send', 'Gönder');
 
   const RedoxIcons(this.symbol, this.label);
 
