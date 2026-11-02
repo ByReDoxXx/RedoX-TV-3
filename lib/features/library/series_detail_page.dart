@@ -58,34 +58,26 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
         builder: (context, snap) {
           final info = snap.data;
           final bg = Theme.of(context).scaffoldBackgroundColor;
+          final backdrop = switch (info?.backdrop) {
+            final b? => Image.network(b, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+            null => null,
+          };
+          // Telefonda görsel içerikle birlikte kayar (sabit kalınca bölüm
+          // satırları görselin üstünden geçiyordu; Pixel'de görüldü).
+          if (phone) return _phone(context, info, backdrop, bg);
           return Stack(
             fit: StackFit.expand,
             children: [
-              if (info?.backdrop case final b?)
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    height: phone ? 280 : double.infinity,
-                    width: double.infinity,
-                    child: Image.network(b, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-                  ),
-                ),
+              ?backdrop,
               DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: phone
-                      ? LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [bg.withValues(alpha: 0.4), bg],
-                          stops: const [0, 0.32],
-                        )
-                      : LinearGradient(
-                          colors: [bg, bg.withValues(alpha: 0.93), bg.withValues(alpha: 0.6)],
-                          stops: const [0, 0.5, 1],
-                        ),
+                  gradient: LinearGradient(
+                    colors: [bg, bg.withValues(alpha: 0.93), bg.withValues(alpha: 0.6)],
+                    stops: const [0, 0.5, 1],
+                  ),
                 ),
               ),
-              SafeArea(child: phone ? _phone(context, info) : _wide(context, info)),
+              SafeArea(child: _wide(context, info)),
             ],
           );
         },
@@ -114,30 +106,60 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
     ),
   );
 
-  Widget _phone(BuildContext context, TmdbInfo? info) => CustomScrollView(
+  /// Görselin telefondaki yüksekliği (durum çubuğu dahil).
+  static const _backdropHeight = 300.0;
+
+  Widget _phone(BuildContext context, TmdbInfo? info, Widget? backdrop, Color bg) => CustomScrollView(
     slivers: [
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        sliver: SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: GlassButton(
-                  label: 'Geri',
-                  icon: RedoxIcons.back,
-                  iconOnly: true,
-                  onPressed: () => Navigator.of(context).maybePop(),
+      SliverToBoxAdapter(
+        child: Stack(
+          children: [
+            if (backdrop != null)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: _backdropHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    backdrop,
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [bg.withValues(alpha: 0.3), bg.withValues(alpha: 0.5), bg],
+                          stops: const [0, 0.55, 1],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 90),
-              _about(context, info, posterWidth: 120),
-              const SizedBox(height: 20),
-              _seasonChips(),
-              const SizedBox(height: 8),
-            ],
-          ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + 8, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GlassButton(
+                      label: 'Geri',
+                      icon: RedoxIcons.back,
+                      iconOnly: true,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                  const SizedBox(height: 90),
+                  _about(context, info, posterWidth: 120),
+                  const SizedBox(height: 20),
+                  _seasonChips(),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
       SliverPadding(
