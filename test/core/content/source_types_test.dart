@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/content/channel_folder.dart';
 import 'package:redox_tv/core/content/source_formats.dart';
 import 'package:redox_tv/core/content/stalker_client.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
@@ -100,6 +101,53 @@ void main() {
     expect(ch.streams.single, 'http://sunucu.com:8080/live/ali/dogru/77.m3u8');
     expect(added.refreshable, isTrue);
     expect(asked, containsAll(['get_live_categories', 'get_live_streams']));
+  });
+
+  test('Xtream dizi: her dizinin bölümleri "Dizi S01E02" adıyla, adres sunucu/series/…/id.uzantı', () async {
+    final s = await UserSources.open(
+      await _dir(),
+      fetch: (uri, _) async {
+        final q = uri.queryParameters;
+        final body = switch (q['action']) {
+          null => {
+            'user_info': {'auth': 1},
+          },
+          'get_series_categories' => [
+            {'category_id': '3', 'category_name': 'Yerli'},
+          ],
+          'get_series' => [
+            {'series_id': 10, 'name': 'Kuzey Güney', 'category_id': '3', 'cover': 'http://l/kg.jpg'},
+            {'series_id': 11, 'name': 'Bozuk'},
+          ],
+          'get_series_info' when q['series_id'] == '10' => {
+            'episodes': {
+              '1': [
+                {'id': '501', 'episode_num': 1, 'season': 1, 'container_extension': 'mkv'},
+                {'id': '502', 'episode_num': 2, 'season': 1, 'container_extension': 'mkv'},
+              ],
+              '2': [
+                {'id': '601', 'episode_num': 1, 'season': 2},
+              ],
+            },
+          },
+          _ => 'bozuk',
+        };
+        return utf8.encode(body is String ? body : jsonEncode(body));
+      },
+    );
+    final added = await s.addXtream(
+      'Diziler',
+      server: 'sunucu.com:8080',
+      username: 'ali',
+      password: 'dogru',
+      kind: SourceKind.series,
+    );
+    final list = await s.channels(added);
+    expect([for (final c in list) c.name], ['Kuzey Güney S01E01', 'Kuzey Güney S01E02', 'Kuzey Güney S02E01']);
+    expect(list.first.category, 'Yerli');
+    expect(list.first.streams.single, 'http://sunucu.com:8080/series/ali/dogru/501.mkv');
+    expect(list.last.streams.single, 'http://sunucu.com:8080/series/ali/dogru/601.mp4');
+    expect(ChannelFolder.episodePath(list[1].name), ['Kuzey Güney', 'Sezon 1', 'Bölüm 2']);
   });
 
   test('STB portal: el sıkışma, token başlığı; kanal adresi oynatma anında create_link ile çözülür', () async {

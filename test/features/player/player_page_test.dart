@@ -197,6 +197,15 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
+  testWidgets("Menü tuşu Seçenekler'i açar", (tester) async {
+    await _open(tester);
+    await tester.pump(PlayerPage.announceDuration);
+    await _settle(tester);
+    expect(find.byType(PlayerOptions), findsNothing);
+    await _key(tester, LogicalKeyboardKey.contextMenu);
+    expect(find.byType(PlayerOptions), findsOneWidget);
+  });
+
   testWidgets('OK çubuğu açar (odak oynat/duraklatta); Geri katmanları sırayla kapatır, sonra çıkar', (tester) async {
     final e = await _open(tester);
     await tester.pump(PlayerPage.announceDuration);

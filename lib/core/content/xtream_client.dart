@@ -7,7 +7,8 @@ import 'user_sources.dart';
 /// canlı yayınlar, filmler). Kanal adresi
 /// `sunucu/live/kullanıcı/şifre/<stream_id>.<biçim>` (biçim hesabın izin
 /// verdiği ilk biçim, `allowed_output_formats`, yoksa ts); film adresi
-/// `sunucu/movie/kullanıcı/şifre/<stream_id>.<container_extension>`.
+/// `sunucu/movie/kullanıcı/şifre/<stream_id>.<container_extension>`; dizi
+/// bölümü `sunucu/series/kullanıcı/şifre/<id>.<container_extension>`.
 class XtreamClient {
   XtreamClient({required String server, required this.username, required this.password, required this.fetch})
     : server = _normalize(server);
@@ -43,9 +44,85 @@ class XtreamClient {
     }
   }
 
-  /// Türün kayıtları: Canlı TV ve Dizi canlı kanallar (Xtream dizileri
-  /// bölüm bölüm ayrı istek ister: henüz yok), Film filmler.
-  Future<List<LiveChannel>> channels(SourceKind kind) => kind == SourceKind.film ? movies() : liveChannels();
+  /// Türün kayıtları: Canlı TV kanallar, Film filmler, Dizi bölümler.
+  Future<List<LiveChannel>> channels(SourceKind kind) => switch (kind) {
+    SourceKind.live => liveChannels(),
+    SourceKind.film => movies(),
+    SourceKind.series => series(),
+  };
+
+  /// Aynı anda en çok bu kadar dizinin bölümleri istenir (sunucuyu boğmamak
+  /// için).
+  static const seriesParallel = 6;
+
+  /// Dizi bölümleri: her dizi için `get_series_info` (bölümler sezon
+  /// sezon). Bölüm adı "Dizi S01E02" biçimindedir: Dizi bölümünde dizi ›
+  /// sezon › bölüm klasörlerine ayrılır (ChannelFolder.episodePath). Bölümleri
+  /// okunamayan dizi atlanır.
+  Future<List<LiveChannel>> series() async {
+    await _user();
+    final cats = await _get(const {'action': 'get_series_categories'});
+    final names = {
+      if (cats is List)
+        for (final c in cats)
+          if (c is Map) '${c['category_id']}': '${c['category_name'] ?? 'Dizi'}',
+    };
+    final list = await _get(const {'action': 'get_series'});
+    if (list is! List) return const [];
+    final shows = [
+      for (final s in list)
+        if (s is Map && s['series_id'] != null) s,
+    ];
+    final episodes = List<List<LiveChannel>>.filled(shows.length, const []);
+    var next = 0;
+    Future<void> worker() async {
+      while (next < shows.length) {
+        final i = next++;
+        try {
+          episodes[i] = await _episodes(shows[i], names);
+        } on SourceException {
+          // Bu dizinin bölümleri okunamadı.
+        }
+      }
+    }
+
+    await Future.wait([for (var w = 0; w < seriesParallel; w++) worker()]);
+    return [
+      for (final (i, c) in episodes.expand((e) => e).indexed)
+        LiveChannel(name: c.name, number: i + 1, category: c.category, logoUrl: c.logoUrl, streams: c.streams),
+    ];
+  }
+
+  Future<List<LiveChannel>> _episodes(Map<Object?, Object?> show, Map<String, String> categories) async {
+    final info = await _get({'action': 'get_series_info', 'series_id': '${show['series_id']}'});
+    final raw = info is Map ? info['episodes'] : null;
+    // Bölümler sezon numarasıyla eşlem; bazı sunucularda liste listesi.
+    final seasons = switch (raw) {
+      final Map<Object?, Object?> m => m.values,
+      final List<Object?> l => l,
+      _ => const <Object?>[],
+    };
+    final title = '${show['name'] ?? 'Dizi'}'.trim();
+    final cover = '${show['cover'] ?? ''}';
+    String two(Object? n) => '${int.tryParse('$n') ?? 0}'.padLeft(2, '0');
+    final out = <LiveChannel>[];
+    for (final season in seasons) {
+      if (season is! List) continue;
+      for (final e in season) {
+        if (e is! Map || e['id'] == null) continue;
+        out.add(
+          LiveChannel(
+            name: '$title S${two(e['season'])}E${two(e['episode_num'])}',
+            number: 0,
+            category: categories['${show['category_id']}'] ?? 'Dizi',
+            logoUrl: cover.startsWith('http') ? cover : null,
+            streams: ['$server/series/$username/$password/${e['id']}.${e['container_extension'] ?? 'mp4'}'],
+          ),
+        );
+      }
+    }
+    return out;
+  }
 
   Future<Map<Object?, Object?>> _user() async {
     final info = await _get(const {});

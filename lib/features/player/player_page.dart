@@ -286,6 +286,9 @@ class _PlayerPageState extends State<PlayerPage> {
       _session.nextStream();
     } else if (key == LogicalKeyboardKey.mediaPlayPause || key == LogicalKeyboardKey.space) {
       unawaited(_engine.playOrPause());
+    } else if (key == LogicalKeyboardKey.contextMenu) {
+      // Menü (telefon kumandası, klavye): Seçenekler.
+      _openOptions();
     } else {
       return KeyEventResult.ignored;
     }

@@ -229,7 +229,8 @@ class UserSources extends ChangeNotifier {
     SourceKind kind = SourceKind.live,
   }) => _store(name, SourceFormats.detect(text), origin: origin, url: url, raw: text, kind: kind);
 
-  /// Xtream Codes hesabının canlı kanalları; Film türünde filmleri (VOD).
+  /// Xtream Codes hesabının canlı kanalları; Film türünde filmleri (VOD),
+  /// Dizi türünde dizi bölümlerini.
   Future<UserSource> addXtream(
     String name, {
     required String server,
