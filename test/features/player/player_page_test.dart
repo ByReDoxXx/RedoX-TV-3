@@ -404,6 +404,8 @@ void main() {
 
     testWidgets('canlı yayında sarma yok: çubuk yok, çift dokunma ekranı doldurur', (tester) async {
       final e = await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      // Canlı HLS penceresi süre gibi bildirilir: sarma yok.
+      e.setDuration(const Duration(seconds: 17));
       await tester.pump(PlayerPage.announceDuration);
       await _settle(tester);
       await tester.tapAt(const Offset(780, 200));

@@ -56,8 +56,12 @@ class EngineState {
   /// Yayının süresi; canlı yayında sıfır (sarılamaz).
   final Duration duration;
 
-  /// Sarılabilir mi (film, dizi bölümü; canlı yayın değil).
-  bool get seekable => duration > Duration.zero;
+  /// Sarılabilir mi (film, dizi bölümü; canlı yayın değil). Canlı HLS son
+  /// birkaç saniyelik penceresini süre olarak bildirir (TRT 1: 0:17;
+  /// Chromecast'te görüldü): 3 dakikadan kısa süre canlı sayılır.
+  bool get seekable => duration >= minSeekable;
+
+  static const minSeekable = Duration(minutes: 3);
 
   /// Görüntü geldi mi (yayın gerçekten açıldı mı).
   bool get hasVideo => (width ?? 0) > 0 && (height ?? 0) > 0;
