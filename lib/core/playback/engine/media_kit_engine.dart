@@ -25,10 +25,7 @@ class MediaKitEngine implements PlaybackEngine {
     _subscriptions.addAll([
       s.playing.listen((v) => _update(_state.value.copyWith(playing: v))),
       s.buffering.listen((v) => _update(_state.value.copyWith(buffering: v))),
-      s.width.listen((v) {
-        _update(_state.value.copyWith(width: () => v));
-        unawaited(_logVideo(v));
-      }),
+      s.width.listen((v) => unawaited(_onWidth(v))),
       s.height.listen((v) => _update(_state.value.copyWith(height: () => v))),
       s.tracks.listen(_onTracks),
       s.track.listen(
@@ -135,7 +132,22 @@ class MediaKitEngine implements PlaybackEngine {
         '$name=${await get(name)}',
     ];
     Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
-    await _hdrToSdr(native);
+  }
+
+  /// İlk görüntü boyutu geldi. Android'de önce yayının HDR olup olmadığına
+  /// bakılır; HDR ise yol SDR'ye çevrilir. "Görüntü geldi" (boyut) bundan
+  /// sonra bildirilir: oynatıcı o ana kadar yükleniyor gösterir, pembe ilk
+  /// kareler görünmez (önce 6 sn pembe kalıyordu).
+  bool _hdrChecked = false;
+
+  Future<void> _onWidth(int? width) async {
+    if (_android && !_hdrChecked && (width ?? 0) > 0) {
+      _hdrChecked = true;
+      final native = _player.platform;
+      if (native is NativePlayer) await _hdrToSdr(native);
+    }
+    _update(_state.value.copyWith(width: () => width));
+    unawaited(_logVideo(width));
   }
 
   /// HDR yayında kopyasız yol pembe görüntü veriyordu (Pixel'de görüldü):
@@ -180,8 +192,13 @@ class MediaKitEngine implements PlaybackEngine {
     if (gamma != 'pq' && gamma != 'hlg') return;
     _sdrPath = true;
     Diagnostics.instance.log('görüntü', 'HDR ($gamma): SDR\'ye ton eşlemeli kopyalı yola geçildi');
+    // Yüzey henüz yoksa media_kit yüzeyi bağlayınca dinleyici uygular.
     await _applySdrPath();
-    // Kopyalı yolun yükü: 10 sn sonra atlanan kareler günlüğe.
+    unawaited(_logDrops(native));
+  }
+
+  /// Kopyalı yolun yükü: 10 sn sonra atlanan kareler günlüğe.
+  Future<void> _logDrops(NativePlayer native) async {
     await Future<void>.delayed(const Duration(seconds: 10));
     if (!_sdrPath) return;
     final drops = await native.getProperty('frame-drop-count');
@@ -278,6 +295,7 @@ class MediaKitEngine implements PlaybackEngine {
     _update(const EngineState());
     _capped = false;
     _videoLogged = false;
+    _hdrChecked = false;
     if (_sdrPath) await _leaveSdrPath();
     await _player.open(Media(url));
   }
