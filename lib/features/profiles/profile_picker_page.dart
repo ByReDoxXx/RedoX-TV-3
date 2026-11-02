@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/brand/brand_assets.dart';
 import '../../core/content/profiles.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
+import '../../core/ui/animated_brand_logo.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/icon_action_button.dart';
 import '../../core/ui/redox_icon.dart';
@@ -132,12 +132,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
                   const SizedBox(height: 16),
                   // Zeminsiz tam logo: işaret ve altında "RedoX TV" yazısı
                   // (kullanıcı isteği); ışımalı zemin arkasından görünür.
-                  Image.asset(
-                    BrandAssets.logoTransparent,
-                    height: logo,
-                    semanticLabel: 'RedoX TV',
-                    filterQuality: FilterQuality.medium,
-                  ),
+                  AnimatedBrandLogo(height: logo),
                   const Spacer(),
                   Text('Kim izliyor?', style: t.headlineLarge!.copyWith(color: RedoxRoles.onSurface)),
                   const SizedBox(height: 32),
