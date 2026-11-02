@@ -7,6 +7,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../content/app_settings.dart';
 import '../../content/diagnostics.dart';
+import '../../layout/form_factor.dart';
 import '../subtitle_look.dart';
 import 'playback_engine.dart';
 
@@ -45,6 +46,9 @@ class MediaKitEngine implements PlaybackEngine {
   late final VideoController _video;
 
   static bool get _android => defaultTargetPlatform == TargetPlatform.android;
+
+  /// TV sürümü (zayıf kutu: kopyalı yol yalnız gerektiğinde).
+  static bool get _tv => FormFactor.current == FormFactor.tv;
 
   /// Android'de donanım çözücü kareyi doğrudan yüzeye çizer (kopyasız).
   /// Varsayılan yol (vo=gpu, mediacodec-copy) her kareyi belleğe kopyalıyordu:
@@ -130,6 +134,8 @@ class MediaKitEngine implements PlaybackEngine {
         'video-dec-params/colormatrix',
         'video-dec-params/pixelformat',
         'video-params/gamma',
+        'video-format',
+        'file-format',
       ])
         '$name=${await get(name)}',
     ];
@@ -207,9 +213,18 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> _hdrToSdr(NativePlayer native) async {
     if (!_android || _sdrPath) return;
     final gamma = await native.getProperty('video-dec-params/gamma');
-    if (gamma != 'pq' && gamma != 'hlg') return;
+    final hdr = gamma == 'pq' || gamma == 'hlg';
+    // Telefon/tablette HEVC de: kopyasız yol bazı HEVC filmlerde (SDR,
+    // BT.709 bildiren) yeşil-mor görüntü veriyordu; kopyalı yolda doğru
+    // (Pixel'de görüldü, 0 kare atlama). TV'de kopyalı yol 1080p'de bile
+    // kare atlattığı için (Chromecast) yalnız HDR'de.
+    final hevc = !_tv && (await native.getProperty('video-codec')).contains('hevc');
+    if (!hdr && !hevc) return;
     _sdrPath = true;
-    Diagnostics.instance.log('görüntü', 'HDR ($gamma): SDR\'ye ton eşlemeli kopyalı yola geçildi');
+    Diagnostics.instance.log(
+      'görüntü',
+      hdr ? "HDR ($gamma): SDR'ye ton eşlemeli kopyalı yola geçildi" : 'HEVC: renk için kopyalı yola geçildi',
+    );
     // Yüzey henüz yoksa media_kit yüzeyi bağlayınca dinleyici uygular.
     await _locked(_applySdrPath);
     unawaited(_logDrops(native));
