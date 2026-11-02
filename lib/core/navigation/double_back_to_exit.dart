@@ -59,3 +59,56 @@ class DoubleBackToExitState extends State<DoubleBackToExit> {
     return PopScope(canPop: false, onPopInvokedWithResult: _onPop, child: widget.child);
   }
 }
+
+/// Geri'yi sayfanın önce işlemesi (ör. alt klasörden üst klasöre, ayar
+/// bölümünden bölüm listesine): [active] iken Geri [onBack]'i çağırır ve
+/// tüketilir. Kök kabuğun içindeyse [DoubleBackToExit]'e kaydolur; kendi
+/// PopScope'u olsaydı kabuğun Geri'si de çalışır, sayfa Anasayfa'ya dönerdi
+/// (Pixel'de görüldü). Kabuk dışındaki rotada (açılan sayfa) PopScope kullanır.
+class BackInterceptor extends StatefulWidget {
+  const BackInterceptor({super.key, required this.active, required this.onBack, required this.child});
+
+  final bool active;
+  final VoidCallback onBack;
+  final Widget child;
+
+  @override
+  State<BackInterceptor> createState() => _BackInterceptorState();
+}
+
+class _BackInterceptorState extends State<BackInterceptor> {
+  DoubleBackToExitState? _shell;
+  bool _looked = false;
+
+  bool _handle() {
+    if (!widget.active) return false;
+    widget.onBack();
+    return true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_looked) return;
+    _looked = true;
+    _shell = DoubleBackToExit.maybeOf(context)?..addHandler(_handle);
+  }
+
+  @override
+  void dispose() {
+    _shell?.removeHandler(_handle);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_shell != null) return widget.child;
+    return PopScope(
+      canPop: !widget.active,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && widget.active) widget.onBack();
+      },
+      child: widget.child,
+    );
+  }
+}

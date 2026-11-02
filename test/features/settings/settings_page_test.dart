@@ -10,6 +10,7 @@ import 'package:redox_tv/core/content/profiles.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/content/watch_history.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
+import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/platform/storage_access.dart';
 import 'package:redox_tv/core/remote/remote_host.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -239,6 +240,45 @@ void main() {
     await _settle(tester);
     final files = (await tester.runAsync(() => out.list().toList()))!;
     expect(files.single.path, endsWith('.txt'));
+  });
+
+  testWidgets("kabukta Geri: ayar bölümünden listeye, Dizi klasöründen üst klasöre (Anasayfa'ya değil)", (
+    tester,
+  ) async {
+    await _size(tester, const Size(412, 915));
+    final sources = await _sources(tester);
+    await tester.runAsync(
+      () => sources.addText(
+        'Dizilerim',
+        '#EXTM3U\n#EXTINF:-1,Ezel S01E01\nhttp://o/1.mp4\n#EXTINF:-1,Ezel S01E02\nhttp://o/2.mp4\n',
+        origin: SourceOrigin.file,
+        kind: SourceKind.series,
+      ),
+    );
+    Widget shell(AppSection initial) => MaterialApp(
+      theme: RedoxTheme.dark(formFactor: FormFactor.phone),
+      home: RootShell(key: ValueKey(initial), tv: TvContent.preview, initial: initial, sources: sources),
+    );
+    await tester.pumpWidget(shell(AppSection.settings));
+    await _settle(tester);
+    await tester.tap(find.text('Oynatıcı'));
+    await _settle(tester);
+    expect(find.text('Kalite sınırı'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await _settle(tester);
+    expect(find.text('Veriler'), findsOneWidget, reason: 'bölüm listesine döndü');
+    expect(find.byType(SettingsPage), findsOneWidget, reason: "Anasayfa'ya gitmedi");
+
+    await tester.pumpWidget(shell(AppSection.series));
+    await _settle(tester);
+    await tester.tap(find.text('Ezel'));
+    await _settle(tester);
+    await tester.tap(find.text('Sezon 1'));
+    await _settle(tester);
+    expect(find.text('Bölüm 2'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await _settle(tester);
+    expect(find.text('Sezon 1'), findsOneWidget, reason: 'üst klasöre döndü');
   });
 
   testWidgets('Açılış: "Kim izliyor?" kapalıysa son profil doğrudan açılır', (tester) async {

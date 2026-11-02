@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/navigation/double_back_to_exit.dart';
 import '../../../core/content/channel_folder.dart';
 import '../../../core/content/content_locks.dart';
 import '../../../core/content/favorites.dart';
@@ -79,11 +80,9 @@ class _ChannelBrowserState extends State<ChannelBrowser> {
   @override
   Widget build(BuildContext context) {
     // Geri: alt klasördeyse üst klasöre çıkar; kökte sayfaya bırakır.
-    return PopScope(
-      canPop: !widget.folders || _path.isEmpty,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _path.isNotEmpty) _up();
-      },
+    return BackInterceptor(
+      active: widget.folders && _path.isNotEmpty,
+      onBack: _up,
       child: ListenableBuilder(
         listenable: widget.favorites ?? const _Never(),
         builder: (context, _) => widget.folders ? _folderView(context) : _listView(widget.flat),

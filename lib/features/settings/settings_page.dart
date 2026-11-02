@@ -8,6 +8,7 @@ import '../../core/content/tmdb.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/content/watch_history.dart';
 import '../../core/layout/form_factor.dart';
+import '../../core/navigation/double_back_to_exit.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/remote/remote_host.dart';
 import '../../core/theme/redox_colors.dart';
@@ -153,11 +154,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if (phone) {
       final open = _open;
       final inset = EdgeInsets.fromLTRB(padding.left, 4, padding.right, 16);
-      return PopScope(
-        canPop: open == null,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && open != null) setState(() => _open = null);
-        },
+      return BackInterceptor(
+        active: open != null,
+        onBack: () => setState(() => _open = null),
         child: Padding(
           // Başlık saatin altına yaslı; aşağı kaydırınca gizlenir.
           padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
