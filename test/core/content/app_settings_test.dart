@@ -117,6 +117,15 @@ void main() {
     expect(other.items.single.name, 'Spor');
     expect((await other.channels(other.items.single)).single.name, 'Spor 1');
     expect(() => Backup.restore('{"x":1}', other), throwsFormatException);
+
+    // Yalnız listeler (ayarlar yok): bu cihazın ayarları ve listeleri kalır, yedektekiler eklenir.
+    final prefsBefore = (await SharedPreferences.getInstance()).getString('ayar_kalite');
+    final third = await UserSources.open(Directory('${dir.path}/c'));
+    await third.addText('Yerel', '#EXTM3U\n#EXTINF:-1,Y\nhttp://y/1.m3u8\n', origin: SourceOrigin.file);
+    final listsOnly = jsonDecode(text) as Map<String, Object?>..remove('ayarlar');
+    await Backup.restore(jsonEncode(listsOnly), third);
+    expect([for (final s in third.items) s.name], ['Yerel', 'Spor']);
+    expect((await SharedPreferences.getInstance()).getString('ayar_kalite'), prefsBefore);
     expect(Backup.fileName(DateTime(2026, 3, 4)), 'RedoX-yedek-2026-03-04.json');
   });
 

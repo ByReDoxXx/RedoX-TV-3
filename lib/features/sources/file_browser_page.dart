@@ -47,9 +47,18 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
     unawaited(_ask());
   }
 
+  /// Uygulamanın kendi klasörü (izin istemez).
+  String? _appDir;
+
   Future<void> _ask() async {
     final ok = await StorageAccess.ensure();
-    if (mounted) setState(() => _allowed = ok);
+    final app = widget.roots == null ? await StorageAccess.appFolder() : null;
+    if (mounted) {
+      setState(() {
+        _allowed = ok;
+        _appDir = app;
+      });
+    }
   }
 
   Future<void> _open(String? dir) async {
@@ -90,7 +99,10 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
     return dot > 0 && FileBrowserPage.extensions.contains(path.substring(dot + 1).toLowerCase());
   }
 
-  List<(String, String)> get _roots => widget.roots ?? StorageAccess.roots();
+  List<(String, String)> get _roots => [
+    if (_allowed ?? false) ...widget.roots ?? StorageAccess.roots(),
+    if (_appDir case final app?) ('Uygulama klasörü', app),
+  ];
 
   /// Üst klasör; kökteyse null (kök listesi).
   String? get _parent {
@@ -163,20 +175,32 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
     switch (_allowed) {
       case null:
         return const SizedBox.shrink();
-      case false:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      case false when _dir == null:
+        return ListView(
           children: [
             Text(
-              "Dosyaları görmek için izin gerekiyor. Açılan ekranda RedoX TV için \"Tüm dosyalara erişim\"i açın. "
-              'Bu cihazda izin ekranı yoksa listeyi telefondan QR ile ekleyin.',
+              "Bütün dosyaları görmek için izin gerekiyor. Açılan ekranda RedoX TV için \"Tüm dosyalara erişim\"i "
+              'açın. Bu cihazda izin ekranı yoksa listeyi telefondan QR ile ekleyin.',
               style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            PrimaryButton(label: 'İzin ver', icon: RedoxIcons.lock, autofocus: true, onPressed: _ask),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: PrimaryButton(label: 'İzin ver', icon: RedoxIcons.lock, onPressed: _ask),
+            ),
+            if (_appDir case final app?) ...[
+              const SizedBox(height: 16),
+              _Row(
+                icon: RedoxIcons.folder,
+                name: 'Uygulama klasörü',
+                detail: app,
+                autofocus: true,
+                onPressed: () => _open(app),
+              ),
+            ],
           ],
         );
-      case true:
+      default:
         break;
     }
     final dir = _dir;

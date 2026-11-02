@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../platform/storage_access.dart';
 import 'user_sources.dart';
 
 /// Yedek dosyası (Ayarlar › Veriler): bütün ayarlar (profiller, favoriler,
@@ -42,6 +43,13 @@ abstract final class Backup {
       throw const FormatException('Dosya okunamadı.');
     }
     if (data is! Map || data['bicim'] != format) throw const FormatException('Bu dosya bir RedoX yedeği değil.');
+    // Yalnız listeleri içeren yedek (ayarlar yok): bu cihazın ayarları
+    // kalır, yedekteki listeler eldekilere eklenir.
+    final listsOnly = data['ayarlar'] == null;
+    if (listsOnly) {
+      if (data['kaynaklar'] case final Map<String, Object?> s) await sources.importData(s, merge: true);
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     for (final MapEntry(:key, :value) in ((data['ayarlar'] as Map?) ?? const {}).cast<String, Object?>().entries) {
@@ -62,9 +70,16 @@ abstract final class Backup {
   }
 
   /// Yedeğin yazılacağı klasör: Android'de İndirilenler (Tüm dosyalara
-  /// erişim gerekir), masaüstünde İndirilenler ya da belgeler.
-  static Future<Directory> folder() async {
-    if (Platform.isAndroid) return Directory('/storage/emulated/0/Download');
+  /// erişim gerekir; yoksa uygulamanın kendi klasörü), masaüstünde
+  /// İndirilenler ya da belgeler.
+  static Future<Directory> folder({bool allowed = true}) async {
+    if (Platform.isAndroid) {
+      if (!allowed) {
+        final app = await StorageAccess.appFolder();
+        return app == null ? getApplicationDocumentsDirectory() : Directory(app);
+      }
+      return Directory('/storage/emulated/0/Download');
+    }
     return await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
   }
 

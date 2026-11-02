@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Dosya gezgininin depolama erişimi ve kökleri. Android 11+ "Tüm dosyalara
@@ -27,6 +28,17 @@ abstract final class StorageAccess {
       return (await Permission.storage.request()).isGranted;
     } on Object {
       return false;
+    }
+  }
+
+  /// Uygulamanın kendi dış klasörü (`Android/data/<paket>/files`): izin
+  /// istemez; izin yokken yedek buraya yazılır, gezgin burayı yine gösterir.
+  static Future<String?> appFolder() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      return (await getExternalStorageDirectory())?.path;
+    } on Object {
+      return null;
     }
   }
 

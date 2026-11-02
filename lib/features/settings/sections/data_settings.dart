@@ -69,12 +69,11 @@ class DataSettings extends StatelessWidget {
   }
 
   Future<void> _backup(BuildContext context) async {
-    if (!await StorageAccess.ensure()) {
-      if (context.mounted) settingToast(context, 'Yedek için "Tüm dosyalara erişim" izni gerekiyor.');
-      return;
-    }
+    // İzin yoksa yedek uygulamanın kendi klasörüne (gezginde "Uygulama
+    // klasörü").
+    final allowed = await StorageAccess.ensure();
     try {
-      final dir = await (backupFolder ?? Backup.folder)();
+      final dir = await (backupFolder ?? () => Backup.folder(allowed: allowed))();
       await dir.create(recursive: true);
       final file = File('${dir.path}/${Backup.fileName(DateTime.now())}');
       await file.writeAsString(await Backup.create(sources));

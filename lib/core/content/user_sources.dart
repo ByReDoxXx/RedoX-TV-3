@@ -469,9 +469,20 @@ class UserSources extends ChangeNotifier {
   };
 
   /// Yedeği geri yükler: eldeki listelerin yerine yedektekiler geçer.
-  Future<void> importData(Map<String, Object?> data) async {
+  /// [merge]: eldekiler kalır, yedekte olup burada olmayan listeler eklenir.
+  Future<void> importData(Map<String, Object?> data, {bool merge = false}) async {
     final index = [for (final j in data['dizin'] as List? ?? const []) UserSource.fromJson(j as Map<String, Object?>)];
     final texts = (data['listeler'] as Map?)?.cast<String, Object?>() ?? const {};
+    if (merge) {
+      final have = {for (final s in _items) s.id};
+      for (final s in index) {
+        if (have.contains(s.id)) continue;
+        if (texts[s.id] case final String text) await _file(s.id).writeAsString(text);
+        _items.add(s);
+      }
+      await _save();
+      return;
+    }
     for (final s in _items) {
       final f = _file(s.id);
       if (await f.exists()) await f.delete();
