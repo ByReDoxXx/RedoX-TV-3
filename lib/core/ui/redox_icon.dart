@@ -62,7 +62,13 @@ enum RedoxIcons {
   dialpad('dialpad', 'Rakamlar'),
   tvDevice('tv', 'TV'),
   keyboard('keyboard', 'Klavye'),
-  send('send', 'Gönder');
+  send('send', 'Gönder'),
+  tune('tune', 'Oynatıcı'),
+  info('info', 'Hakkında'),
+  database('database', 'Veriler'),
+  delete('delete', 'Sil'),
+  backup('backup', 'Yedekle'),
+  restore('restore', 'Geri yükle');
 
   const RedoxIcons(this.symbol, this.label);
 

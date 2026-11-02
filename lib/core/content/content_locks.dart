@@ -39,6 +39,9 @@ class ContentLocks extends ChangeNotifier {
   /// Kayıt kendisi kilitli mi (üst klasörlerine bakmaz).
   bool isLocked(String key) => _locked.contains(key);
 
+  /// Kilitli olanların anahtarları (Ayarlar › Ebeveyn denetimi).
+  Set<String> get locked => Set.unmodifiable(_locked);
+
   /// Kilitli ve bu oturumda açılmamış.
   bool blocks(String key) => _locked.contains(key) && !_unlocked.contains(key);
 

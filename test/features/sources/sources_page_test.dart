@@ -64,7 +64,13 @@ Widget _app(FormFactor f, UserSources s, {GlobalKey? boundary, SourceReceiver? r
     debugShowCheckedModeBanner: false,
     theme: RedoxTheme.dark(formFactor: f),
     home: Scaffold(
-      body: SettingsPage(sources: s, clock: '20:45', profileName: 'Profil 1', receiver: receiver ?? _FakeReceiver(s)),
+      body: SettingsPage(
+        sources: s,
+        clock: '20:45',
+        profileName: 'Profil 1',
+        receiver: receiver ?? _FakeReceiver(s),
+        initialSection: SettingsSection.addSource,
+      ),
     ),
   ),
 );
@@ -96,7 +102,7 @@ void main() {
     await _settle(tester);
     expect(tester.takeException(), isNull);
     expect(find.text('Ayarlar'), findsOneWidget);
-    expect(find.text(SettingsTab.addSource.label), findsOneWidget);
+    expect(find.text(SettingsSection.addSource.label), findsOneWidget);
     for (final m in AddMethod.values) {
       expect(find.text(m.title), findsOneWidget, reason: m.title);
     }

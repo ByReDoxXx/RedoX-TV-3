@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/remote/remote_host.dart';
 import '../../core/content/tmdb.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
@@ -28,6 +29,7 @@ import '../player/player_page.dart';
 import '../../core/playback/radio_controller.dart';
 import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
+import '../tv/tv_guide_controller.dart';
 import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
 import '../remote/remote_page.dart';
@@ -63,7 +65,19 @@ class RootShell extends StatefulWidget {
     this.profiles,
     this.onSwitchProfile,
     this.homeRequests,
+    this.remote,
+    this.guide,
+    this.openLastChannel = false,
   });
+
+  /// TV: telefon kumandası sunucusu (Ayarlar › Telefon kumandası).
+  final RemoteHost? remote;
+
+  /// Kanal listesi ve yayın akışı denetleyicisi (Ayarlar › Hakkında).
+  final TvGuideController? guide;
+
+  /// Açılışta son izlenen kanal oynatılır (Ayarlar › Açılış).
+  final bool openLastChannel;
 
   /// TV: telefon kumandasının Ana sayfa tuşu (açık sayfalar kapanır,
   /// Anasayfa'ya dönülür).
@@ -128,6 +142,8 @@ class _RootShellState extends State<RootShell> {
   TvView _tvView = TvView.cards;
 
   void _go(AppSection section, {TvView tvView = TvView.cards}) {
+    // Ayarlar'dan çıkınca "Kaynak ekle" açılışı unutulur (menüden gelince bölüm listesi).
+    if (section != AppSection.settings) _settingsSection = null;
     if (section != _section || tvView != _tvView) {
       setState(() {
         _section = section;
@@ -142,7 +158,10 @@ class _RootShellState extends State<RootShell> {
     super.initState();
     widget.history?.addListener(_syncFrames);
     widget.homeRequests?.addListener(_remoteHome);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncFrames());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncFrames();
+      if (widget.openLastChannel) _openLast();
+    });
   }
 
   @override
@@ -181,6 +200,24 @@ class _RootShellState extends State<RootShell> {
         content: Text(i < 0 ? 'Bölünmüş Ekran dolu: bir karoyu boşaltın.' : "${c.name} Bölünmüş Ekran'a eklendi."),
       ),
     );
+  }
+
+  /// Ayarlar'da açılacak bölüm ("Kaynak ekle" düğmelerinden gelince).
+  SettingsSection? _settingsSection;
+
+  void _openAddSource() {
+    setState(() => _settingsSection = SettingsSection.addSource);
+    _go(AppSection.settings);
+  }
+
+  /// Ayarlar › Açılış › Son izlenen kanal.
+  void _openLast() {
+    final last = widget.history?.value.firstOrNull;
+    final channel = _tv.channels.where((c) => c.number == last).firstOrNull;
+    // Kilitli kanal açılışta kendiliğinden açılmaz (PIN sorusu kabuğun
+    // altındaki kapsamda; burada yok).
+    if (channel == null || _locks.blocks(ContentLocks.channel(channel.number)) || !mounted) return;
+    unawaited(_watch(context, channel));
   }
 
   void _remoteHome() {
@@ -374,7 +411,7 @@ class _RootShellState extends State<RootShell> {
       clock: _clock,
       profileName: _home.profileName,
       onWatch: (list, i) => _watch(context, list[i], from: list),
-      onAdd: () => _go(AppSection.settings),
+      onAdd: _openAddSource,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,
@@ -387,14 +424,23 @@ class _RootShellState extends State<RootShell> {
       clock: _clock,
       profileName: _home.profileName,
       onWatch: (list, i) => _watch(context, list[i], from: list),
-      onAdd: () => _go(AppSection.settings),
+      onAdd: _openAddSource,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),
       onProfile: widget.onSwitchProfile,
     ),
     AppSection.settings when widget.sources != null && !_kids => SettingsPage(
+      // "Kaynak ekle" düğmelerinden gelince o bölüm açık; her açılışta bir kez.
+      key: ValueKey(_settingsSection),
+      initialSection: _settingsSection,
       sources: widget.sources!,
       profiles: widget.profiles,
+      history: widget.history,
+      songs: widget.radio?.songs,
+      tmdb: Tmdb.shared,
+      remote: widget.remote,
+      guide: widget.guide,
+      channelName: (n) => _tv.channels.where((c) => c.number == n).firstOrNull?.name,
       clock: _clock,
       profileName: _home.profileName,
       onHome: () => _go(AppSection.home),

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/content/app_settings.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/device_controls.dart';
@@ -97,6 +98,7 @@ class _PlayerPageState extends State<PlayerPage> {
     initialIndex: widget.initialIndex,
     rank: widget.rank,
     resolve: widget.resolve,
+    failover: AppSettings.instance.failover,
   );
 
   final _rootFocus = FocusNode(debugLabel: 'oynatıcı');
@@ -109,7 +111,9 @@ class _PlayerPageState extends State<PlayerPage> {
   bool _drawer = false;
   String _digits = '';
   String? _notice;
-  VideoScale _scale = VideoScale.original;
+
+  /// Açılışta Ayarlar › Oynatıcı › Görüntü ölçeği.
+  VideoScale _scale = VideoScale.values.byName(AppSettings.instance.scale.name);
   int _shownIndex = -1;
 
   /// Geçmişe en son yazılan kanal (aynı kanal tekrar yazılmasın).

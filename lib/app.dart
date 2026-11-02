@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'core/layout/form_factor.dart';
+import 'core/navigation/destinations.dart';
 import 'core/theme/redox_theme.dart';
+import 'core/content/app_settings.dart';
 import 'core/content/content_locks.dart';
 import 'core/content/profiles.dart';
 import 'core/content/favorites.dart';
@@ -19,6 +21,7 @@ import 'features/remote/pairing_overlay.dart';
 import 'features/remote/remote_text_dialog.dart';
 import 'features/shell/root_shell.dart';
 import 'features/tv/tv_content.dart';
+import 'features/tv/tv_guide_controller.dart';
 
 /// Açılış: "Kim izliyor?" (her açılışta). Profil seçilince kök kabuk o
 /// profille kurulur; başlıktaki profil hapı seçim ekranına döner.
@@ -79,8 +82,9 @@ class RedoxApp extends StatefulWidget {
 class _RedoxAppState extends State<RedoxApp> {
   final _navigator = GlobalKey<NavigatorState>();
 
-  /// İzleyen profil; null iken seçim ekranı.
-  Profile? _profile;
+  /// İzleyen profil; null iken seçim ekranı. Ayarlar › Açılış'ta "Kim
+  /// izliyor?" kapalıysa son profil doğrudan açılır.
+  late Profile? _profile = AppSettings.instance.askProfile ? null : widget.profiles?.byId(widget.profiles?.lastId);
 
   /// Seçim ekranına profil hapından gelindiyse önceki profil (Geri ona döner).
   Profile? _previous;
@@ -171,6 +175,14 @@ class _RedoxAppState extends State<RedoxApp> {
         profiles: store,
         onSwitchProfile: store == null ? null : _switchProfile,
         homeRequests: widget.remoteHome,
+        remote: widget.remote,
+        guide: switch (widget.tv) {
+          final TvGuideController g => g,
+          _ => null,
+        },
+        // Ayarlar › Açılış: profil seçilince açılan sayfa.
+        initial: AppSettings.instance.startPage == StartPage.tv ? AppSection.tv : AppSection.home,
+        openLastChannel: AppSettings.instance.startPage == StartPage.lastChannel,
       ),
     );
   }

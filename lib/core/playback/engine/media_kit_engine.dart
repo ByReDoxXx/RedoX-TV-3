@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../content/app_settings.dart';
 import 'playback_engine.dart';
 
 /// media_kit (libmpv) ile oynatma. Uygulama başında
@@ -56,11 +57,46 @@ class MediaKitEngine implements PlaybackEngine {
 
   /// Canlı yayında açılışı hızlandırır: ffmpeg yayın biçimini varsayılan 5 sn
   /// yerine 1 sn çözümler (IPTV akışlarında yeterli). Ağ beklemesi 10 sn.
+  /// Ayarlar › Oynatıcı: ön bellek (ileriye okunan süre) ve tercih edilen ses
+  /// ve altyazı dili (mpv alang/slang; altyazı "Kapalı" ise hiç seçilmez).
   Future<void> _tune() async {
     final native = _player.platform;
     if (native is! NativePlayer) return;
     await native.setProperty('demuxer-lavf-analyzeduration', '1');
     await native.setProperty('network-timeout', '10');
+    final settings = AppSettings.instance;
+    if (settings.buffer.seconds case final s?) {
+      await native.setProperty('cache', 'yes');
+      await native.setProperty('cache-secs', '$s');
+      await native.setProperty('demuxer-readahead-secs', '$s');
+    }
+    if (settings.audio.codes.isNotEmpty) await native.setProperty('alang', settings.audio.codes);
+    switch (settings.subtitles) {
+      case TrackLanguage.off:
+        await native.setProperty('sid', 'no');
+      case final TrackLanguage l when l.codes.isNotEmpty:
+        await native.setProperty('slang', l.codes);
+      default:
+        break;
+    }
+  }
+
+  /// Ayarlar › Kalite sınırı: yayın birden çok kalite verdiyse (HLS ana
+  /// listesi) sınırın altındaki en yüksek kalite seçilir; kullanıcı
+  /// Seçenekler'den kalite seçerse ona dokunulmaz. Yayın başına bir kez.
+  bool _capped = false;
+
+  void _applyCap(Tracks t) {
+    final max = AppSettings.instance.quality.maxHeight;
+    if (_capped || max == null) return;
+    final fitting = [
+      for (final v in t.video)
+        if (_real(v.id) && v.h != null && v.h! <= max) v,
+    ]..sort((a, b) => b.h! - a.h!);
+    final tallest = t.video.where((v) => _real(v.id) && v.h != null).fold<int>(0, (m, v) => v.h! > m ? v.h! : m);
+    if (fitting.isEmpty || tallest <= max) return;
+    _capped = true;
+    unawaited(_player.setVideoTrack(fitting.first));
   }
 
   final _state = ValueNotifier(const EngineState());
@@ -82,6 +118,7 @@ class MediaKitEngine implements PlaybackEngine {
 
   void _onTracks(Tracks t) {
     _tracks = t;
+    _applyCap(t);
     String lang(String? title, String? language, String fallback) =>
         [title, language].whereType<String>().where((s) => s.isNotEmpty).firstOrNull ?? fallback;
     _update(
@@ -106,6 +143,7 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> open(String url) {
     // Yeni yayında boyut ve izler sıfırlanır: "görüntü geldi" yeniden ölçülür.
     _update(const EngineState());
+    _capped = false;
     return _player.open(Media(url));
   }
 
@@ -116,7 +154,12 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> setMuted(bool muted) => _player.setVolume(muted ? 0 : 100);
 
   @override
-  Future<void> selectVideoTrack(String id) => _player.setVideoTrack(switch (id) {
+  Future<void> selectVideoTrack(String id) {
+    _capped = true;
+    return _selectVideoTrack(id);
+  }
+
+  Future<void> _selectVideoTrack(String id) => _player.setVideoTrack(switch (id) {
     EngineState.autoTrack => VideoTrack.auto(),
     EngineState.noTrack => VideoTrack.no(),
     _ => _tracks.video.firstWhere((v) => v.id == id, orElse: VideoTrack.auto),

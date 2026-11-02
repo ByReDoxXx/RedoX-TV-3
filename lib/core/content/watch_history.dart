@@ -29,6 +29,12 @@ class WatchHistory extends ValueNotifier<List<int>> {
     }();
   }
 
+  /// Geçmişi siler (Ayarlar › Veriler).
+  void clear() {
+    value = const [];
+    unawaited(_save?.call(value));
+  }
+
   /// Kanalı başa alır (listede varsa yeri değişir).
   void record(int number) {
     if (value.isNotEmpty && value.first == number) return;

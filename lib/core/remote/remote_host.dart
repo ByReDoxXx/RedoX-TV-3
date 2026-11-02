@@ -37,8 +37,9 @@ class RemoteHost {
   /// Telefonun yayın iletisi.
   static const probe = 'REDOX-KUMANDA?';
 
-  /// TV'nin adı (telefondaki listede).
-  final String name;
+  /// TV'nin adı (telefondaki listede; Ayarlar › Telefon kumandası'ndan
+  /// değişir, sonraki aramada görünür).
+  String name;
   final void Function(RemoteKey key) onKey;
 
   /// Telefon klavyesinden yazı ([textPrefix] ile gelen ileti).
@@ -71,6 +72,19 @@ class RemoteHost {
   int? get boundDiscoveryPort => _udp?.port;
 
   static const _prefsKey = 'kumanda_anahtarlar';
+  static const _nameKey = 'kumanda_ad';
+
+  /// Eşleşmiş telefon sayısı.
+  int get pairedCount => _tokens.length;
+
+  /// Kullanıcının verdiği ad; yoksa null.
+  static Future<String?> loadName() async => (await SharedPreferences.getInstance()).getString(_nameKey);
+
+  /// Adı değiştirir ve saklar.
+  Future<void> rename(String value) async {
+    name = value;
+    await (await SharedPreferences.getInstance()).setString(_nameKey, value);
+  }
 
   /// Telefondaki listede görünen ad: cihazın ağ adı; Android çoğunlukla
   /// "localhost" verir, o zaman "RedoX TV" (yanında adres de görünür).

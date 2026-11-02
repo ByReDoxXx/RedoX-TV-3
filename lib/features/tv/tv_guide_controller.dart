@@ -29,6 +29,14 @@ class TvGuideController extends ValueNotifier<TvContent> {
   final Duration refresh;
 
   EpgGuide _guide = EpgGuide.empty;
+
+  /// Kanal listesi ve yayın akışının son indirildiği an (Ayarlar ›
+  /// Hakkında); bu açılışta inmediyse null.
+  final channelsUpdated = ValueNotifier<DateTime?>(null);
+  final guideUpdated = ValueNotifier<DateTime?>(null);
+
+  /// Kanal listesini ve yayın akışını hemen yeniden indirir.
+  Future<void> refreshNow() => Future.wait([_fetchChannels(), _fetch()]);
   Timer? _minute;
   Timer? _reload;
   bool _disposed = false;
@@ -46,6 +54,7 @@ class TvGuideController extends ValueNotifier<TvContent> {
     final channels = await loadChannels?.call();
     if (_disposed || channels == null || channels.isEmpty) return;
     value = TvContent(channels: channels).withGuide(_guide, clock());
+    channelsUpdated.value = clock();
   }
 
   /// Sonraki dakika başında yenile, sonra her dakika (başlık saati kaymasın).
@@ -62,6 +71,7 @@ class TvGuideController extends ValueNotifier<TvContent> {
     final guide = await load();
     if (_disposed || guide.channelCount == 0) return;
     _guide = guide;
+    guideUpdated.value = clock();
     _apply();
   }
 

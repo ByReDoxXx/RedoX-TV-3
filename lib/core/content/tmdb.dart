@@ -109,6 +109,16 @@ class Tmdb {
     );
   }
 
+  /// Saklanan film/dizi bilgilerini siler (Ayarlar › Veriler); sonraki
+  /// açılışta yeniden sorulur.
+  Future<void> clearCache() async {
+    _cache = {};
+    await (await SharedPreferences.getInstance()).remove(_prefsKey);
+  }
+
+  /// Saklanan ad sayısı (bulunamayanlar dahil); önbellek yüklenmediyse cihazdan.
+  Future<int> cacheSize() async => (await _load()).length;
+
   /// Kayıt adının TMDB karşılığı; bulunamazsa ya da ağ yoksa null.
   Future<TmdbInfo?> find(String name, {required bool series}) {
     final key = '${series ? 'd' : 'f'}:${name.trim().toLowerCase()}';

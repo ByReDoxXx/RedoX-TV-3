@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
+import 'core/content/app_settings.dart';
 import 'core/content/channel_source.dart';
 import 'core/content/content_locks.dart';
 import 'core/content/data_pack.dart';
@@ -51,6 +52,8 @@ Future<void> main() async {
   // yüksek olan önde (StreamProbe).
   // Profiller ve her profilin son izlenen kanalları cihazda saklanır.
   final profiles = await ProfileStore.load();
+  // Ayarlar (oynatıcı, açılış): oynatma katmanı da okur.
+  AppSettings.instance = await AppSettings.load();
   final history = await WatchHistory.load();
   final favorites = await Favorites.load();
   // Kullanıcının M3U listeleri (Kaynaklar).
@@ -73,7 +76,7 @@ Future<void> main() async {
   RemoteHost? remote;
   if (FormFactor.current == FormFactor.tv) {
     remote = RemoteHost(
-      name: RemoteHost.deviceName(),
+      name: await RemoteHost.loadName() ?? RemoteHost.deviceName(),
       tokens: await RemoteHost.loadTokens(),
       saveTokens: RemoteHost.storeTokens,
       onKey: (key) => unawaited(RemoteInput.handle(key, onHome: () => remoteHome.value++)),

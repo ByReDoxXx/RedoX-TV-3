@@ -33,6 +33,7 @@ class PlaybackSession extends ChangeNotifier {
     this.staleErrorWindow = const Duration(seconds: 1),
     this.rank,
     this.resolve,
+    this.failover = true,
   }) : assert(channels.isNotEmpty) {
     engine.state.addListener(_onEngine);
     _errorSubscription = engine.errors.listen(_onError);
@@ -60,6 +61,10 @@ class PlaybackSession extends ChangeNotifier {
 
   /// Akış sıralayıcı; null ise listedeki sıra.
   final StreamRanker? rank;
+
+  /// Akış açılmazsa sıradakine kendiliğinden geç (Ayarlar › Oynatıcı);
+  /// kapalıysa kanal "açılamadı" olur, "Sonraki akış" elle denenir.
+  final bool failover;
 
   /// Açmadan önce adresi çözer (STB portalının kısa ömürlü bağlantıları:
   /// UserSources.resolve); null ise adres olduğu gibi açılır. Çözülemeyen
@@ -182,7 +187,7 @@ class PlaybackSession extends ChangeNotifier {
   /// Sıradaki akışa geç; akış kalmadıysa kanal açılamadı.
   void _failover() {
     _startupTimer?.cancel();
-    if (_stream + 1 < streamCount) {
+    if (failover && _stream + 1 < streamCount) {
       _stream++;
       _play();
     } else {

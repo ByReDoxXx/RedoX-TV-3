@@ -459,6 +459,34 @@ class UserSources extends ChangeNotifier {
     return '${DateTime.now().millisecondsSinceEpoch}${r.nextInt(1 << 20)}';
   }
 
+  /// Yedek (Ayarlar › Veriler): dizin ve her listenin M3U metni.
+  Future<Map<String, Object?>> exportData() async => {
+    'dizin': [for (final s in _items) s.toJson()],
+    'listeler': {
+      for (final s in _items)
+        if (await _file(s.id).exists()) s.id: await _file(s.id).readAsString(),
+    },
+  };
+
+  /// Yedeği geri yükler: eldeki listelerin yerine yedektekiler geçer.
+  Future<void> importData(Map<String, Object?> data) async {
+    final index = [for (final j in data['dizin'] as List? ?? const []) UserSource.fromJson(j as Map<String, Object?>)];
+    final texts = (data['listeler'] as Map?)?.cast<String, Object?>() ?? const {};
+    for (final s in _items) {
+      final f = _file(s.id);
+      if (await f.exists()) await f.delete();
+    }
+    for (final s in index) {
+      if (texts[s.id] case final String text) await _file(s.id).writeAsString(text);
+    }
+    _items
+      ..clear()
+      ..addAll(index);
+    _cache.clear();
+    _portals.clear();
+    await _save();
+  }
+
   Future<void> _save() async {
     await File('${dir.path}/kaynaklar.json').writeAsString(jsonEncode([for (final s in _items) s.toJson()]));
     notifyListeners();

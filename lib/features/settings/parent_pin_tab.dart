@@ -8,7 +8,7 @@ import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../profiles/widgets/pin_dialog.dart';
 
-/// Ayarlar › Ebeveyn PIN'i: PIN'i değiştir (önce mevcut, sonra yeni iki
+/// Ayarlar › Ebeveyn denetimi › PIN: PIN'i değiştir (önce mevcut, sonra yeni iki
 /// kez) ya da kaldır (mevcut PIN ile; çocuk profiline sonraki girişte yenisi
 /// istenir). PIN yoksa yalnız belirleme. Çocuk profilinde Ayarlar yoktur.
 class ParentPinTab extends StatelessWidget {
@@ -40,7 +40,7 @@ class ParentPinTab extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return ListenableBuilder(
       listenable: store,
-      builder: (context, _) => SingleChildScrollView(
+      builder: (context, _) => Padding(
         padding: padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
