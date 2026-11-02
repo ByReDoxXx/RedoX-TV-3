@@ -51,7 +51,7 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
   ChannelFolder _treeFor(List<LiveChannel> list) {
     if (!identical(list, _treeOf)) {
       _treeOf = list;
-      _tree = ChannelFolder.build(list);
+      _tree = ChannelFolder.build(list, episodes: _source.kind == SourceKind.series);
     }
     return _tree;
   }
@@ -80,15 +80,30 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
       builder: (context) => AlertDialog(
         backgroundColor: RedoxRoles.surfaceContainerHigh,
         title: Text('"${_source.name}" silinsin mi?'),
-        content: const Text('Liste ve kanalları bu cihazdan kaldırılır.'),
+        content: Text(
+          '${_source.kind == SourceKind.live ? 'Liste ve kanalları' : 'Liste ve ${_source.kind.label} bölümündeki kayıtları'} '
+          'bu cihazdan kaldırılır; favorilerdeki kayıtları ve kilitleri de silinir.',
+        ),
         actions: [
           GlassButton(label: 'Vazgeç', onPressed: () => Navigator.pop(context, false)),
           PrimaryButton(label: 'Sil', icon: RedoxIcons.close, onPressed: () => Navigator.pop(context, true)),
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true || !mounted) return;
+    // Silinen kaynağın izleri: favoriler (bütün profiller) ve kilitler.
+    var list = const <LiveChannel>[];
+    try {
+      list = await widget.sources.channels(_source);
+    } on Object {
+      // Liste okunamadı: yalnız kaynak ve klasör kilitleri kalkar.
+    }
+    final urls = {for (final c in list) ...c.streams.take(1)};
+    if (!mounted) return;
+    LockScope.maybeOf(context)?.locks.forgetSource(_source.id, urls);
     await widget.sources.remove(_source);
+    widget.favorites?.forgetSources(urls);
+    await Favorites.forgetEverywhere(urls);
     if (mounted) Navigator.pop(context);
   }
 

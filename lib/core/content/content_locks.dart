@@ -59,6 +59,17 @@ class ContentLocks extends ChangeNotifier {
     unawaited(_save?.call(_locked));
   }
 
+  /// Kaynak silindi: kaynağın, klasörlerinin ve [urls] kayıtlarının
+  /// kilitleri kalkar.
+  void forgetSource(String sourceId, Set<String> urls) {
+    final prefix = folder(sourceId, const []);
+    final before = _locked.length;
+    _locked.removeWhere((k) => k.startsWith(prefix) || (k.startsWith('kayit:') && urls.contains(k.substring(6))));
+    if (_locked.length == before) return;
+    notifyListeners();
+    unawaited(_save?.call(_locked));
+  }
+
   /// PIN doğrulandı: oturum boyunca açık.
   void unlock(String key) {
     if (_unlocked.add(key)) notifyListeners();

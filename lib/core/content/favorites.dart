@@ -74,6 +74,7 @@ class Favorites extends ChangeNotifier {
     }
 
     final cache = <String, Favorites>{};
+    _loaded = cache;
     return (id) => cache[id] ??= Favorites(
       channels: read('${_kChannels}_$id'),
       radios: read('${_kRadios}_$id'),
@@ -84,6 +85,38 @@ class Favorites extends ChangeNotifier {
         await prefs.setStringList('${_kSources}_$id', [for (final i in f._sources) jsonEncode(i.toJson())]);
       },
     );
+  }
+
+  /// [load]'un açtığı profillerin favorileri (silinen kaynağın kayıtlarını
+  /// hepsinden kaldırmak için).
+  static Map<String, Favorites>? _loaded;
+
+  /// Kaynak silindi: kayıtları bütün profillerin favorilerinden kalkar
+  /// (kullanıcı isteği: "Kaynaklardan bir şey silinirse dizi ve filmlerden de
+  /// silinsin"). Açık profiller bellekte, açılmamışlar cihazda temizlenir.
+  static Future<void> forgetEverywhere(Set<String> urls) async {
+    if (urls.isEmpty) return;
+    final open = _loaded ?? const {};
+    for (final f in open.values) {
+      f.forgetSources(urls);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith('${_kSources}_') || open.containsKey(key.substring(_kSources.length + 1))) continue;
+      final saved = prefs.getStringList(key) ?? const <String>[];
+      final kept = [
+        for (final s in saved)
+          if (_decode(s) case final i? when !urls.contains(i.url)) s,
+      ];
+      if (kept.length != saved.length) await prefs.setStringList(key, kept);
+    }
+  }
+
+  /// Bu profilin favorilerinden [urls] kayıtlarını kaldırır.
+  void forgetSources(Set<String> urls) {
+    final before = _sources.length;
+    _sources.removeWhere((i) => urls.contains(i.url));
+    if (_sources.length != before) _changed();
   }
 
   static FavoriteItem? _decode(String s) {

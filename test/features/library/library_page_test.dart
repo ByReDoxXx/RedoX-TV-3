@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:redox_tv/core/content/channel_folder.dart';
+import 'package:redox_tv/core/content/content_locks.dart';
+import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/tmdb.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
@@ -12,6 +14,7 @@ import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/media_card.dart';
 import 'package:redox_tv/features/library/film_detail_page.dart';
+import 'package:redox_tv/features/locks/lock_scope.dart';
 import 'package:redox_tv/features/library/library_page.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
 
@@ -184,7 +187,7 @@ void main() {
     expect([for (final c in watched!.$1) c.streams.single], ['http://ornek/kg11.mp4', 'http://ornek/kg12.mp4']);
   });
 
-  testWidgets('kaynak yoksa yönerge ve "Kaynak ekle"; Kaynaklar yalnız canlı listeleri gösterir', (tester) async {
+  testWidgets('kaynak yoksa yönerge ve "Kaynak ekle"; Kaynaklar bütün listeleri türüyle gösterir', (tester) async {
     await _size(tester, const Size(960, 540));
     var added = false;
     final empty = await _sources(tester, empty: true);
@@ -211,8 +214,69 @@ void main() {
     );
     await _settle(tester);
     expect(find.text('Canlı'), findsOneWidget);
-    expect(find.text('Filmlerim'), findsNothing);
+    expect(find.text('Filmlerim'), findsOneWidget);
+    expect(find.text('2 film · Film · Dosya'), findsOneWidget);
+    expect(find.text('3 bölüm · Dizi · Dosya'), findsOneWidget);
+  });
+
+  testWidgets("Kaynaklar'dan silinen dizi Dizi bölümünden, favorilerden ve kilitlerden de kalkar", (tester) async {
+    SharedPreferences.setMockInitialValues({
+      // Açılmamış başka profilin favorisi de temizlenir.
+      'favori_kaynak_baska': [
+        jsonEncode({'ad': 'KG 1', 'adres': 'http://ornek/kg11.mp4'}),
+      ],
+    });
+    await _size(tester, const Size(960, 540));
+    final sources = await _sources(tester);
+    final favorites = Favorites(
+      sources: [const FavoriteItem(name: 'KG 2', url: 'http://ornek/kg12.mp4')],
+    );
+    final dizi = sources.of(SourceKind.series).single;
+    final locks = ContentLocks({
+      ContentLocks.folder(dizi.id, ['Kuzey Güney']),
+      ContentLocks.item('http://ornek/kg21.mp4'),
+      'kanal:1',
+    });
+    await tester.pumpWidget(
+      _app(
+        FormFactor.tv,
+        LockScope(
+          locks: locks,
+          profiles: null,
+          child: SourcesPage(sources: sources, favorites: favorites, clock: '20:45', profileName: 'Profil 1'),
+        ),
+      ),
+    );
+    await _settle(tester);
+    await tester.tap(find.text('Dizilerim'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sil'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Dizi bölümündeki kayıtları'), findsOneWidget);
+    await tester.tap(find.text('Sil').last);
+    for (var i = 0; i < 5; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pumpAndSettle();
+    expect(sources.of(SourceKind.series), isEmpty);
     expect(find.text('Dizilerim'), findsNothing);
+    expect(favorites.sources, isEmpty);
+    expect(locks.isLocked(ContentLocks.folder(dizi.id, ['Kuzey Güney'])), isFalse);
+    expect(locks.isLocked(ContentLocks.item('http://ornek/kg21.mp4')), isFalse);
+    expect(locks.isLocked('kanal:1'), isTrue, reason: 'başka kilitler kalır');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getStringList('favori_kaynak_baska'), isEmpty);
+
+    await tester.pumpWidget(
+      _app(
+        FormFactor.tv,
+        LibraryPage(kind: SourceKind.series, sources: sources, clock: '20:45', profileName: 'Profil 1'),
+      ),
+    );
+    await _settle(tester);
+    expect(find.textContaining('Dizi kaynağı yok'), findsOneWidget);
   });
 
   testWidgets('TMDB: film ayrıntısı (ad, yıl, puan, özet), İzle oynatır; dizi klasöründe özet', (tester) async {

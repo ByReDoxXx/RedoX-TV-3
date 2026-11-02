@@ -56,8 +56,9 @@ class SourcesPage extends StatelessWidget {
     return ListenableBuilder(
       listenable: sources,
       builder: (context, _) {
-        // Film ve Dizi kaynakları kendi bölümlerinde.
-        final items = sources.of(SourceKind.live);
+        // Bütün listeler (Canlı TV, Film, Dizi): Film ve Dizi listeleri kendi
+        // bölümlerinde de görünür; burada silinince oradan da kalkar.
+        final items = [for (final k in SourceKind.values) ...sources.of(k)];
         final header = AppHeader(
           clock: clock,
           profileName: profileName,
@@ -71,7 +72,7 @@ class SourcesPage extends StatelessWidget {
             SectionTitle(
               title: 'Listelerim',
               trailing: Text(
-                '${items.length} liste · ${sources.channelCount} kanal',
+                '${items.length} liste · ${sources.channelCount} kayıt',
                 style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
               ),
             ),

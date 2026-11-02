@@ -112,7 +112,7 @@ void main() {
     await _settle(tester);
     expect(tester.takeException(), isNull);
     expect(find.text('Spor listem'), findsOneWidget);
-    expect(find.text('4 liste · 250 kanal'), findsOneWidget);
+    expect(find.text('4 liste · 250 kayıt'), findsOneWidget);
     expect(find.text(AddMethod.xtream.title), findsNothing);
     await tester.tap(find.text('Kaynak ekle'));
     expect(asked, 1);

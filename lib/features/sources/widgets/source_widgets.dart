@@ -98,7 +98,11 @@ class FolderCard extends StatelessWidget {
                         style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
                       ),
                       Text(
-                        '${s.count} kanal · ${s.origin.label}',
+                        '${s.count} ${switch (s.kind) {
+                          SourceKind.live => 'kanal',
+                          SourceKind.film => 'film',
+                          SourceKind.series => 'bölüm',
+                        }} · ${s.kind == SourceKind.live ? '' : '${s.kind.label} · '}${s.origin.label}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
