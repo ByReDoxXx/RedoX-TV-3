@@ -6,6 +6,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../content/app_settings.dart';
+import '../subtitle_look.dart';
 import 'playback_engine.dart';
 
 /// media_kit (libmpv) ile oynatma. Uygulama başında
@@ -187,7 +188,16 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Widget view({BoxFit fit = BoxFit.contain}) =>
       // Denetimler uygulamanındır (alt çubuk); media_kit'inkiler kapalı.
-      Video(controller: _video, controls: NoVideoControls, fit: fit);
+      Video(
+        controller: _video,
+        controls: NoVideoControls,
+        fit: fit,
+        // Ayarlar › Altyazı: boyut, renk, arka plan, konum, kalınlık.
+        subtitleViewConfiguration: SubtitleViewConfiguration(
+          style: SubtitleLook.style(AppSettings.instance),
+          padding: SubtitleLook.padding(AppSettings.instance),
+        ),
+      );
 
   @override
   Future<void> dispose() async {

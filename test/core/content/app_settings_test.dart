@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/brand/app_info.dart';
 import 'package:redox_tv/core/content/app_settings.dart';
@@ -10,6 +11,7 @@ import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/playback/playback_session.dart';
 import 'package:redox_tv/core/playback/stream_probe.dart';
+import 'package:redox_tv/core/playback/subtitle_look.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fake_engine.dart';
@@ -33,7 +35,12 @@ void main() {
       ..textSize = TextSize.large
       ..gestures = false
       ..nightMode = true
-      ..backgroundAudio = false;
+      ..backgroundAudio = false
+      ..subtitleSize = SubtitleSize.large
+      ..subtitleColor = SubtitleColor.yellow
+      ..subtitleBackground = SubtitleBackground.none
+      ..subtitlePosition = SubtitlePosition.raised
+      ..subtitleBold = true;
     await Future<void>.delayed(Duration.zero);
     final again = await AppSettings.load();
     expect(again.quality, QualityCap.fullHd);
@@ -46,6 +53,10 @@ void main() {
     expect(again.startPage, StartPage.lastChannel);
     expect(again.textSize.scale, 1.15);
     expect((again.gestures, again.nightMode, again.backgroundAudio), (false, true, false));
+    expect(
+      (again.subtitleSize, again.subtitleColor, again.subtitleBackground, again.subtitlePosition, again.subtitleBold),
+      (SubtitleSize.large, SubtitleColor.yellow, SubtitleBackground.none, SubtitlePosition.raised, true),
+    );
   });
 
   test('kalite sınırı: sınırın üstündeki (4K) akış hızlı da olsa sonra gelir', () {
@@ -120,6 +131,26 @@ void main() {
     expect(d.lines, hasLength(Diagnostics.limit));
     expect(d.lines.last, endsWith('399'));
     expect(d.report(header: 'RedoX TV').split('\n').first, 'RedoX TV');
+  });
+
+  test('altyazı görünümü: boyut, renk, kalınlık; arka plansızken gölge; konum alttan boşluk', () {
+    final s = AppSettings(
+      subtitleSize: SubtitleSize.larger,
+      subtitleColor: SubtitleColor.yellow,
+      subtitleBackground: SubtitleBackground.none,
+      subtitlePosition: SubtitlePosition.high,
+      subtitleBold: true,
+    );
+    final style = SubtitleLook.style(s);
+    expect(style.fontSize, 56);
+    expect(style.color, const Color(0xFFFFE14D));
+    expect(style.fontWeight, FontWeight.w700);
+    expect(style.backgroundColor!.a, 0);
+    expect(style.shadows, isNotEmpty);
+    expect(SubtitleLook.padding(s).bottom, 140);
+    final plain = SubtitleLook.style(AppSettings());
+    expect(plain.shadows, isNull);
+    expect(plain.backgroundColor, const Color(0xAA000000));
   });
 
   test('sürüm pubspec ile aynı', () {

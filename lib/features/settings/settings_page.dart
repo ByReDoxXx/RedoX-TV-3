@@ -27,12 +27,14 @@ import 'sections/parental_settings.dart';
 import 'sections/player_settings.dart';
 import 'sections/remote_settings.dart';
 import 'sections/startup_settings.dart';
+import 'sections/subtitle_settings.dart';
 
 /// Ayarların bölümleri (kullanıcı isteği: "Ayarlar sayfası çok düzensiz ve
 /// ekstra ne ekleyebiliriz" › hepsi).
 enum SettingsSection {
   addSource('Kaynak ekle', 'M3U, Xtream, portal, dosya, telefon', RedoxIcons.add),
-  player('Oynatıcı', 'Kalite, ölçek, ses, hareketler', RedoxIcons.tune),
+  player('Oynatıcı', 'Kalite, ölçek, ses dili, hareketler', RedoxIcons.tune),
+  subtitles('Altyazı', 'Dil, boyut, renk, arka plan, konum', RedoxIcons.subtitles),
   appearance('Görünüm', 'Yazı boyutu, OLED modu', RedoxIcons.textSize),
   startup('Açılış', 'Profil sorusu ve ilk sayfa', RedoxIcons.home),
   parental('Ebeveyn denetimi', 'PIN ve kilitli içerik', RedoxIcons.lock),
@@ -116,6 +118,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return switch (section) {
       SettingsSection.addSource => AddSourceTab(sources: widget.sources, receiver: widget.receiver, padding: padding),
       SettingsSection.player => PlayerSettings(settings: settings, padding: padding),
+      SettingsSection.subtitles => SubtitleSettings(settings: settings, padding: padding),
       SettingsSection.appearance => AppearanceSettings(settings: settings, padding: padding),
       SettingsSection.startup => StartupSettings(settings: settings, padding: padding),
       SettingsSection.parental => ParentalSettings(

@@ -82,6 +82,59 @@ enum TextSize {
   final double scale;
 }
 
+/// Ayarlar › Altyazı: yazı boyutu (oynatıcının 1280x720 referansında
+/// punto; küçük ekranda oranla küçülür).
+enum SubtitleSize {
+  small('Küçük', 26),
+  normal('Normal', 34),
+  large('Büyük', 44),
+  larger('Çok büyük', 56);
+
+  const SubtitleSize(this.label, this.fontSize);
+
+  final String label;
+  final double fontSize;
+}
+
+/// Ayarlar › Altyazı: yazı rengi (ARGB).
+enum SubtitleColor {
+  white('Beyaz', 0xFFFFFFFF),
+  yellow('Sarı', 0xFFFFE14D),
+  cyan('Camgöbeği', 0xFF7FE7FF),
+  green('Yeşil', 0xFF9DF07A);
+
+  const SubtitleColor(this.label, this.argb);
+
+  final String label;
+  final int argb;
+}
+
+/// Ayarlar › Altyazı: yazının arkası.
+enum SubtitleBackground {
+  none('Yok (gölgeli)', 0x00000000),
+  translucent('Yarı saydam', 0xAA000000),
+  black('Siyah', 0xFF000000);
+
+  const SubtitleBackground(this.label, this.argb);
+
+  final String label;
+  final int argb;
+}
+
+/// Ayarlar › Altyazı: ekranın altından uzaklık (referans 720 yükseklikte).
+enum SubtitlePosition {
+  lowest('En altta', 24),
+  raised('Biraz yukarıda', 72),
+  high('Yukarıda', 140);
+
+  const SubtitlePosition(this.label, this.margin);
+
+  final String label;
+
+  /// Alttan boşluk.
+  final double margin;
+}
+
 /// Uygulama ayarları (kullanıcı isteği: Ayarlar'a oynatıcı, açılış ve veri
 /// ayarları). Cihazda saklanır, bütün profillerde ortaktır.
 ///
@@ -103,6 +156,11 @@ class AppSettings extends ChangeNotifier {
     this._nightMode = false,
     this._backgroundAudio = true,
     this._oled = false,
+    this._subtitleSize = SubtitleSize.normal,
+    this._subtitleColor = SubtitleColor.white,
+    this._subtitleBackground = SubtitleBackground.translucent,
+    this._subtitlePosition = SubtitlePosition.lowest,
+    this._subtitleBold = false,
     this.onSave,
   });
 
@@ -131,12 +189,22 @@ class AppSettings extends ChangeNotifier {
       nightMode: prefs.getBool('${_prefix}gece') ?? false,
       backgroundAudio: prefs.getBool('${_prefix}arka_ses') ?? true,
       oled: prefs.getBool('${_prefix}oled') ?? false,
+      subtitleSize: pick(SubtitleSize.values, 'altyazi_boyut', SubtitleSize.normal),
+      subtitleColor: pick(SubtitleColor.values, 'altyazi_renk', SubtitleColor.white),
+      subtitleBackground: pick(SubtitleBackground.values, 'altyazi_arka', SubtitleBackground.translucent),
+      subtitlePosition: pick(SubtitlePosition.values, 'altyazi_konum', SubtitlePosition.lowest),
+      subtitleBold: prefs.getBool('${_prefix}altyazi_kalin') ?? false,
       onSave: (s) async {
         await prefs.setString('${_prefix}yazi', s.textSize.name);
         await prefs.setBool('${_prefix}hareketler', s.gestures);
         await prefs.setBool('${_prefix}gece', s.nightMode);
         await prefs.setBool('${_prefix}arka_ses', s.backgroundAudio);
         await prefs.setBool('${_prefix}oled', s.oled);
+        await prefs.setString('${_prefix}altyazi_boyut', s.subtitleSize.name);
+        await prefs.setString('${_prefix}altyazi_renk', s.subtitleColor.name);
+        await prefs.setString('${_prefix}altyazi_arka', s.subtitleBackground.name);
+        await prefs.setString('${_prefix}altyazi_konum', s.subtitlePosition.name);
+        await prefs.setBool('${_prefix}altyazi_kalin', s.subtitleBold);
         await prefs.setString('${_prefix}kalite', s.quality.name);
         await prefs.setString('${_prefix}olcek', s.scale.name);
         await prefs.setString('${_prefix}onbellek', s.buffer.name);
@@ -167,6 +235,24 @@ class AppSettings extends ChangeNotifier {
   /// siyah piksel yanmaz: pil tasarrufu, daha derin siyah).
   bool get oled => _oled;
   set oled(bool v) => _set(() => _oled = v);
+
+  SubtitleSize _subtitleSize;
+  SubtitleColor _subtitleColor;
+  SubtitleBackground _subtitleBackground;
+  SubtitlePosition _subtitlePosition;
+  bool _subtitleBold;
+
+  SubtitleSize get subtitleSize => _subtitleSize;
+  SubtitleColor get subtitleColor => _subtitleColor;
+  SubtitleBackground get subtitleBackground => _subtitleBackground;
+  SubtitlePosition get subtitlePosition => _subtitlePosition;
+  bool get subtitleBold => _subtitleBold;
+
+  set subtitleSize(SubtitleSize v) => _set(() => _subtitleSize = v);
+  set subtitleColor(SubtitleColor v) => _set(() => _subtitleColor = v);
+  set subtitleBackground(SubtitleBackground v) => _set(() => _subtitleBackground = v);
+  set subtitlePosition(SubtitlePosition v) => _set(() => _subtitlePosition = v);
+  set subtitleBold(bool v) => _set(() => _subtitleBold = v);
 
   /// Bütün uygulamada yazı boyutu.
   TextSize get textSize => _textSize;

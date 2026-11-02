@@ -209,6 +209,48 @@ void main() {
     expect(files.single.path, endsWith('.json'));
   });
 
+  for (final (f, size) in const [(FormFactor.tv, Size(960, 540)), (FormFactor.phone, Size(412, 915))]) {
+    testWidgets('${f.name}: Altyazı bölümü: örnek seçimle değişir; dil Oynatıcı\'dan buraya taşındı', (tester) async {
+      await _size(tester, size);
+      final sources = await _sources(tester);
+      final settings = AppSettings();
+      final key = GlobalKey();
+      await tester.pumpWidget(
+        _app(
+          f,
+          SettingsPage(
+            sources: sources,
+            clock: '20:45',
+            profileName: 'Profil 1',
+            settings: settings,
+            initialSection: SettingsSection.subtitles,
+          ),
+          boundary: key,
+        ),
+      );
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      final sample = find.textContaining('Bu bir altyazı örneğidir.');
+      expect(sample, findsOneWidget);
+      await tester.ensureVisible(find.text(SubtitleSize.larger.label));
+      await tester.tap(find.text(SubtitleSize.larger.label));
+      await tester.ensureVisible(find.text(SubtitleColor.yellow.label));
+      await tester.tap(find.text(SubtitleColor.yellow.label));
+      await tester.ensureVisible(find.text(SubtitleBackground.black.label));
+      await tester.tap(find.text(SubtitleBackground.black.label));
+      await tester.pump();
+      expect(
+        (settings.subtitleSize, settings.subtitleColor, settings.subtitleBackground),
+        (SubtitleSize.larger, SubtitleColor.yellow, SubtitleBackground.black),
+      );
+      expect(tester.widget<Text>(sample).style!.color, const Color(0xFFFFE14D));
+      await tester.ensureVisible(sample);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await maybeSnapshot(tester, key, 'build/ayarlar/${f.name}-altyazi.png', pixelRatio: 2);
+    });
+  }
+
   testWidgets('Görünüm: yazı boyutu; Hakkında: cihaz ve hata raporu', (tester) async {
     await _size(tester, const Size(960, 540));
     StorageAccess.debugOverride = () async => true;

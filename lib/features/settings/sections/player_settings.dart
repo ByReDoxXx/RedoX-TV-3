@@ -79,14 +79,6 @@ class PlayerSettings extends StatelessWidget {
           selected: settings.audio,
           onChanged: (v) => settings.audio = v,
         ),
-        ChoiceSetting(
-          title: 'Altyazı',
-          description: 'Yayında altyazı varsa bu dil açılır.',
-          values: TrackLanguage.values,
-          labelOf: (v) => v.label,
-          selected: settings.subtitles,
-          onChanged: (v) => settings.subtitles = v,
-        ),
       ],
     ),
   );
