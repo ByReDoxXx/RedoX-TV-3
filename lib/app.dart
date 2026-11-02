@@ -202,7 +202,10 @@ class _RedoxAppState extends State<RedoxApp> {
       // Geçiş animasyonsuz: ara karede tablet düzeni telefon genişliğinde
       // çizilip taşıyordu (renkler değişmez, yalnız ölçüler).
       themeAnimationDuration: Duration.zero,
-      theme: RedoxTheme.dark(formFactor: FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context))),
+      theme: RedoxTheme.dark(
+        formFactor: FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context)),
+        oled: AppSettings.instance.oled,
+      ),
       themeMode: ThemeMode.dark,
       builder: (context, child) {
         // Ayarlar › Görünüm › Yazı boyutu: bütün uygulamada.

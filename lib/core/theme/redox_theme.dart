@@ -62,16 +62,22 @@ abstract final class RedoxTheme {
 
   static bool _focusLike(Set<WidgetState> s) => s.contains(WidgetState.focused) || s.contains(WidgetState.hovered);
 
-  static ThemeData dark({FormFactor formFactor = FormFactor.tv}) {
+  /// OLED modunda arka plan.
+  static const oledBlack = Color(0xFF000000);
+
+  /// Sayfa arka planı OLED siyahı mı (Ayarlar › Görünüm › OLED modu).
+  static bool isOled(BuildContext context) => Theme.of(context).scaffoldBackgroundColor == oledBlack;
+
+  static ThemeData dark({FormFactor formFactor = FormFactor.tv, bool oled = false}) {
     final text = RedoxType.textTheme(formFactor);
     return ThemeData(
       useMaterial3: true,
-      colorScheme: _scheme,
+      colorScheme: oled ? _scheme.copyWith(surface: oledBlack) : _scheme,
       fontFamily: RedoxType.family,
       textTheme: text,
       // Taban seviye (0dp) tuval = nötr tohum (Obsidian Void, logonun siyahı).
       // M3'ün surface-container-lowest'ı (T4) bir kademe üstte kalır.
-      scaffoldBackgroundColor: RedoxSeeds.obsidian,
+      scaffoldBackgroundColor: oled ? oledBlack : RedoxSeeds.obsidian,
       extensions: [RedoxMetrics.of(formFactor)],
       // TV'de dokunma yok: 40 dp düğmeler 48 dp dokunma alanına büyütülmez.
       materialTapTargetSize: formFactor == FormFactor.tv

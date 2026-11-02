@@ -30,7 +30,7 @@ class FilmDetailPage extends StatelessWidget {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final phone = metrics.formFactor == FormFactor.phone;
     return Scaffold(
-      backgroundColor: RedoxRoles.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: FutureBuilder(
         future: tmdb.find(film.name, series: false),
         builder: (context, snap) {
@@ -41,13 +41,13 @@ class FilmDetailPage extends StatelessWidget {
             children: [
               if (backdrop != null)
                 Image.network(backdrop, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
-                    colors: [RedoxRoles.surface, Color(0xE6111126), Color(0x66111126)],
-                    stops: [0, 0.45, 1],
+                    colors: _fade(Theme.of(context).scaffoldBackgroundColor, [1, 0.9, 0.4]),
+                    stops: const [0, 0.45, 1],
                   ),
                 ),
               ),
@@ -63,6 +63,9 @@ class FilmDetailPage extends StatelessWidget {
       ),
     );
   }
+
+  /// Arka plan renginin saydamlık basamakları (görselin üstündeki geçiş).
+  static List<Color> _fade(Color bg, List<double> alphas) => [for (final a in alphas) bg.withValues(alpha: a)];
 
   Widget _poster(TmdbInfo? info, double width) => ClipRRect(
     borderRadius: BorderRadius.circular(RedoxRadius.lg),

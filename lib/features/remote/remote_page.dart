@@ -183,7 +183,7 @@ class _RemotePageState extends State<RemotePage> {
     final t = Theme.of(context).textTheme;
     final connected = _stage == _Stage.remote;
     return Scaffold(
-      backgroundColor: RedoxRoles.surfaceContainerLowest,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),

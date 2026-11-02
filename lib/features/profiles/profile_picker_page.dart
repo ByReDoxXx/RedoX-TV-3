@@ -112,7 +112,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     // birlikte sığar.
     final logo = phone ? 220.0 : 180.0;
     return Scaffold(
-      backgroundColor: RedoxSeeds.obsidian,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: DecoratedBox(
         // Referanstaki sağ alt ışıma: logonun kızılı ve amberi.
         decoration: const BoxDecoration(

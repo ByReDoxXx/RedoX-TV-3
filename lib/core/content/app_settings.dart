@@ -102,6 +102,7 @@ class AppSettings extends ChangeNotifier {
     this._gestures = true,
     this._nightMode = false,
     this._backgroundAudio = true,
+    this._oled = false,
     this.onSave,
   });
 
@@ -129,11 +130,13 @@ class AppSettings extends ChangeNotifier {
       gestures: prefs.getBool('${_prefix}hareketler') ?? true,
       nightMode: prefs.getBool('${_prefix}gece') ?? false,
       backgroundAudio: prefs.getBool('${_prefix}arka_ses') ?? true,
+      oled: prefs.getBool('${_prefix}oled') ?? false,
       onSave: (s) async {
         await prefs.setString('${_prefix}yazi', s.textSize.name);
         await prefs.setBool('${_prefix}hareketler', s.gestures);
         await prefs.setBool('${_prefix}gece', s.nightMode);
         await prefs.setBool('${_prefix}arka_ses', s.backgroundAudio);
+        await prefs.setBool('${_prefix}oled', s.oled);
         await prefs.setString('${_prefix}kalite', s.quality.name);
         await prefs.setString('${_prefix}olcek', s.scale.name);
         await prefs.setString('${_prefix}onbellek', s.buffer.name);
@@ -158,6 +161,12 @@ class AppSettings extends ChangeNotifier {
   bool _gestures;
   bool _nightMode;
   bool _backgroundAudio;
+  bool _oled;
+
+  /// OLED modu: arka planlar ve gezinti çubukları saf siyah (OLED ekranda
+  /// siyah piksel yanmaz: pil tasarrufu, daha derin siyah).
+  bool get oled => _oled;
+  set oled(bool v) => _set(() => _oled = v);
 
   /// Bütün uygulamada yazı boyutu.
   TextSize get textSize => _textSize;

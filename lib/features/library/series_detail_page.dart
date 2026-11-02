@@ -52,11 +52,12 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
   Widget build(BuildContext context) {
     final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
     return Scaffold(
-      backgroundColor: RedoxRoles.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: FutureBuilder(
         future: _info,
         builder: (context, snap) {
           final info = snap.data;
+          final bg = Theme.of(context).scaffoldBackgroundColor;
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -72,15 +73,15 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: phone
-                      ? const LinearGradient(
+                      ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Color(0x66111126), RedoxRoles.surface],
-                          stops: [0, 0.32],
+                          colors: [bg.withValues(alpha: 0.4), bg],
+                          stops: const [0, 0.32],
                         )
-                      : const LinearGradient(
-                          colors: [RedoxRoles.surface, Color(0xEE111126), Color(0x99111126)],
-                          stops: [0, 0.5, 1],
+                      : LinearGradient(
+                          colors: [bg, bg.withValues(alpha: 0.93), bg.withValues(alpha: 0.6)],
+                          stops: const [0, 0.5, 1],
                         ),
                 ),
               ),

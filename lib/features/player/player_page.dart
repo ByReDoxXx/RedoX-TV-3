@@ -8,7 +8,6 @@ import '../../core/content/app_settings.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/device_controls.dart';
-import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/playback/engine/media_kit_engine.dart';
 import '../../core/playback/engine/playback_engine.dart';
@@ -381,7 +380,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           autofocus: true,
           onKeyEvent: _onKey,
           child: Scaffold(
-            backgroundColor: RedoxSeeds.obsidian,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: ValueListenableBuilder<EngineState>(
               valueListenable: _engine.state,
               builder: (context, e, _) => Stack(

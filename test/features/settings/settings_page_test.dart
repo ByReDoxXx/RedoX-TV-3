@@ -14,6 +14,7 @@ import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/platform/storage_access.dart';
 import 'package:redox_tv/core/remote/remote_host.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/ui/bottom_nav_bar.dart';
 import 'package:redox_tv/features/locks/lock_scope.dart';
 import 'package:redox_tv/features/profiles/profile_picker_page.dart';
 import 'package:redox_tv/features/settings/sections/about_settings.dart';
@@ -286,6 +287,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Bölüm 2'), findsNothing, reason: 'dizi sayfası kapandı');
     expect(find.text('Ezel'), findsOneWidget, reason: "Dizi ızgarasına döndü, Anasayfa'ya değil");
+  });
+
+  testWidgets('OLED modu: arka plan ve alt çubuk saf siyah; kapalıyken gece laciverti', (tester) async {
+    await _size(tester, const Size(412, 915));
+    final previous = AppSettings.instance;
+    final settings = AppSettings(askProfile: false);
+    AppSettings.instance = settings;
+    addTearDown(() => AppSettings.instance = previous);
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: RedoxApp(
+          tv: ValueNotifier(TvContent.preview),
+          profiles: ProfileStore(lastId: 'p1'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    Color background() => Theme.of(tester.element(find.byType(RootShell))).scaffoldBackgroundColor;
+    expect(background(), isNot(RedoxTheme.oledBlack));
+    settings.oled = true;
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(background(), RedoxTheme.oledBlack);
+    final bar = tester.widget<Material>(
+      find.descendant(of: find.byType(RedoxBottomBar), matching: find.byType(Material)).first,
+    );
+    expect(bar.color, RedoxTheme.oledBlack);
+    await settleAssets(tester, rounds: 3);
+    await maybeSnapshot(tester, key, 'build/ayarlar/oled-anasayfa.png', pixelRatio: 2);
   });
 
   testWidgets('Açılış: "Kim izliyor?" kapalıysa son profil doğrudan açılır', (tester) async {

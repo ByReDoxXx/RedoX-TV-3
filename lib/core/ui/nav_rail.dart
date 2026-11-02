@@ -174,7 +174,7 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
       curve: M3EMotion.standard,
       width: expanded ? RedoxNavRail.expandedWidth : RedoxNavRail.collapsedWidth,
       decoration: BoxDecoration(
-        color: expanded ? RedoxRoles.surfaceContainer : RedoxRoles.surface,
+        color: expanded ? RedoxRoles.surfaceContainer : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.horizontal(right: Radius.circular(expanded ? RedoxRadius.lg : 0)),
         boxShadow: expanded ? kElevationToShadow[3] : const [],
       ),

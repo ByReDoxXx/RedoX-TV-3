@@ -89,7 +89,7 @@ class _SearchPageState extends State<SearchPage> {
     final channels = SearchPage.match(widget.channels, q);
     final radios = SearchPage.match(widget.radios, q);
     return Scaffold(
-      backgroundColor: RedoxSeeds.obsidian,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -123,7 +123,7 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
         if (!didPop && _dir != null) unawaited(_open(_parent));
       },
       child: Scaffold(
-        backgroundColor: RedoxRoles.surface,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: tv ? 48 : 16, vertical: tv ? 32 : 12),

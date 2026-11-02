@@ -33,7 +33,7 @@ import 'sections/startup_settings.dart';
 enum SettingsSection {
   addSource('Kaynak ekle', 'M3U, Xtream, portal, dosya, telefon', RedoxIcons.add),
   player('Oynatıcı', 'Kalite, ölçek, ses, hareketler', RedoxIcons.tune),
-  appearance('Görünüm', 'Yazı boyutu', RedoxIcons.textSize),
+  appearance('Görünüm', 'Yazı boyutu, OLED modu', RedoxIcons.textSize),
   startup('Açılış', 'Profil sorusu ve ilk sayfa', RedoxIcons.home),
   parental('Ebeveyn denetimi', 'PIN ve kilitli içerik', RedoxIcons.lock),
   remote('Telefon kumandası', 'Ad ve eşleşmiş telefonlar', RedoxIcons.remote),

@@ -114,7 +114,7 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
     final phone = metrics.formFactor == FormFactor.phone;
     final pad = phone ? 16.0 : 40.0;
     return Scaffold(
-      backgroundColor: RedoxSeeds.obsidian,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.fromLTRB(pad, 20, pad, 0),

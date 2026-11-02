@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/content/app_settings.dart';
 import '../widgets/setting_tiles.dart';
 
-/// Ayarlar › Görünüm: yazı boyutu (bütün uygulamada, hemen).
+/// Ayarlar › Görünüm: yazı boyutu ve OLED modu (bütün uygulamada, hemen).
 class AppearanceSettings extends StatelessWidget {
   const AppearanceSettings({super.key, required this.settings, this.padding = EdgeInsets.zero});
 
@@ -24,6 +24,12 @@ class AppearanceSettings extends StatelessWidget {
           labelOf: (v) => v.label,
           selected: settings.textSize,
           onChanged: (v) => settings.textSize = v,
+        ),
+        SwitchSetting(
+          title: 'OLED modu (saf siyah)',
+          description: 'Arka planlar ve gezinti çubukları saf siyah olur; OLED ekranlarda pil tasarrufu sağlar.',
+          value: settings.oled,
+          onChanged: (v) => settings.oled = v,
         ),
       ],
     ),

@@ -124,7 +124,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final phone = metrics.formFactor == FormFactor.phone;
     return Scaffold(
-      backgroundColor: RedoxSeeds.obsidian,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: RadialGradient(

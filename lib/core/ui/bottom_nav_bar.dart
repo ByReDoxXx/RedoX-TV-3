@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/m3e_motion.dart';
 import '../theme/redox_colors.dart';
+import '../theme/redox_theme.dart';
 import '../theme/redox_shapes.dart';
 import 'focus_glow.dart';
 import 'nav_rail.dart';
@@ -30,7 +31,8 @@ class RedoxBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Material(
-      color: RedoxRoles.surfaceContainer,
+      // OLED modunda çubuk da siyah.
+      color: RedoxTheme.isOled(context) ? RedoxTheme.oledBlack : RedoxRoles.surfaceContainer,
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomInset),
         child: SizedBox(
