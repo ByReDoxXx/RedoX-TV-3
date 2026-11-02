@@ -90,7 +90,7 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends State<PlayerPage> {
+class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   late final PlaybackEngine _engine = (widget.engineFactory ?? MediaKitEngine.new)();
   late final PlaybackSession _session = PlaybackSession(
     engine: _engine,
@@ -112,6 +112,8 @@ class _PlayerPageState extends State<PlayerPage> {
   String _digits = '';
   String? _notice;
 
+  final bool _gestures = AppSettings.instance.gestures;
+
   /// Açılışta Ayarlar › Oynatıcı › Görüntü ölçeği.
   VideoScale _scale = VideoScale.values.byName(AppSettings.instance.scale.name);
   int _shownIndex = -1;
@@ -129,6 +131,7 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _session.addListener(_onSession);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onSession());
   }
@@ -138,6 +141,7 @@ class _PlayerPageState extends State<PlayerPage> {
     // Jestle değişen parlaklık oynatıcıyla sınırlı: sistemin değerine dön
     // (değişmediyse etkisiz; dispose'da tema okunamaz, biçime bakılmaz).
     unawaited(DeviceControls.setBrightness(null));
+    WidgetsBinding.instance.removeObserver(this);
     _barTimer?.cancel();
     _digitTimer?.cancel();
     _noticeTimer?.cancel();
@@ -147,6 +151,25 @@ class _PlayerPageState extends State<PlayerPage> {
     _rootFocus.dispose();
     _playFocus.dispose();
     super.dispose();
+  }
+
+  /// Ayarlar › Arka planda ses kapalıysa: uygulamadan çıkınca ya da ekran
+  /// kapanınca yayın duraklar, dönünce sürer.
+  bool _pausedInBackground = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (AppSettings.instance.backgroundAudio) return;
+    switch (state) {
+      case AppLifecycleState.paused || AppLifecycleState.hidden when _engine.state.value.playing:
+        _pausedInBackground = true;
+        unawaited(_engine.playOrPause());
+      case AppLifecycleState.resumed when _pausedInBackground:
+        _pausedInBackground = false;
+        unawaited(_engine.playOrPause());
+      default:
+        break;
+    }
   }
 
   /// Kanal veya akış değişince çubuğu ve ipuçlarını kısa süre göster.
@@ -373,9 +396,15 @@ class _PlayerPageState extends State<PlayerPage> {
                   else
                     PlayerGestures(
                       onTap: () => _bar ? _hideBar() : _showBar(),
-                      onDoubleTap: () => _setScale(_scale == VideoScale.fill ? VideoScale.original : VideoScale.fill),
-                      onPinch: (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
-                      onZap: s.zap,
+                      // Ayarlar › Dokunma hareketleri kapalıysa yalnız dokunma.
+                      onDoubleTap: !_gestures
+                          ? null
+                          : () => _setScale(_scale == VideoScale.fill ? VideoScale.original : VideoScale.fill),
+                      onPinch: !_gestures
+                          ? null
+                          : (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
+                      onZap: _gestures ? s.zap : null,
+                      adjust: _gestures,
                       child: _engine.view(fit: _scale.fit),
                     ),
                   if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),

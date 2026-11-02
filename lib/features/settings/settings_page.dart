@@ -20,6 +20,7 @@ import '../../core/ui/redox_icon.dart';
 import '../sources/add_source_tab.dart';
 import '../tv/tv_guide_controller.dart';
 import 'sections/about_settings.dart';
+import 'sections/appearance_settings.dart';
 import 'sections/data_settings.dart';
 import 'sections/parental_settings.dart';
 import 'sections/player_settings.dart';
@@ -30,12 +31,13 @@ import 'sections/startup_settings.dart';
 /// ekstra ne ekleyebiliriz" › hepsi).
 enum SettingsSection {
   addSource('Kaynak ekle', 'M3U, Xtream, portal, dosya, telefon', RedoxIcons.add),
-  player('Oynatıcı', 'Kalite, ölçek, ön bellek, dil', RedoxIcons.tune),
+  player('Oynatıcı', 'Kalite, ölçek, ses, hareketler', RedoxIcons.tune),
+  appearance('Görünüm', 'Yazı boyutu', RedoxIcons.textSize),
   startup('Açılış', 'Profil sorusu ve ilk sayfa', RedoxIcons.home),
   parental('Ebeveyn denetimi', 'PIN ve kilitli içerik', RedoxIcons.lock),
   remote('Telefon kumandası', 'Ad ve eşleşmiş telefonlar', RedoxIcons.remote),
   data('Veriler', 'Temizle, yedekle, geri yükle', RedoxIcons.database),
-  about('Hakkında', 'Sürüm ve güncellemeler', RedoxIcons.info);
+  about('Hakkında', 'Sürüm, güncelleme, tanılama', RedoxIcons.info);
 
   const SettingsSection(this.label, this.summary, this.icon);
 
@@ -113,6 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return switch (section) {
       SettingsSection.addSource => AddSourceTab(sources: widget.sources, receiver: widget.receiver, padding: padding),
       SettingsSection.player => PlayerSettings(settings: settings, padding: padding),
+      SettingsSection.appearance => AppearanceSettings(settings: settings, padding: padding),
       SettingsSection.startup => StartupSettings(settings: settings, padding: padding),
       SettingsSection.parental => ParentalSettings(
         store: widget.profiles!,

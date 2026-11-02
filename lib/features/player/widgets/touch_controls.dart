@@ -272,7 +272,19 @@ class _Chip extends StatelessWidget {
 /// kanal değiştirir (sola: sonraki); solda dikey kaydırma parlaklık, sağda
 /// ses (cihaz sesi, [DeviceControls]). Ayarlanan değer ortada gösterilir.
 class PlayerGestures extends StatefulWidget {
-  const PlayerGestures({super.key, required this.child, this.onTap, this.onDoubleTap, this.onZap, this.onPinch});
+  const PlayerGestures({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.onDoubleTap,
+    this.onZap,
+    this.onPinch,
+    this.adjust = true,
+  });
+
+  /// Dikey kaydırma ses ve parlaklığı değiştirir (Ayarlar › Dokunma
+  /// hareketleri kapalıysa false).
+  final bool adjust;
 
   final Widget child;
   final VoidCallback? onTap;
@@ -294,7 +306,7 @@ class PlayerGestures extends StatefulWidget {
   State<PlayerGestures> createState() => PlayerGesturesState();
 }
 
-enum _Drag { none, horizontal, brightness, volume, pinch }
+enum _Drag { none, horizontal, brightness, volume, pinch, ignored }
 
 @visibleForTesting
 class PlayerGesturesState extends State<PlayerGestures> {
@@ -337,6 +349,7 @@ class PlayerGesturesState extends State<PlayerGestures> {
           : _start.dx < width / 2
           ? _Drag.brightness
           : _Drag.volume;
+      if (!widget.adjust && _drag != _Drag.horizontal) _drag = _Drag.ignored;
       if (_drag == _Drag.brightness || _drag == _Drag.volume) {
         final v = _drag == _Drag.volume ? await DeviceControls.volume() : await DeviceControls.brightness();
         _base = v ?? 0.5;

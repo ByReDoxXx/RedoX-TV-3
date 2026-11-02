@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../content/diagnostics.dart';
 import '../content/live_channel.dart';
 import 'engine/playback_engine.dart';
 import 'stream_probe.dart';
@@ -177,6 +178,7 @@ class PlaybackSession extends ChangeNotifier {
 
   void _onError(String message) {
     _lastError = message;
+    Diagnostics.instance.log('oynatıcı', '${channel.name}: $message');
     // Açıldıktan sonraki hatalar (geçici ağ uyarıları) yayını kesmez; mpv
     // gerekirse kendisi yeniden bağlanır.
     if (_status != PlaybackStatus.loading || (_staleTimer?.isActive ?? false)) return;
@@ -188,9 +190,11 @@ class PlaybackSession extends ChangeNotifier {
   void _failover() {
     _startupTimer?.cancel();
     if (failover && _stream + 1 < streamCount) {
+      Diagnostics.instance.log('oynatıcı', '${channel.name}: akış ${_stream + 1} açılmadı, yedeğe geçildi');
       _stream++;
       _play();
     } else {
+      Diagnostics.instance.log('oynatıcı', '${channel.name}: açılamadı ($streamCount akış)');
       _setStatus(PlaybackStatus.failed);
     }
   }

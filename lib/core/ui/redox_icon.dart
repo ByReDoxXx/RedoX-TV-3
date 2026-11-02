@@ -68,7 +68,8 @@ enum RedoxIcons {
   database('database', 'Veriler'),
   delete('delete', 'Sil'),
   backup('backup', 'Yedekle'),
-  restore('restore', 'Geri yükle');
+  restore('restore', 'Geri yükle'),
+  textSize('text_fields', 'Yazı boyutu');
 
   const RedoxIcons(this.symbol, this.label);
 

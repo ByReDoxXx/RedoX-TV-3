@@ -71,6 +71,11 @@ class MediaKitEngine implements PlaybackEngine {
       await native.setProperty('demuxer-readahead-secs', '$s');
     }
     if (settings.audio.codes.isNotEmpty) await native.setProperty('alang', settings.audio.codes);
+    // Gece modu: ffmpeg acompressor (eşiğin üstünü 4'te bire sıkıştırır,
+    // kazançla kısık sesleri yükseltir).
+    if (settings.nightMode) {
+      await native.setProperty('af', 'lavfi=[acompressor=threshold=0.125:ratio=4:attack=20:release=250:makeup=2]');
+    }
     switch (settings.subtitles) {
       case TrackLanguage.off:
         await native.setProperty('sid', 'no');

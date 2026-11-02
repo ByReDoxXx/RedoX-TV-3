@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/theme/redox_colors.dart';
+import 'package:redox_tv/core/content/app_settings.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/platform/device_controls.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -374,6 +375,22 @@ void main() {
       await tester.tapAt(const Offset(250, 250));
       await _settle(tester);
       expect(find.text(VideoScale.fill.label), findsWidgets);
+    });
+
+    testWidgets('Ayarlar › Dokunma hareketleri kapalı: kaydırma ses ve kanal değiştirmez', (tester) async {
+      final previous = AppSettings.instance;
+      AppSettings.instance = AppSettings(gestures: false);
+      addTearDown(() => AppSettings.instance = previous);
+      final before = Map.of(DeviceControls.debugValues!);
+      final e = await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      await tester.dragFrom(const Offset(700, 300), const Offset(0, -156));
+      await tester.pump();
+      expect(DeviceControls.debugValues!['ses'], before['ses']);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      final opened = e.opened.length;
+      await tester.dragFrom(const Offset(600, 200), const Offset(-300, 0));
+      await _settle(tester);
+      expect(e.opened.length, opened, reason: 'kanal değişmedi');
     });
 
     testWidgets('görüntü: telefon yatay ve açık Fold', (tester) async {

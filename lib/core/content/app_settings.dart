@@ -69,6 +69,19 @@ enum StartPage {
   final String label;
 }
 
+/// Ayarlar › Görünüm: yazı boyutu.
+enum TextSize {
+  small('%85', 0.85),
+  normal('%100', 1),
+  large('%115', 1.15),
+  larger('%130', 1.3);
+
+  const TextSize(this.label, this.scale);
+
+  final String label;
+  final double scale;
+}
+
 /// Uygulama ayarları (kullanıcı isteği: Ayarlar'a oynatıcı, açılış ve veri
 /// ayarları). Cihazda saklanır, bütün profillerde ortaktır.
 ///
@@ -85,6 +98,10 @@ class AppSettings extends ChangeNotifier {
     this._subtitles = TrackLanguage.auto,
     this._askProfile = true,
     this._startPage = StartPage.home,
+    this._textSize = TextSize.normal,
+    this._gestures = true,
+    this._nightMode = false,
+    this._backgroundAudio = true,
     this.onSave,
   });
 
@@ -108,7 +125,15 @@ class AppSettings extends ChangeNotifier {
       subtitles: pick(TrackLanguage.values, 'altyazi_dili', TrackLanguage.auto),
       askProfile: prefs.getBool('${_prefix}profil_sor') ?? true,
       startPage: pick(StartPage.values, 'acilis', StartPage.home),
+      textSize: pick(TextSize.values, 'yazi', TextSize.normal),
+      gestures: prefs.getBool('${_prefix}hareketler') ?? true,
+      nightMode: prefs.getBool('${_prefix}gece') ?? false,
+      backgroundAudio: prefs.getBool('${_prefix}arka_ses') ?? true,
       onSave: (s) async {
+        await prefs.setString('${_prefix}yazi', s.textSize.name);
+        await prefs.setBool('${_prefix}hareketler', s.gestures);
+        await prefs.setBool('${_prefix}gece', s.nightMode);
+        await prefs.setBool('${_prefix}arka_ses', s.backgroundAudio);
         await prefs.setString('${_prefix}kalite', s.quality.name);
         await prefs.setString('${_prefix}olcek', s.scale.name);
         await prefs.setString('${_prefix}onbellek', s.buffer.name);
@@ -129,6 +154,30 @@ class AppSettings extends ChangeNotifier {
   TrackLanguage _subtitles;
   bool _askProfile;
   StartPage _startPage;
+  TextSize _textSize;
+  bool _gestures;
+  bool _nightMode;
+  bool _backgroundAudio;
+
+  /// Bütün uygulamada yazı boyutu.
+  TextSize get textSize => _textSize;
+
+  /// Oynatıcıda dokunma hareketleri (kaydırma: ses, parlaklık, kanal; çift
+  /// dokunma ve iki parmak: ölçek). Kapalıyken yalnız dokunma çubuğu açar.
+  bool get gestures => _gestures;
+
+  /// Gece modu: ses aralığı sıkıştırılır (konuşma belirgin, ani yüksek ses
+  /// bastırılır).
+  bool get nightMode => _nightMode;
+
+  /// Uygulamadan çıkınca ya da ekran kapanınca ses sürsün; kapalıysa yayın
+  /// duraklar, dönünce sürer.
+  bool get backgroundAudio => _backgroundAudio;
+
+  set textSize(TextSize v) => _set(() => _textSize = v);
+  set gestures(bool v) => _set(() => _gestures = v);
+  set nightMode(bool v) => _set(() => _nightMode = v);
+  set backgroundAudio(bool v) => _set(() => _backgroundAudio = v);
 
   QualityCap get quality => _quality;
   StartScale get scale => _scale;

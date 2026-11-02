@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'core/content/app_settings.dart';
 import 'core/content/channel_source.dart';
 import 'core/content/content_locks.dart';
 import 'core/content/data_pack.dart';
+import 'core/content/diagnostics.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
 import 'core/content/favorites.dart';
@@ -28,6 +30,17 @@ import 'features/tv/tv_guide_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Hatalar tanılama günlüğüne de yazılır (Ayarlar › Hakkında); varsayılan
+  // işleyiş sürer.
+  final presentError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    Diagnostics.instance.log('hata', details.exceptionAsString());
+    presentError?.call(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    Diagnostics.instance.log('hata', '$error');
+    return false;
+  };
   // Oynatıcı (libmpv) yerel kütüphanesi.
   MediaKit.ensureInitialized();
   // TV'de dokunma yok, odak her an görünür olmalı. Android varsayılanı "touch"

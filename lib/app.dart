@@ -188,7 +188,13 @@ class _RedoxAppState extends State<RedoxApp> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    // Yazı boyutu değişince bütün uygulama yeniden çizilir.
+    listenable: AppSettings.instance,
+    builder: (context, _) => _app(context),
+  );
+
+  Widget _app(BuildContext context) {
     return MaterialApp(
       title: 'RedoX TV',
       debugShowCheckedModeBanner: false,
@@ -198,7 +204,15 @@ class _RedoxAppState extends State<RedoxApp> {
       themeAnimationDuration: Duration.zero,
       theme: RedoxTheme.dark(formFactor: FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context))),
       themeMode: ThemeMode.dark,
-      builder: widget.remote == null ? null : (context, child) => PairingOverlay(host: widget.remote!, child: child!),
+      builder: (context, child) {
+        // Ayarlar › Görünüm › Yazı boyutu: bütün uygulamada.
+        final scaled = MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(AppSettings.instance.textSize.scale)),
+          child: child!,
+        );
+        final remote = widget.remote;
+        return remote == null ? scaled : PairingOverlay(host: remote, child: scaled);
+      },
       navigatorKey: _navigator,
       home: Builder(builder: _home),
     );

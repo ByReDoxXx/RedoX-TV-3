@@ -49,6 +49,28 @@ class PlayerSettings extends StatelessWidget {
           value: settings.failover,
           onChanged: (v) => settings.failover = v,
         ),
+        SwitchSetting(
+          title: 'Arka planda ses',
+          description:
+              'Uygulamadan çıkınca ya da ekran kapanınca ses sürer. Kapalıysa yayın duraklar, dönünce devam eder. '
+              'Android, uzun süre arka planda kalan uygulamayı kapatabilir.',
+          value: settings.backgroundAudio,
+          onChanged: (v) => settings.backgroundAudio = v,
+        ),
+        SwitchSetting(
+          title: 'Dokunma hareketleri',
+          description:
+              'Telefon ve tablette: sol kenar parlaklık, sağ kenar ses, yatay kaydırma kanal değiştirir, çift dokunma '
+              've iki parmak ekranı doldurur. Kapalıyken dokunma yalnız düğmeleri açar.',
+          value: settings.gestures,
+          onChanged: (v) => settings.gestures = v,
+        ),
+        SwitchSetting(
+          title: 'Gece modu',
+          description: 'Konuşmaları belirginleştirir, ani yüksek sesleri bastırır.',
+          value: settings.nightMode,
+          onChanged: (v) => settings.nightMode = v,
+        ),
         ChoiceSetting(
           title: 'Ses dili',
           description: 'Yayında birden çok ses varsa bu dil seçilir.',

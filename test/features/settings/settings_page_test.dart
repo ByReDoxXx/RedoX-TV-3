@@ -15,6 +15,7 @@ import 'package:redox_tv/core/remote/remote_host.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/features/locks/lock_scope.dart';
 import 'package:redox_tv/features/profiles/profile_picker_page.dart';
+import 'package:redox_tv/features/settings/sections/about_settings.dart';
 import 'package:redox_tv/features/settings/sections/data_settings.dart';
 import 'package:redox_tv/features/settings/settings_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
@@ -204,6 +205,40 @@ void main() {
     await _settle(tester);
     final files = (await tester.runAsync(() => out.list().toList()))!;
     expect(files.single.path, endsWith('.json'));
+  });
+
+  testWidgets('Görünüm: yazı boyutu; Hakkında: cihaz ve hata raporu', (tester) async {
+    await _size(tester, const Size(960, 540));
+    StorageAccess.debugOverride = () async => true;
+    addTearDown(() => StorageAccess.debugOverride = null);
+    final sources = await _sources(tester);
+    final settings = AppSettings();
+    await tester.pumpWidget(
+      _app(
+        FormFactor.tv,
+        SettingsPage(
+          sources: sources,
+          clock: '20:45',
+          profileName: 'Profil 1',
+          settings: settings,
+          initialSection: SettingsSection.appearance,
+        ),
+      ),
+    );
+    await _settle(tester);
+    await tester.tap(find.text(TextSize.large.label));
+    await tester.pump();
+    expect(settings.textSize, TextSize.large);
+
+    final out = (await tester.runAsync(() => Directory.systemTemp.createTemp('redox-rapor-')))!;
+    addTearDown(() => out.delete(recursive: true));
+    await tester.pumpWidget(_app(FormFactor.tv, AboutSettings(sources: sources, reportFolder: () async => out)));
+    await _settle(tester);
+    expect(find.text('Cihaz'), findsOneWidget);
+    await tester.tap(find.text('Rapor kaydet'));
+    await _settle(tester);
+    final files = (await tester.runAsync(() => out.list().toList()))!;
+    expect(files.single.path, endsWith('.txt'));
   });
 
   testWidgets('Açılış: "Kim izliyor?" kapalıysa son profil doğrudan açılır', (tester) async {

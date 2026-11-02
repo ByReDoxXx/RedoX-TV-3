@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/brand/app_info.dart';
 import 'package:redox_tv/core/content/app_settings.dart';
 import 'package:redox_tv/core/content/backup.dart';
+import 'package:redox_tv/core/content/diagnostics.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/playback/playback_session.dart';
@@ -28,7 +29,11 @@ void main() {
       ..audio = TrackLanguage.turkish
       ..subtitles = TrackLanguage.off
       ..askProfile = false
-      ..startPage = StartPage.lastChannel;
+      ..startPage = StartPage.lastChannel
+      ..textSize = TextSize.large
+      ..gestures = false
+      ..nightMode = true
+      ..backgroundAudio = false;
     await Future<void>.delayed(Duration.zero);
     final again = await AppSettings.load();
     expect(again.quality, QualityCap.fullHd);
@@ -39,6 +44,8 @@ void main() {
     expect(again.subtitles, TrackLanguage.off);
     expect(again.askProfile, isFalse);
     expect(again.startPage, StartPage.lastChannel);
+    expect(again.textSize.scale, 1.15);
+    expect((again.gestures, again.nightMode, again.backgroundAudio), (false, true, false));
   });
 
   test('kalite sınırı: sınırın üstündeki (4K) akış hızlı da olsa sonra gelir', () {
@@ -100,6 +107,19 @@ void main() {
     expect((await other.channels(other.items.single)).single.name, 'Spor 1');
     expect(() => Backup.restore('{"x":1}', other), throwsFormatException);
     expect(Backup.fileName(DateTime(2026, 3, 4)), 'RedoX-yedek-2026-03-04.json');
+  });
+
+  test('tanılama: adresler sunucu adına iner (şifre yazılmaz); en çok 300 satır', () {
+    final d = Diagnostics();
+    d.log('oynatıcı', 'açılamadı: http://sunucu.tv:8080/live/ali/gizli123/77.ts ve rtmp://x.com/a?token=abc');
+    expect(d.lines.single, contains('[oynatıcı] açılamadı: http://sunucu.tv:8080/… ve rtmp://x.com/…'));
+    expect(d.lines.single, isNot(contains('gizli123')));
+    for (var i = 0; i < 400; i++) {
+      d.log('hata', '$i');
+    }
+    expect(d.lines, hasLength(Diagnostics.limit));
+    expect(d.lines.last, endsWith('399'));
+    expect(d.report(header: 'RedoX TV').split('\n').first, 'RedoX TV');
   });
 
   test('sürüm pubspec ile aynı', () {
