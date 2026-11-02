@@ -242,9 +242,7 @@ void main() {
     expect(files.single.path, endsWith('.txt'));
   });
 
-  testWidgets("kabukta Geri: ayar bölümünden listeye, Dizi klasöründen üst klasöre (Anasayfa'ya değil)", (
-    tester,
-  ) async {
+  testWidgets("kabukta Geri: ayar bölümünden listeye, dizi sayfasından Dizi'ye (Anasayfa'ya değil)", (tester) async {
     await _size(tester, const Size(412, 915));
     final sources = await _sources(tester);
     await tester.runAsync(
@@ -268,17 +266,26 @@ void main() {
     await _settle(tester);
     expect(find.text('Veriler'), findsOneWidget, reason: 'bölüm listesine döndü');
     expect(find.byType(SettingsPage), findsOneWidget, reason: "Anasayfa'ya gitmedi");
+    // İkinci tur (Pixel'de ikinci Geri listeye dönmedi).
+    for (final section in ['Görünüm', 'Hakkında', 'Açılış']) {
+      await tester.tap(find.text(section));
+      await _settle(tester);
+      expect(find.byType(SettingsPage), findsOneWidget);
+      expect(find.text('Veriler'), findsNothing, reason: '$section açık');
+      await tester.binding.handlePopRoute();
+      await _settle(tester);
+      expect(find.text('Veriler'), findsOneWidget, reason: '$section: Geri listeye döndü');
+    }
 
     await tester.pumpWidget(shell(AppSection.series));
     await _settle(tester);
     await tester.tap(find.text('Ezel'));
-    await _settle(tester);
-    await tester.tap(find.text('Sezon 1'));
-    await _settle(tester);
+    await tester.pumpAndSettle();
     expect(find.text('Bölüm 2'), findsOneWidget);
     await tester.binding.handlePopRoute();
-    await _settle(tester);
-    expect(find.text('Sezon 1'), findsOneWidget, reason: 'üst klasöre döndü');
+    await tester.pumpAndSettle();
+    expect(find.text('Bölüm 2'), findsNothing, reason: 'dizi sayfası kapandı');
+    expect(find.text('Ezel'), findsOneWidget, reason: "Dizi ızgarasına döndü, Anasayfa'ya değil");
   });
 
   testWidgets('Açılış: "Kim izliyor?" kapalıysa son profil doğrudan açılır', (tester) async {

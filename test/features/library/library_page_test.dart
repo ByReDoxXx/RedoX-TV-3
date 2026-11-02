@@ -8,6 +8,7 @@ import 'package:redox_tv/core/content/channel_folder.dart';
 import 'package:redox_tv/core/content/content_locks.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
+import 'package:redox_tv/core/content/series_catalog.dart';
 import 'package:redox_tv/core/content/tmdb.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
@@ -16,6 +17,7 @@ import 'package:redox_tv/core/ui/media_card.dart';
 import 'package:redox_tv/features/library/film_detail_page.dart';
 import 'package:redox_tv/features/locks/lock_scope.dart';
 import 'package:redox_tv/features/library/library_page.dart';
+import 'package:redox_tv/features/library/series_detail_page.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
 
 import '../../support/render.dart';
@@ -158,33 +160,70 @@ void main() {
     });
   }
 
-  testWidgets('Dizi: dizi › sezon › bölüm klasörleri; bölüm sezonun listesiyle açılır', (tester) async {
-    await _size(tester, const Size(960, 540));
-    final sources = await _sources(tester);
-    (List<LiveChannel>, int)? watched;
-    await tester.pumpWidget(
-      _app(
-        FormFactor.tv,
-        LibraryPage(
-          kind: SourceKind.series,
-          sources: sources,
-          clock: '20:45',
-          profileName: 'Profil 1',
-          onWatch: (l, i) async => watched = (l, i),
+  for (final (f, size) in const [(FormFactor.tv, Size(960, 540)), (FormFactor.phone, Size(412, 915))]) {
+    testWidgets('${f.name}: Dizi afiş ızgarası; dizi sayfası sezonlar ve bölümlerle, bölüm sezonun listesiyle açılır', (
+      tester,
+    ) async {
+      await _size(tester, size);
+      final sources = await _sources(tester);
+      (List<LiveChannel>, int)? watched;
+      final key = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: _app(
+            f,
+            LibraryPage(
+              kind: SourceKind.series,
+              sources: sources,
+              clock: '20:45',
+              profileName: 'Profil 1',
+              onWatch: (l, i) async => watched = (l, i),
+            ),
+          ),
         ),
-      ),
-    );
-    await _settle(tester);
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Kuzey Güney'));
-    await tester.pump();
-    expect(find.text('Sezon 1'), findsOneWidget);
-    expect(find.text('Sezon 2'), findsOneWidget);
-    await tester.tap(find.text('Sezon 1'));
-    await tester.pump();
-    await tester.tap(find.text('Bölüm 2'));
-    expect(watched!.$2, 1);
-    expect([for (final c in watched!.$1) c.streams.single], ['http://ornek/kg11.mp4', 'http://ornek/kg12.mp4']);
+      );
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(MediaCard), findsOneWidget, reason: 'bir dizi, bir kart');
+      expect(find.text('2 sezon'), findsOneWidget);
+      await maybeSnapshot(tester, key, 'build/kutuphane/dizi-${f.name}.png', pixelRatio: 2);
+      await tester.tap(find.byType(MediaCard));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeriesDetailPage), findsOneWidget);
+      expect(find.text('Sezon 1'), findsOneWidget);
+      expect(find.text('Sezon 2'), findsOneWidget);
+      expect(find.text('Bölüm 1'), findsOneWidget);
+      expect(find.text('Bölüm 2'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await maybeSnapshot(tester, key, 'build/kutuphane/dizi-sayfa-${f.name}.png', pixelRatio: 2);
+      await tester.tap(find.text('Bölüm 2'));
+      expect(watched!.$2, 1);
+      expect([for (final c in watched!.$1) c.streams.single], ['http://ornek/kg11.mp4', 'http://ornek/kg12.mp4']);
+      await tester.tap(find.text('Sezon 2'));
+      await tester.pump();
+      expect(find.text('Bölüm 2'), findsNothing);
+      await tester.tap(find.text('Bölüm 1'));
+      expect(watched!.$1.single.streams.single, 'http://ornek/kg21.mp4');
+      await tester.tap(find.textContaining('İzle'));
+      expect(watched!.$1.first.streams.single, 'http://ornek/kg11.mp4', reason: 'İzle: ilk sezonun ilk bölümü');
+    });
+  }
+
+  test('dizi kataloğu: adlardan sezon/bölüm; adsızlar grup adıyla tek sezon; listeler birleşir', () {
+    LiveChannel c(String name, String group, String url) =>
+        LiveChannel(name: name, number: 0, category: group, streams: [url]);
+    final catalog = SeriesCatalog.build([
+      ('a', [c('Ezel S01E02 Kaçış', 'Yerli', 'u2'), c('Ezel S01E01', 'Yerli', 'u1'), c('Belgesel X', 'Doğa', 'b1')]),
+      ('b', [c('ezel S02E01', 'Yerli', 'u3'), c('Belgesel Y', 'Doğa', 'b2')]),
+    ]);
+    expect([for (final s in catalog) s.name], ['Doğa', 'Ezel']);
+    final ezel = catalog.last;
+    expect(ezel.seasons, [1, 2]);
+    expect([for (final e in ezel.episodes(1)) e.label], ['Bölüm 1', 'Bölüm 2 · Kaçış']);
+    expect(ezel.summary, '2 sezon · 3 bölüm');
+    final doga = catalog.first;
+    expect([for (final e in doga.episodes(1)) (e.number, e.title)], [(1, 'Belgesel X'), (1, 'Belgesel Y')]);
   });
 
   testWidgets('kaynak yoksa yönerge ve "Kaynak ekle"; Kaynaklar bütün listeleri türüyle gösterir', (tester) async {
@@ -329,9 +368,9 @@ void main() {
       ),
     );
     await _settle(tester);
-    expect(find.text('İki kardeşin hikâyesi.'), findsNothing, reason: 'kökte özet yok');
-    await tester.tap(find.text('Kuzey Güney'));
+    await tester.tap(find.byType(MediaCard));
     await _settle(tester);
+    await tester.pumpAndSettle();
     expect(find.text('İki kardeşin hikâyesi.'), findsOneWidget);
     expect(find.textContaining('7.5 TMDB', findRichText: true), findsOneWidget);
     expect(find.text('Sezon 1'), findsOneWidget);

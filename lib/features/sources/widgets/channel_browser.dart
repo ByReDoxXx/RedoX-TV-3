@@ -31,7 +31,6 @@ class ChannelBrowser extends StatefulWidget {
     this.folderLock,
     this.onWatch,
     this.favorites,
-    this.header,
   });
 
   final ChannelFolder root;
@@ -47,10 +46,6 @@ class ChannelBrowser extends StatefulWidget {
 
   /// Yıldız (Favoriler › Kaynaklar); null ise yıldız yok.
   final Favorites? favorites;
-
-  /// Açık klasörün üstünde gösterilecek bilgi (Dizi: TMDB özeti); null
-  /// dönerse yok.
-  final Widget? Function(List<String> path)? header;
 
   @override
   State<ChannelBrowser> createState() => _ChannelBrowserState();
@@ -142,17 +137,7 @@ class _ChannelBrowserState extends State<ChannelBrowser> {
     if (prefix.isEmpty && folder.items.isEmpty) {
       return Text('Bu klasör boş.', style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant));
     }
-    final list = _listView(folder.items, prefix: prefix);
-    final header = widget.header?.call(List.unmodifiable(_path));
-    if (header == null) return list;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        header,
-        const SizedBox(height: 16),
-        Expanded(child: list),
-      ],
-    );
+    return _listView(folder.items, prefix: prefix);
   }
 }
 

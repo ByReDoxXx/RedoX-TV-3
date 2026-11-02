@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../core/content/channel_folder.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/series_catalog.dart';
 import '../../core/content/tmdb.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
@@ -19,9 +19,9 @@ import '../../core/ui/media_card.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
-import '../sources/widgets/channel_browser.dart';
+import '../locks/lock_scope.dart';
 import 'film_detail_page.dart';
-import 'widgets/series_header.dart';
+import 'series_detail_page.dart';
 import 'widgets/tmdb_poster.dart';
 
 /// Film ve Dizi bölümleri: Ayarlar › Kaynak ekle'de Film ya da Dizi olarak
@@ -111,9 +111,28 @@ class _LibraryPageState extends State<LibraryPage> {
         if (loaded == null) return const SizedBox.shrink();
         final inset = EdgeInsets.fromLTRB(padding.left, phone ? 4 : 16, padding.right, phone ? padding.bottom : 0);
         if (loaded.isEmpty) return Padding(padding: inset, child: _empty(context));
-        return widget.kind == SourceKind.film
-            ? _films(context, [for (final (_, l) in loaded) ...l], padding, phone)
-            : Padding(padding: inset, child: _series(loaded));
+        if (widget.kind == SourceKind.film) {
+          final all = [for (final (_, l) in loaded) ...l];
+          return _posterGrid<LiveChannel>(
+            items: all,
+            categoryOf: (c) => c.category,
+            titleOf: (c) => c.name,
+            artworkOf: (c) => TmdbPoster(name: c.name, url: c.logoUrl, tmdb: widget.tmdb),
+            onOpen: widget.onWatch == null ? null : (list, i) => _open(list, i),
+            padding: padding,
+            phone: phone,
+          );
+        }
+        return _posterGrid<Series>(
+          items: _catalog(loaded),
+          categoryOf: (s) => s.category,
+          titleOf: (s) => s.name,
+          badgeOf: (s) => s.shortSummary,
+          artworkOf: (s) => TmdbPoster(name: s.name, url: s.poster, tmdb: widget.tmdb, series: true),
+          onOpen: (list, i) => unawaited(_openSeries(list[i])),
+          padding: padding,
+          phone: phone,
+        );
       },
     );
     return Padding(
@@ -154,14 +173,24 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  /// Film: kategori çipleri ve afiş ızgarası.
-  Widget _films(BuildContext context, List<LiveChannel> all, EdgeInsets padding, bool phone) {
-    final categories = {for (final c in all) c.category}.toList();
+  /// Afiş ızgarası (Film: filmler; Dizi: diziler) ve üstte kategori
+  /// çipleri (birden çok kategori varsa).
+  Widget _posterGrid<T>({
+    required List<T> items,
+    required String Function(T) categoryOf,
+    required String Function(T) titleOf,
+    String? Function(T)? badgeOf,
+    required Widget Function(T) artworkOf,
+    required void Function(List<T> list, int index)? onOpen,
+    required EdgeInsets padding,
+    required bool phone,
+  }) {
+    final categories = {for (final x in items) categoryOf(x)}.toList();
     final list = _category == null
-        ? all
+        ? items
         : [
-            for (final c in all)
-              if (c.category == _category) c,
+            for (final x in items)
+              if (categoryOf(x) == _category) x,
           ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,8 +203,8 @@ class _LibraryPageState extends State<LibraryPage> {
               child: Row(
                 children: [
                   for (final (i, (c, label, count)) in [
-                    (null, 'Tümü', all.length),
-                    for (final c in categories) (c, c, all.where((x) => x.category == c).length),
+                    (null, 'Tümü', items.length),
+                    for (final c in categories) (c, c, items.where((x) => categoryOf(x) == c).length),
                   ].indexed) ...[
                     if (i > 0) const SizedBox(width: 12),
                     CategoryChip(
@@ -200,15 +229,18 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
             itemCount: list.length,
             itemBuilder: (context, i) {
-              final c = list[i];
-              final poster = c.logoUrl;
+              final x = list[i];
               return LayoutBuilder(
                 builder: (context, box) => MediaCard(
-                  title: c.name,
+                  title: titleOf(x),
+                  badge: switch (badgeOf?.call(x)) {
+                    final text? => _Badge(text),
+                    null => null,
+                  },
                   width: box.maxWidth,
                   focused: null,
-                  artwork: TmdbPoster(name: c.name, url: poster, tmdb: widget.tmdb),
-                  onPressed: widget.onWatch == null ? null : () => _open(list, i),
+                  artwork: artworkOf(x),
+                  onPressed: onOpen == null ? null : () => onOpen(list, i),
                 ),
               );
             },
@@ -229,42 +261,58 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  /// Dizi: dizi › sezon › bölüm klasörleri; birden çok kaynakta kaynak
-  /// klasörleri en üstte.
-  Widget _series(List<(UserSource, List<LiveChannel>)> loaded) {
-    final ChannelFolder root;
-    final String Function(List<String>) lock;
-    if (loaded.length == 1) {
-      final (s, list) = loaded.single;
-      root = ChannelFolder.build(list, episodes: true);
-      lock = (path) => ContentLocks.folder(s.id, path);
-    } else {
-      root = ChannelFolder('');
-      final ids = <String, String>{};
-      for (final (s, list) in loaded) {
-        final tree = ChannelFolder.build(list, episodes: true);
-        root.folders.add(ChannelFolder(s.name, folders: tree.folders, items: tree.items));
-        ids[s.name] = s.id;
-      }
-      lock = (path) => ContentLocks.folder(ids[path.first] ?? path.first, path.sublist(1));
+  /// Dizi listelerinin dizileri; yüklenen liste değişmedikçe yeniden
+  /// kurulmaz (büyük listelerde on binlerce bölüm).
+  List<Series> _catalog(List<(UserSource, List<LiveChannel>)> loaded) {
+    if (!identical(loaded, _catalogOf)) {
+      _catalogOf = loaded;
+      _series = SeriesCatalog.build([for (final (s, l) in loaded) (s.id, l)]);
     }
-    return ChannelBrowser(
-      key: ObjectKey(loaded),
-      root: root,
-      flat: [for (final (_, l) in loaded) ...l],
-      title: widget.kind.label,
-      folderLock: lock,
-      onWatch: widget.onWatch,
-      favorites: widget.favorites,
-      header: widget.tmdb == null ? null : (path) => _seriesHeader(path, sourceFolders: loaded.length > 1),
-    );
+    return _series;
   }
 
-  /// Dizi klasörüne girilince TMDB özeti (afiş, ad, yıl, puan, özet).
-  Widget? _seriesHeader(List<String> path, {required bool sourceFolders}) {
-    final depth = sourceFolders ? 2 : 1;
-    if (path.length < depth) return null;
-    final name = path[depth - 1];
-    return SeriesHeader(name: name, tmdb: widget.tmdb!);
+  Object? _catalogOf;
+  List<Series> _series = const [];
+
+  /// Dizi sayfası; dizi kilitliyse önce PIN.
+  Future<void> _openSeries(Series series) async {
+    final gate = LockScope.maybeOf(context);
+    final key = SeriesDetailPage.lockKey(series);
+    final source = ContentLocks.folder(series.sourceId, const []);
+    for (final k in [source, key]) {
+      if (gate != null && gate.locks.blocks(k) && !await gate.pass(context, k)) return;
+    }
+    if (!mounted) return;
+    final page = SeriesDetailPage(
+      series: series,
+      tmdb: widget.tmdb,
+      favorites: widget.favorites,
+      onWatch: widget.onWatch,
+    );
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        // Yeni rota kabuğun altında değil: kilit kapsamı taşınır.
+        builder: (_) => gate == null ? page : LockScope(locks: gate.locks, profiles: gate.profiles, child: page),
+      ),
+    );
   }
+}
+
+/// Afişin köşesinde koyu hap ("2 sezon · 3 bölüm").
+class _Badge extends StatelessWidget {
+  const _Badge(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: const Color(0xD90B0B20), borderRadius: BorderRadius.circular(999)),
+    child: Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w700),
+    ),
+  );
 }

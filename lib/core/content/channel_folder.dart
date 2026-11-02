@@ -65,16 +65,27 @@ class ChannelFolder {
     caseSensitive: false,
   );
 
-  /// "Dizi Adı S01E02 Başlık" → [Dizi Adı, Sezon 1, Bölüm 2 Başlık]; sezon ve
-  /// bölüm yoksa null.
-  static List<String>? episodePath(String name) {
+  /// "Dizi Adı S01E02 Başlık" ya da "Dizi Adı 1. Sezon 2. Bölüm Başlık" →
+  /// dizi, sezon, bölüm ve (varsa) bölümün adı; sezon ve bölüm yoksa null.
+  static ({String series, int season, int episode, String title})? parseEpisode(String name) {
     final m = _sxe.firstMatch(name) ?? _turkish.firstMatch(name);
     if (m == null) return null;
     final series = m[1]!.replaceAll(RegExp(r'[\s._-]+$'), '').trim();
     if (series.isEmpty) return null;
-    final rest = m[4]!.replaceAll(RegExp(r'^[\s._:-]+'), '').trim();
-    final episode = 'Bölüm ${int.parse(m[3]!)}${rest.isEmpty ? '' : ' $rest'}';
-    return [series, 'Sezon ${int.parse(m[2]!)}', episode];
+    return (
+      series: series,
+      season: int.parse(m[2]!),
+      episode: int.parse(m[3]!),
+      title: m[4]!.replaceAll(RegExp(r'^[\s._:-]+'), '').trim(),
+    );
+  }
+
+  /// "Dizi Adı S01E02 Başlık" → [Dizi Adı, Sezon 1, Bölüm 2 Başlık]; sezon ve
+  /// bölüm yoksa null.
+  static List<String>? episodePath(String name) {
+    final e = parseEpisode(name);
+    if (e == null) return null;
+    return [e.series, 'Sezon ${e.season}', 'Bölüm ${e.episode}${e.title.isEmpty ? '' : ' ${e.title}'}'];
   }
 
   static List<String> _split(String s) => [
