@@ -106,95 +106,120 @@ class HomePage extends StatelessWidget {
         final padding = PageLayout.scrollPadding(context, metrics);
         final width = box.maxWidth - padding.horizontal;
         final card = _cardWidth(width, phone ? 2.3 : 4, gutter);
+        final header = AppHeader(
+          clock: content.clock,
+          profileName: content.profileName,
+          onProfile: onProfile,
+          kids: kids,
+          onMore:
+              onMore ??
+              () => showMoreSheet(
+                context,
+                items: AppDestinations.phoneMore,
+                onSelected: (i) => onNavigate?.call(AppDestinations.phoneMoreSections[i]),
+              ),
+          // Zaten Anasayfadayız: başa kaydırır.
+          onHome: () =>
+              PrimaryScrollController.maybeOf(context)
+                  ?.animateTo(0, duration: M3EMotion.medium4, curve: M3EMotion.standard),
+        );
+        final body = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                // Üste hizalı: iki satırlı etiket halkayı kaydırmaz.
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final s in content.shortcuts)
+                    StoryAvatar(
+                      // Kısa ad: "Televizyon" halkanın altına sığmıyor ("TV").
+                      label: s.shortLabel,
+                      onPressed: () => onNavigate?.call(s),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ArtworkFallback(name: s.label, showInitials: false),
+                          Center(child: RedoxIcon(s.icon, size: 30, color: RedoxRoles.onSurface)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (hero != null)
+              _withFrames(
+                () => HeroBanner(
+                  hero: hero,
+                  frame: frames?.frameOf(hero.channel),
+                  primaryFocused: previewFocus ? true : null,
+                  onWatch: () => onWatch?.call(hero.channel),
+                  onGuide: onGuide,
+                ),
+              ),
+            if (content.channels.isNotEmpty) ...[
+              const SizedBox(height: 40),
+              Shelf(
+                header: content.fromHistory
+                    ? const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar')
+                    : const SectionHeader(
+                        title: 'Ulusal kanallar',
+                        subtitle: 'İzlediğin kanallar burada görünecek',
+                        accent: RedoxSeeds.amber,
+                      ),
+                children: [
+                  for (final c in content.channels)
+                    // D-pad odağında kart ortalanır: ekranın alt kenarında
+                    // halkası kesiliyordu (gerçek TV'de görüldü).
+                    CenterOnFocus(
+                      child: ChannelCard(
+                        width: card,
+                        channelName: c.name,
+                        number: c.number,
+                        programTitle: c.programTitle ?? 'Yayın akışı bilgisi yok',
+                        timeRange: c.timeRange ?? c.category,
+                        genre: c.genre,
+                        progress: c.progress ?? 0,
+                        accent: c.accent,
+                        artwork: _artwork(c, card, dpr),
+                        onPressed: () => onWatch?.call(c),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        );
+        // Telefonda başlık üstte sabit (kullanıcı isteği: başa dönmek
+        // gerekmesin); TV/tablette içerikle kayar (540 dp'de yer kazanmak için).
+        if (phone) {
+          return Padding(
+            padding: EdgeInsets.only(top: padding.top),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: padding.left, right: padding.right),
+                  child: header,
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, padding.bottom),
+                    child: body,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
         return SingleChildScrollView(
           padding: padding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppHeader(
-                clock: content.clock,
-                profileName: content.profileName,
-                onProfile: onProfile,
-                kids: kids,
-                onMore:
-                    onMore ??
-                    () => showMoreSheet(
-                      context,
-                      items: AppDestinations.phoneMore,
-                      onSelected: (i) => onNavigate?.call(AppDestinations.phoneMoreSections[i]),
-                    ),
-                // Zaten Anasayfadayız: başa kaydırır.
-                onHome: () =>
-                    PrimaryScrollController.maybeOf(context)
-                        ?.animateTo(0, duration: M3EMotion.medium4, curve: M3EMotion.standard),
-              ),
-              const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                child: Row(
-                  // Üste hizalı: iki satırlı etiket halkayı kaydırmaz.
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final s in content.shortcuts)
-                      StoryAvatar(
-                        // Kısa ad: "Televizyon" halkanın altına sığmıyor ("TV").
-                        label: s.shortLabel,
-                        onPressed: () => onNavigate?.call(s),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            ArtworkFallback(name: s.label, showInitials: false),
-                            Center(child: RedoxIcon(s.icon, size: 30, color: RedoxRoles.onSurface)),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (hero != null)
-                _withFrames(
-                  () => HeroBanner(
-                    hero: hero,
-                    frame: frames?.frameOf(hero.channel),
-                    primaryFocused: previewFocus ? true : null,
-                    onWatch: () => onWatch?.call(hero.channel),
-                    onGuide: onGuide,
-                  ),
-                ),
-              if (content.channels.isNotEmpty) ...[
-                const SizedBox(height: 40),
-                Shelf(
-                  header: content.fromHistory
-                      ? const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar')
-                      : const SectionHeader(
-                          title: 'Ulusal kanallar',
-                          subtitle: 'İzlediğin kanallar burada görünecek',
-                          accent: RedoxSeeds.amber,
-                        ),
-                  children: [
-                    for (final c in content.channels)
-                      // D-pad odağında kart ortalanır: ekranın alt kenarında
-                      // halkası kesiliyordu (gerçek TV'de görüldü).
-                      CenterOnFocus(
-                        child: ChannelCard(
-                          width: card,
-                          channelName: c.name,
-                          number: c.number,
-                          programTitle: c.programTitle ?? 'Yayın akışı bilgisi yok',
-                          timeRange: c.timeRange ?? c.category,
-                          genre: c.genre,
-                          progress: c.progress ?? 0,
-                          accent: c.accent,
-                          artwork: _artwork(c, card, dpr),
-                          onPressed: () => onWatch?.call(c),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ],
+            children: [header, const SizedBox(height: 12), body],
           ),
         );
       },

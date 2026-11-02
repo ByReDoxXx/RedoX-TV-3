@@ -26,6 +26,9 @@ import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../favorites/favorites_page.dart';
 import '../radio/radio_page.dart';
+import '../radio/radio_player_page.dart';
+import '../search/search_page.dart';
+import '../../core/navigation/search_scope.dart';
 import '../settings/settings_page.dart';
 import '../sources/sources_page.dart';
 import '../split_screen/split_screen.dart';
@@ -244,6 +247,36 @@ class _RootShellState extends State<RootShell> {
     }
   }
 
+  /// Başlıktaki aramanın sayfası: kanallar ve (çocuk profili dışında) radyolar.
+  void _search(BuildContext context, String query) {
+    final radio = _kids ? null : widget.radio;
+    unawaited(
+      Navigator.of(context).push(
+        SearchPage.route(
+          channels: _tv.channels,
+          radios: radio?.stations ?? const [],
+          query: query,
+          onChannel: (c) => _watch(context, c),
+          onRadio: radio == null
+              ? null
+              : (s) {
+                  if (s != radio.current) unawaited(radio.play(s));
+                  unawaited(
+                    Navigator.of(context).push(
+                      RadioPlayerPage.route(
+                        radio: radio,
+                        stations: radio.stations,
+                        favorites: widget.favorites,
+                        clock: _clock,
+                      ),
+                    ),
+                  );
+                },
+        ),
+      ),
+    );
+  }
+
   Widget _page(BuildContext context) => switch (_section) {
     AppSection.home => ListenableBuilder(
       // Geçmiş değişince "Son izlenen kanallar" yenilenir.
@@ -335,39 +368,42 @@ class _RootShellState extends State<RootShell> {
     final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
     return DoubleBackToExit(
       onBack: _onBack,
-      child: Scaffold(
-        // Çocuk profilinde alt menü yok (bölümler "Diğer" sayfasında).
-        bottomNavigationBar: phone && !_kids
-            ? RedoxBottomBar(
-                items: AppDestinations.phoneBar,
-                // Anasayfa ve "Diğer" bölümleri çubukta yoktur: seçili öğe yok.
-                selectedIndex: AppDestinations.phoneBarSections.indexOf(_section),
-                onSelected: (i) => _go(AppDestinations.phoneBarSections[i]),
-              )
-            : null,
-        // expand: Scaffold gövdeye gevşek kısıt verir; sayfa içeriğe
-        // büzülürse ray ekranın altına kadar uzanmaz.
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
-            KeyedSubtree(
-              key: ValueKey((_section, _tvView)),
-              child: Builder(builder: _page),
-            ),
-            if (!phone)
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: RedoxNavRail(
-                  items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
-                  footer: _kids ? const [] : AppDestinations.footer,
-                  selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
-                  onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
-                ),
+      child: SearchScope(
+        open: _search,
+        child: Scaffold(
+          // Çocuk profilinde alt menü yok (bölümler "Diğer" sayfasında).
+          bottomNavigationBar: phone && !_kids
+              ? RedoxBottomBar(
+                  items: AppDestinations.phoneBar,
+                  // Anasayfa ve "Diğer" bölümleri çubukta yoktur: seçili öğe yok.
+                  selectedIndex: AppDestinations.phoneBarSections.indexOf(_section),
+                  onSelected: (i) => _go(AppDestinations.phoneBarSections[i]),
+                )
+              : null,
+          // expand: Scaffold gövdeye gevşek kısıt verir; sayfa içeriğe
+          // büzülürse ray ekranın altına kadar uzanmaz.
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
+              KeyedSubtree(
+                key: ValueKey((_section, _tvView)),
+                child: Builder(builder: _page),
               ),
-          ],
+              if (!phone)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: RedoxNavRail(
+                    items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
+                    footer: _kids ? const [] : AppDestinations.footer,
+                    selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
+                    onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

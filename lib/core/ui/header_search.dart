@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../navigation/search_scope.dart';
 import '../layout/form_factor.dart';
 import '../navigation/double_back_to_exit.dart';
 import '../theme/redox_colors.dart';
@@ -107,7 +108,9 @@ class _HeaderSearchState extends State<HeaderSearch> {
   Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     if (metrics.formFactor == FormFactor.phone) {
-      return IconActionButton(icon: RedoxIcons.search, onPressed: widget.onOpen);
+      // Telefonda kutu yok: düğme arama sayfasını açar (önceden işlevsizdi).
+      final open = widget.onOpen ?? () => SearchScope.maybeOf(context)?.open(context, '');
+      return IconActionButton(icon: RedoxIcons.search, onPressed: open);
     }
     final t = Theme.of(context).textTheme;
     final pill = BorderRadius.circular(RedoxRadius.full);
@@ -125,8 +128,12 @@ class _HeaderSearchState extends State<HeaderSearch> {
           focusNode: _fieldNode,
           textInputAction: TextInputAction.search,
           onSubmitted: (q) {
-            widget.onSubmitted?.call(q);
             _stop();
+            if (widget.onSubmitted case final submit?) {
+              submit(q);
+            } else if (q.trim().isNotEmpty) {
+              SearchScope.maybeOf(context)?.open(context, q);
+            }
           },
           onTapOutside: (_) => _stop(),
           style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),

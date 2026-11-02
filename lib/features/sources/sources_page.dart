@@ -51,38 +51,68 @@ class SourcesPage extends StatelessWidget {
       listenable: sources,
       builder: (context, _) {
         final items = sources.items;
+        final header = AppHeader(
+          clock: clock,
+          profileName: profileName,
+          onHome: onHome,
+          onMore: onMore,
+          onProfile: onProfile,
+        );
+        final body = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionTitle(
+              title: 'Listelerim',
+              trailing: Text(
+                '${items.length} liste · ${sources.channelCount} kanal',
+                style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (items.isEmpty)
+              Text(
+                'Henüz liste yok. Ayarlar > Kaynak ekle\'den M3U, JSON, HTML, Xtream, portal ya da telefonla ekleyin; '
+                'her liste burada bir klasör olur.',
+                style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+              )
+            else
+              TileGrid(
+                columns: phone ? 1 : 3,
+                children: [
+                  for (final (i, s) in items.indexed)
+                    FolderCard(source: s, autofocus: i == 0, onPressed: () => _open(context, s)),
+                ],
+              ),
+            const SizedBox(height: 18),
+            if (onAdd != null) GlassButton(label: 'Kaynak ekle', icon: RedoxIcons.add, onPressed: onAdd),
+          ],
+        );
+        // Telefonda başlık üstte sabit (kullanıcı isteği); TV/tablette içerikle kayar.
+        if (phone) {
+          return Padding(
+            padding: EdgeInsets.only(top: padding.top),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: padding.left, right: padding.right),
+                  child: header,
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(padding.left, 18, padding.right, 16),
+                    child: body,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(padding.left, padding.top, padding.right, phone ? 16 : padding.bottom),
+          padding: EdgeInsets.fromLTRB(padding.left, padding.top, padding.right, padding.bottom),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppHeader(clock: clock, profileName: profileName, onHome: onHome, onMore: onMore, onProfile: onProfile),
-              const SizedBox(height: 18),
-              SectionTitle(
-                title: 'Listelerim',
-                trailing: Text(
-                  '${items.length} liste · ${sources.channelCount} kanal',
-                  style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (items.isEmpty)
-                Text(
-                  'Henüz liste yok. Ayarlar > Kaynak ekle\'den M3U, JSON, HTML, Xtream, portal ya da telefonla ekleyin; '
-                  'her liste burada bir klasör olur.',
-                  style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                )
-              else
-                TileGrid(
-                  columns: phone ? 1 : 3,
-                  children: [
-                    for (final (i, s) in items.indexed)
-                      FolderCard(source: s, autofocus: i == 0, onPressed: () => _open(context, s)),
-                  ],
-                ),
-              const SizedBox(height: 18),
-              if (onAdd != null) GlassButton(label: 'Kaynak ekle', icon: RedoxIcons.add, onPressed: onAdd),
-            ],
+            children: [header, const SizedBox(height: 18), body],
           ),
         );
       },
