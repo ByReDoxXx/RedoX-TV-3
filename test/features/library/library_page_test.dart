@@ -1,13 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:redox_tv/core/content/channel_folder.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
+import 'package:redox_tv/core/content/tmdb.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/media_card.dart';
+import 'package:redox_tv/features/library/film_detail_page.dart';
 import 'package:redox_tv/features/library/library_page.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
 
@@ -59,6 +63,36 @@ Future<void> _settle(WidgetTester tester) async {
     await tester.pump();
   }
 }
+
+/// TMDB: "Film B" ve "Kuzey Güney" bulunur.
+Tmdb _tmdb() => Tmdb(
+  token: 'anahtar',
+  fetch: (uri, _) async {
+    final q = uri.queryParameters['query'];
+    final hit = switch (q) {
+      'Film B' => {
+        'id': 1,
+        'title': 'Komik Film',
+        'overview': 'Gülmekten kırılacaksınız.',
+        'release_date': '2021-05-01',
+        'vote_average': 7.25,
+      },
+      'Kuzey Güney' => {
+        'id': 2,
+        'name': 'Kuzey Güney',
+        'overview': 'İki kardeşin hikâyesi.',
+        'first_air_date': '2011-09-07',
+        'vote_average': 7.5,
+      },
+      _ => null,
+    };
+    return utf8.encode(
+      jsonEncode({
+        'results': [?hit],
+      }),
+    );
+  },
+);
 
 Widget _app(FormFactor f, Widget page) => MaterialApp(
   theme: RedoxTheme.dark(formFactor: f),
@@ -179,5 +213,64 @@ void main() {
     expect(find.text('Canlı'), findsOneWidget);
     expect(find.text('Filmlerim'), findsNothing);
     expect(find.text('Dizilerim'), findsNothing);
+  });
+
+  testWidgets('TMDB: film ayrıntısı (ad, yıl, puan, özet), İzle oynatır; dizi klasöründe özet', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _size(tester, const Size(960, 540));
+    final sources = await _sources(tester);
+    final tmdb = _tmdb();
+    (List<LiveChannel>, int)? watched;
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: _app(
+          FormFactor.tv,
+          LibraryPage(
+            kind: SourceKind.film,
+            sources: sources,
+            tmdb: tmdb,
+            clock: '20:45',
+            profileName: 'Profil 1',
+            onWatch: (l, i) async => watched = (l, i),
+          ),
+        ),
+      ),
+    );
+    await _settle(tester);
+    await tester.tap(find.text('Komedi'));
+    await tester.pump();
+    await tester.tap(find.byType(MediaCard));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(FilmDetailPage), findsOneWidget);
+    expect(watched, isNull, reason: 'önce ayrıntı');
+    expect(find.text('Komik Film'), findsOneWidget);
+    expect(find.text('Film B'), findsOneWidget, reason: 'listedeki ad altta');
+    expect(find.textContaining('2021', findRichText: true), findsOneWidget);
+    expect(find.textContaining('7.3 TMDB', findRichText: true), findsOneWidget);
+    expect(find.text('Gülmekten kırılacaksınız.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await maybeSnapshot(tester, key, 'build/kutuphane/film-ayrinti-tv.png', pixelRatio: 2);
+    await tester.tap(find.text('İzle'));
+    await tester.pumpAndSettle();
+    expect(watched!.$1[watched!.$2].streams.single, 'http://ornek/fb.mp4');
+    expect(find.byType(FilmDetailPage), findsNothing);
+
+    await tester.pumpWidget(
+      _app(
+        FormFactor.tv,
+        LibraryPage(kind: SourceKind.series, sources: sources, tmdb: tmdb, clock: '20:45', profileName: 'Profil 1'),
+      ),
+    );
+    await _settle(tester);
+    expect(find.text('İki kardeşin hikâyesi.'), findsNothing, reason: 'kökte özet yok');
+    await tester.tap(find.text('Kuzey Güney'));
+    await _settle(tester);
+    expect(find.text('İki kardeşin hikâyesi.'), findsOneWidget);
+    expect(find.textContaining('7.5 TMDB', findRichText: true), findsOneWidget);
+    expect(find.text('Sezon 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

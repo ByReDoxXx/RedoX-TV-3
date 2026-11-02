@@ -6,19 +6,22 @@ import '../../core/content/channel_folder.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/tmdb.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
-import '../../core/ui/artwork_fallback.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/media_card.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
 import '../sources/widgets/channel_browser.dart';
+import 'film_detail_page.dart';
+import 'widgets/series_header.dart';
+import 'widgets/tmdb_poster.dart';
 
 /// Film ve Dizi bölümleri: Ayarlar › Kaynak ekle'de Film ya da Dizi olarak
 /// eklenen listeler (kullanıcı isteği). **Film:** bütün film kaynaklarının
@@ -34,6 +37,7 @@ class LibraryPage extends StatefulWidget {
     required this.clock,
     required this.profileName,
     this.favorites,
+    this.tmdb,
     this.onWatch,
     this.onAdd,
     this.onHome,
@@ -44,6 +48,9 @@ class LibraryPage extends StatefulWidget {
   final SourceKind kind;
   final UserSources sources;
   final Favorites? favorites;
+
+  /// Afiş, özet ve puan; null ise yalnız listedeki bilgiler.
+  final Tmdb? tmdb;
   final Future<void> Function(List<LiveChannel> list, int index)? onWatch;
 
   /// Kaynak yokken "Kaynak ekle" (Ayarlar › Kaynak ekle).
@@ -191,20 +198,25 @@ class _LibraryPageState extends State<LibraryPage> {
                   title: c.name,
                   width: box.maxWidth,
                   focused: null,
-                  artwork: poster == null
-                      ? ArtworkFallback(name: c.name)
-                      : Image.network(
-                          poster,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => ArtworkFallback(name: c.name),
-                        ),
-                  onPressed: widget.onWatch == null ? null : () => unawaited(widget.onWatch!(list, i)),
+                  artwork: TmdbPoster(name: c.name, url: poster, tmdb: widget.tmdb),
+                  onPressed: widget.onWatch == null ? null : () => _open(list, i),
                 ),
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  /// Film: TMDB varsa önce ayrıntı sayfası (İzle ile oynar), yoksa doğrudan
+  /// oynar.
+  void _open(List<LiveChannel> list, int i) {
+    final tmdb = widget.tmdb;
+    if (tmdb == null) return unawaited(widget.onWatch!(list, i));
+    unawaited(
+      Navigator.of(context)
+          .push(FilmDetailPage.route(film: list[i], tmdb: tmdb, onWatch: () => unawaited(widget.onWatch!(list, i)))),
     );
   }
 
@@ -235,6 +247,15 @@ class _LibraryPageState extends State<LibraryPage> {
       folderLock: lock,
       onWatch: widget.onWatch,
       favorites: widget.favorites,
+      header: widget.tmdb == null ? null : (path) => _seriesHeader(path, sourceFolders: loaded.length > 1),
     );
+  }
+
+  /// Dizi klasörüne girilince TMDB özeti (afiş, ad, yıl, puan, özet).
+  Widget? _seriesHeader(List<String> path, {required bool sourceFolders}) {
+    final depth = sourceFolders ? 2 : 1;
+    if (path.length < depth) return null;
+    final name = path[depth - 1];
+    return SeriesHeader(name: name, tmdb: widget.tmdb!);
   }
 }

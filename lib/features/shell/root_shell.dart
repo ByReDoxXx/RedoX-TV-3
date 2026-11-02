@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/content/tmdb.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
@@ -382,6 +383,7 @@ class _RootShellState extends State<RootShell> {
       kind: _section == AppSection.film ? SourceKind.film : SourceKind.series,
       sources: widget.sources!,
       favorites: widget.favorites,
+      tmdb: Tmdb.shared,
       clock: _clock,
       profileName: _home.profileName,
       onWatch: (list, i) => _watch(context, list[i], from: list),

@@ -49,7 +49,7 @@ jobs:
       # Keystore tanımlanana kadar release, Flutter şablonunun debug imzasını kullanır.
       # İşlemciye göre ayrı APK: media_kit'in yerel kütüphaneleri her işlemci
       # için ~25 MB; tek APK'da hepsi birden olurdu.
-      - run: flutter build apk --release --split-per-abi --flavor ${{ matrix.flavor }} --dart-define=REDOX_DATA_KEY=${{ secrets.REDOX_DATA_KEY }}
+      - run: flutter build apk --release --split-per-abi --flavor ${{ matrix.flavor }} --dart-define=REDOX_DATA_KEY=${{ secrets.REDOX_DATA_KEY }} --dart-define=TMDB_TOKEN=${{ secrets.TMDB_TOKEN }}
       - uses: actions/upload-artifact@v7
         with:
           name: redox-tv-android-${{ matrix.flavor }}
@@ -68,7 +68,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release --dart-define=REDOX_DATA_KEY=${{ secrets.REDOX_DATA_KEY }}
+      - run: flutter build windows --release --dart-define=REDOX_DATA_KEY=${{ secrets.REDOX_DATA_KEY }} --dart-define=TMDB_TOKEN=${{ secrets.TMDB_TOKEN }}
       - uses: actions/upload-artifact@v7
         with:
           name: redox-tv-windows
@@ -91,7 +91,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - run: flutter pub get
-      - run: flutter build linux --release --dart-define=REDOX_DATA_KEY=${{ secrets.REDOX_DATA_KEY }}
+      - run: flutter build linux --release --dart-define=REDOX_DATA_KEY=${{ secrets.REDOX_DATA_KEY }} --dart-define=TMDB_TOKEN=${{ secrets.TMDB_TOKEN }}
       - uses: actions/upload-artifact@v7
         with:
           name: redox-tv-linux
