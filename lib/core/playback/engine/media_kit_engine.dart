@@ -170,19 +170,35 @@ class MediaKitEngine implements PlaybackEngine {
       final dynamic android = await _video.platform.future;
       _android0 = android;
       (android.wid as ValueNotifier<int?>).addListener(() {
-        if (_sdrPath) unawaited(android.lock.synchronized(_applySdrPath) as Future<void>);
+        if (_sdrPath) unawaited(_locked(_applySdrPath));
       });
     } on Object {
       // media_kit iç yapısı değişti: HDR yolu yalnız açılışta kurulur.
     }
   }
 
-  /// Yüzey hazır mı (yoksa çıkış kurulamaz, mpv çöker).
-  bool get _surfaceReady {
+  /// Yüzey hazır mı: mpv'nin kendi "wid" değerinden okunur. Değilken
+  /// çıkış kurulursa libmpv uygulamayı kapatır ("WinID != 0" doğrulaması;
+  /// Pixel'de görüldü: media_kit'in Dart tarafındaki yüzey değeri mpv'ye
+  /// geçmeden doluyordu). Hazır değilse yüzey gelince dinleyici kurar.
+  Future<bool> _surfaceReady(NativePlayer native) async {
     try {
-      return ((_android0?.wid as ValueNotifier<int?>?)?.value ?? 1) != 0;
+      final wid = (await native.getProperty('wid')).trim();
+      return wid.isNotEmpty && wid != '0' && wid != '-1';
     } on Object {
-      return true;
+      return false;
+    }
+  }
+
+  /// media_kit'in kendi kilidinde çalıştırır (çıkış ayarları onun yüzey
+  /// dinleyicisiyle çakışmasın); denetleyici bulunamazsa çalıştırmaz.
+  Future<void> _locked(Future<void> Function() body) async {
+    final android = _android0;
+    if (android == null) return;
+    try {
+      await (android.lock.synchronized(body) as Future<void>);
+    } on NoSuchMethodError {
+      // media_kit iç yapısı değişti.
     }
   }
 
@@ -193,7 +209,7 @@ class MediaKitEngine implements PlaybackEngine {
     _sdrPath = true;
     Diagnostics.instance.log('görüntü', 'HDR ($gamma): SDR\'ye ton eşlemeli kopyalı yola geçildi');
     // Yüzey henüz yoksa media_kit yüzeyi bağlayınca dinleyici uygular.
-    await _applySdrPath();
+    await _locked(_applySdrPath);
     unawaited(_logDrops(native));
   }
 
@@ -210,7 +226,7 @@ class MediaKitEngine implements PlaybackEngine {
   /// HDR yayın için kopyalı, ton eşlemeli yol.
   Future<void> _applySdrPath() async {
     final native = _player.platform;
-    if (native is! NativePlayer || !_surfaceReady) return;
+    if (native is! NativePlayer || !await _surfaceReady(native)) return;
     await native.setProperty('vo', 'null');
     await native.setProperty('hwdec', 'mediacodec-copy');
     await native.setProperty('tone-mapping', 'bt.2390');
@@ -223,9 +239,8 @@ class MediaKitEngine implements PlaybackEngine {
 
   /// Yeni yayın açılmadan HDR yolundan kopyasız yola dönüş.
   Future<void> _leaveSdrPath() async {
-    _sdrPath = false;
     final native = _player.platform;
-    if (native is! NativePlayer || !_surfaceReady) return;
+    if (native is! NativePlayer || !await _surfaceReady(native)) return;
     await native.setProperty('vo', 'null');
     await native.setProperty('hwdec', _zeroCopy.hwdec!);
     await native.setProperty('vo', _zeroCopy.vo!);
@@ -296,7 +311,10 @@ class MediaKitEngine implements PlaybackEngine {
     _capped = false;
     _videoLogged = false;
     _hdrChecked = false;
-    if (_sdrPath) await _leaveSdrPath();
+    if (_sdrPath) {
+      _sdrPath = false;
+      await _locked(_leaveSdrPath);
+    }
     await _player.open(Media(url));
   }
 
