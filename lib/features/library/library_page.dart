@@ -14,6 +14,7 @@ import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/category_chip.dart';
+import '../../core/ui/hiding_header.dart';
 import '../../core/ui/media_card.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
@@ -93,37 +94,41 @@ class _LibraryPageState extends State<LibraryPage> {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final phone = metrics.formFactor == FormFactor.phone;
     final padding = PageLayout.scrollPadding(context, metrics);
+    final header = Padding(
+      padding: EdgeInsets.only(left: padding.left, right: padding.right),
+      child: AppHeader(
+        clock: widget.clock,
+        profileName: widget.profileName,
+        onHome: widget.onHome,
+        onMore: widget.onMore,
+        onProfile: widget.onProfile,
+      ),
+    );
+    final content = FutureBuilder(
+      future: _loaded,
+      builder: (context, snap) {
+        final loaded = snap.data;
+        if (loaded == null) return const SizedBox.shrink();
+        final inset = EdgeInsets.fromLTRB(padding.left, phone ? 4 : 16, padding.right, phone ? padding.bottom : 0);
+        if (loaded.isEmpty) return Padding(padding: inset, child: _empty(context));
+        return widget.kind == SourceKind.film
+            ? _films(context, [for (final (_, l) in loaded) ...l], padding, phone)
+            : Padding(padding: inset, child: _series(loaded));
+      },
+    );
     return Padding(
       padding: EdgeInsets.only(top: padding.top, bottom: phone ? 0 : padding.bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(left: padding.left, right: padding.right),
-            child: AppHeader(
-              clock: widget.clock,
-              profileName: widget.profileName,
-              onHome: widget.onHome,
-              onMore: widget.onMore,
-              onProfile: widget.onProfile,
+      // Telefonda başlık aşağı kaydırınca gizlenir, yukarı kaydırınca geri
+      // gelir (kullanıcı isteği); TV/tablette sabit.
+      child: phone
+          ? HidingHeader(header: header, child: content)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                header,
+                Expanded(child: content),
+              ],
             ),
-          ),
-          Expanded(
-            child: FutureBuilder(
-              future: _loaded,
-              builder: (context, snap) {
-                final loaded = snap.data;
-                if (loaded == null) return const SizedBox.shrink();
-                final inset = EdgeInsets.fromLTRB(padding.left, 16, padding.right, phone ? padding.bottom : 0);
-                if (loaded.isEmpty) return Padding(padding: inset, child: _empty(context));
-                return widget.kind == SourceKind.film
-                    ? _films(context, [for (final (_, l) in loaded) ...l], padding, phone)
-                    : Padding(padding: inset, child: _series(loaded));
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 

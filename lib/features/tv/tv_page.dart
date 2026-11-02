@@ -11,6 +11,7 @@ import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
+import '../../core/ui/hiding_header.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/center_on_focus.dart';
@@ -215,29 +216,26 @@ class _TvPageState extends State<TvPage> {
       metrics.gutter,
     );
     if (!preview && _view == TvView.cards) {
-      // Panelsiz kart görünümü (telefon, dar tablet): başlık üstte sabit
-      // (kullanıcı isteği: başa dönmek gerekmesin), çipler ve kartlar kayar.
+      // Panelsiz kart görünümü (telefon, dar tablet): başlık üstte (kullanıcı
+      // isteği: başa dönmek gerekmesin), aşağı kaydırınca gizlenir, yukarı
+      // kaydırınca geri gelir; çipler ve kartlar kayar.
       return Padding(
         padding: EdgeInsets.only(top: padding.top),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(left: padding.left, right: padding.right),
-              child: header,
-            ),
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(child: _filters(padding, phone)),
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.bottom),
-                    sliver: _grid(context, channels, metrics, preview: false),
-                  ),
-                ],
+        child: HidingHeader(
+          gap: 4,
+          header: Padding(
+            padding: EdgeInsets.only(left: padding.left, right: padding.right),
+            child: header,
+          ),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _filters(padding, phone)),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.bottom),
+                sliver: _grid(context, channels, metrics, preview: false),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }

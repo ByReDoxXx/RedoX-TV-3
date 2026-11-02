@@ -7,6 +7,7 @@ import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
+import '../../core/ui/hiding_header.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
@@ -95,24 +96,20 @@ class SourcesPage extends StatelessWidget {
             if (onAdd != null) GlassButton(label: 'Kaynak ekle', icon: RedoxIcons.add, onPressed: onAdd),
           ],
         );
-        // Telefonda başlık üstte sabit (kullanıcı isteği); TV/tablette içerikle kayar.
+        // Telefonda başlık üstte; aşağı kaydırınca gizlenir, yukarı kaydırınca
+        // geri gelir (kullanıcı isteği). TV/tablette içerikle kayar.
         if (phone) {
           return Padding(
             padding: EdgeInsets.only(top: padding.top),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(left: padding.left, right: padding.right),
-                  child: header,
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(padding.left, 18, padding.right, 16),
-                    child: body,
-                  ),
-                ),
-              ],
+            child: HidingHeader(
+              header: Padding(
+                padding: EdgeInsets.only(left: padding.left, right: padding.right),
+                child: header,
+              ),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(padding.left, 6, padding.right, 16),
+                child: body,
+              ),
             ),
           );
         }

@@ -9,6 +9,7 @@ import '../../core/navigation/more_sheet.dart';
 import '../../core/theme/m3e_motion.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
+import '../../core/ui/hiding_header.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/artwork_fallback.dart';
 import '../../core/ui/center_on_focus.dart';
@@ -193,25 +194,21 @@ class HomePage extends StatelessWidget {
             ],
           ],
         );
-        // Telefonda başlık üstte sabit (kullanıcı isteği: başa dönmek
-        // gerekmesin); TV/tablette içerikle kayar (540 dp'de yer kazanmak için).
+        // Telefonda başlık üstte (kullanıcı isteği: başa dönmek gerekmesin);
+        // aşağı kaydırınca gizlenir, yukarı kaydırınca geri gelir. TV/tablette
+        // içerikle kayar (540 dp'de yer kazanmak için).
         if (phone) {
           return Padding(
             padding: EdgeInsets.only(top: padding.top),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(left: padding.left, right: padding.right),
-                  child: header,
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, padding.bottom),
-                    child: body,
-                  ),
-                ),
-              ],
+            child: HidingHeader(
+              header: Padding(
+                padding: EdgeInsets.only(left: padding.left, right: padding.right),
+                child: header,
+              ),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right, padding.bottom),
+                child: body,
+              ),
             ),
           );
         }
