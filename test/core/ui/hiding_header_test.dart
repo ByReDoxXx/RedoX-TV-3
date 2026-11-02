@@ -35,14 +35,20 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, 3000));
     await tester.pumpAndSettle();
     expect(_headerHeight(tester), 56 + 12, reason: 'liste başında açık');
-    expect(find.byType(ShaderMask), findsNothing, reason: 'başta solma yok');
   });
 
-  testWidgets('kaydırılmışken içeriğin üst kenarı solar', (tester) async {
+  testWidgets('kaydırma konumu korunur (solma katmanı yeniden kurmaz)', (tester) async {
     await tester.pumpWidget(_page());
-    await tester.drag(find.byType(ListView), const Offset(0, -200));
-    await tester.pump();
-    expect(find.byType(ShaderMask), findsOneWidget);
+    final g = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+    for (var i = 0; i < 20; i++) {
+      await g.moveBy(const Offset(0, -20));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await g.up();
+    await tester.pumpAndSettle();
+    final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
+    expect(position.pixels, greaterThan(200));
+    expect(find.text('Satır 0'), findsNothing);
   });
 
   testWidgets('kısa içerikte gizlenmez', (tester) async {

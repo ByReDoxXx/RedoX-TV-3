@@ -220,7 +220,8 @@ class _TvPageState extends State<TvPage> {
       // isteği: başa dönmek gerekmesin), aşağı kaydırınca gizlenir, yukarı
       // kaydırınca geri gelir; çipler ve kartlar kayar.
       return Padding(
-        padding: EdgeInsets.only(top: padding.top),
+        // Telefonda başlık durum çubuğuna (saatin altına) yaslı (kullanıcı isteği).
+        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
         child: HidingHeader(
           gap: 4,
           header: Padding(

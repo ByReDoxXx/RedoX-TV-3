@@ -85,18 +85,19 @@ class _HidingHeaderState extends State<HidingHeader> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final content = _scrolled && widget.fade > 0
-        ? ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) => LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: const [Color(0x00000000), Color(0xFF000000)],
-              stops: [0, (widget.fade / bounds.height).clamp(0.0, 1.0)],
-            ).createShader(bounds),
-            child: widget.child,
-          )
-        : widget.child;
+    // Solma katmanı hep yerinde, yalnız etkisi açılıp kapanır: sarmalayıcı
+    // eklenip kaldırılırsa kaydırma alanı yeniden kurulur ve konumu başa döner.
+    final fade = _scrolled ? widget.fade : 0.0;
+    final content = ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [fade > 0 ? const Color(0x00000000) : const Color(0xFF000000), const Color(0xFF000000)],
+        stops: [0, (fade / bounds.height).clamp(0.0, 1.0)],
+      ).createShader(bounds),
+      child: widget.child,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

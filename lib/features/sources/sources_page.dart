@@ -100,7 +100,8 @@ class SourcesPage extends StatelessWidget {
         // geri gelir (kullanıcı isteği). TV/tablette içerikle kayar.
         if (phone) {
           return Padding(
-            padding: EdgeInsets.only(top: padding.top),
+            // Telefonda başlık durum çubuğuna (saatin altına) yaslı (kullanıcı isteği).
+            padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
             child: HidingHeader(
               header: Padding(
                 padding: EdgeInsets.only(left: padding.left, right: padding.right),

@@ -117,7 +117,11 @@ class _LibraryPageState extends State<LibraryPage> {
       },
     );
     return Padding(
-      padding: EdgeInsets.only(top: padding.top, bottom: phone ? 0 : padding.bottom),
+      // Telefonda başlık durum çubuğuna (saatin altına) yaslı.
+      padding: EdgeInsets.only(
+        top: phone ? MediaQuery.paddingOf(context).top : padding.top,
+        bottom: phone ? 0 : padding.bottom,
+      ),
       // Telefonda başlık aşağı kaydırınca gizlenir, yukarı kaydırınca geri
       // gelir (kullanıcı isteği); TV/tablette sabit.
       child: phone
