@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/content/live_channel.dart';
 import '../../../core/platform/device_controls.dart';
+import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/channel_logo.dart';
@@ -13,7 +14,7 @@ import '../../../core/ui/status_badge.dart';
 /// Dokunmatik oynatıcı katmanı (telefon, tablet, açık katlanabilir telefon;
 /// kullanıcı isteği: "play/ileri/geri ortada olsun, tema televizyondan farklı
 /// olsun"). TV'nin kızıl alt çubuğu yerine görüntünün üstünde ve altında
-/// karartma; düğmeler beyaz cam daireler, oynat/duraklat ortada beyaz dolu.
+/// karartma; düğmeler beyaz cam daireler, oynat/duraklat ortada kızıl dolu.
 /// Üstte kapat, kanal kimliği, kanal listesi ve Seçenekler; ortada önceki
 /// kanal · oynat/duraklat · sonraki kanal (yalnız görüntü gelince, yoksa
 /// ortada yükleniyor/hata durur); altta ölçek, akış ve çözünürlük.
@@ -185,8 +186,9 @@ class TouchControls extends StatelessWidget {
   }
 }
 
-/// Cam daire düğme: yarı saydam beyaz zemin, beyaz ikon. [solid]: beyaz
-/// dolu, koyu ikon (oynat/duraklat).
+/// Cam daire düğme: yarı saydam beyaz zemin, beyaz ikon. [solid]: kızıl dolu,
+/// koyu kırmızı 4 dp kenarlı, beyaz ikon (oynat/duraklat; kullanıcı isteği:
+/// TV'deki gibi kırmızı, kenarı daha kırmızı).
 class GlassCircle extends StatelessWidget {
   const GlassCircle({
     super.key,
@@ -210,15 +212,19 @@ class GlassCircle extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: Material(
-        color: solid ? Colors.white : Colors.white.withValues(alpha: 0.14),
-        shape: CircleBorder(side: solid ? BorderSide.none : BorderSide(color: Colors.white.withValues(alpha: 0.24))),
+        color: solid ? RedoxRoles.primaryContainer : Colors.white.withValues(alpha: 0.14),
+        shape: CircleBorder(
+          side: solid
+              ? const BorderSide(color: RedoxRoles.onPrimaryFixedVariant, width: 4)
+              : BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
           child: SizedBox.square(
             dimension: size,
             child: Center(
-              child: RedoxIcon(icon, filled: true, size: size * 0.5, color: solid ? Colors.black : Colors.white),
+              child: RedoxIcon(icon, filled: true, size: size * 0.5, color: Colors.white),
             ),
           ),
         ),

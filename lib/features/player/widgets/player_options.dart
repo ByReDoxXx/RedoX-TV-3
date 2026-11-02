@@ -38,6 +38,7 @@ class PlayerOptions extends StatefulWidget {
     this.previousChannelName,
     this.onPreviousChannel,
     this.onExit,
+    this.onClose,
   });
 
   final EngineState engine;
@@ -51,6 +52,10 @@ class PlayerOptions extends StatefulWidget {
   final String? previousChannelName;
   final VoidCallback? onPreviousChannel;
   final VoidCallback? onExit;
+
+  /// Menüyü kapatır; verilirse ana listenin başında "Kapat" satırı olur
+  /// (dokunmatik: kumandadaki Geri'nin karşılığı).
+  final VoidCallback? onClose;
 
   /// Kalite, ses ve altyazı seçimleri (iz kimliği).
   final ValueChanged<String> onVideoTrack;
@@ -158,6 +163,7 @@ class PlayerOptionsState extends State<PlayerOptions> {
   }
 
   List<Widget> _main() => [
+    if (widget.onClose case final close?) _Row(icon: RedoxIcons.close, label: 'Kapat', onPressed: close),
     _Row(
       icon: RedoxIcons.quality,
       label: 'Kalite',

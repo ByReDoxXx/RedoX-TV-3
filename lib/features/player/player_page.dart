@@ -315,9 +315,11 @@ class _PlayerPageState extends State<PlayerPage> {
     _notify(v.label);
   }
 
-  Widget _optionsPanel(EngineState e, PlaybackSession s) => FocusScope(
+  /// [closable]: dokunmatikte panelde "Kapat" satırı (kumandada Geri kapatır).
+  Widget _optionsPanel(EngineState e, PlaybackSession s, {bool closable = false}) => FocusScope(
     child: PlayerOptions(
       key: _optionsKey,
+      onClose: closable ? _closeOptions : null,
       engine: e,
       scale: _scale,
       onScale: (v) => setState(() => _scale = v),
@@ -392,6 +394,12 @@ class _PlayerPageState extends State<PlayerPage> {
                       onScale: () => _setScale(VideoScale.values[(_scale.index + 1) % VideoScale.values.length]),
                       onOptions: _openOptions,
                     ),
+                  // Dokunmatikte panelin dışına dokunmak Seçenekler'i kapatır
+                  // (önceden kapatacak yer yoktu).
+                  if (_bar && !_keys && _options)
+                    Positioned.fill(
+                      child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _closeOptions),
+                    ),
                   if (_bar && !_keys && _options)
                     Positioned(
                       right: 16,
@@ -402,7 +410,7 @@ class _PlayerPageState extends State<PlayerPage> {
                             maxHeight: MediaQuery.sizeOf(context).height * 0.7,
                             maxWidth: math.min(360, MediaQuery.sizeOf(context).width - 32),
                           ),
-                          child: _optionsPanel(e, s),
+                          child: _optionsPanel(e, s, closable: true),
                         ),
                       ),
                     ),

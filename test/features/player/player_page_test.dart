@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/theme/redox_colors.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/platform/device_controls.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -299,6 +300,32 @@ void main() {
       expect(center(tester, 'Önceki kanal').dx, lessThan(play.dx));
       expect(center(tester, 'Sonraki kanal').dx, greaterThan(play.dx));
       expect(center(tester, 'Önceki kanal').dy, closeTo(play.dy, 1));
+    });
+
+    testWidgets('oynat/duraklat kızıl, koyu kırmızı 4 dp kenarlı', (tester) async {
+      await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      final material = tester.widget<Material>(
+        find.descendant(of: find.bySemanticsLabel('Duraklat'), matching: find.byType(Material)).first,
+      );
+      expect(material.color, RedoxRoles.primaryContainer);
+      final side = (material.shape! as CircleBorder).side;
+      expect((side.color, side.width), (RedoxRoles.onPrimaryFixedVariant, 4));
+    });
+
+    testWidgets('Seçenekler "Kapat" satırıyla ve dışına dokununca kapanır', (tester) async {
+      await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      await tester.tap(find.bySemanticsLabel('Seçenekler'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(PlayerOptions), findsOneWidget);
+      await tester.tap(find.descendant(of: find.byType(PlayerOptions), matching: find.text('Kapat')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(PlayerOptions), findsNothing);
+
+      await tester.tap(find.bySemanticsLabel('Seçenekler'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tapAt(const Offset(60, 200));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(PlayerOptions), findsNothing);
     });
 
     testWidgets('dokunma katmanı kapar/açar; yatay kaydırma kanal değiştirir', (tester) async {
