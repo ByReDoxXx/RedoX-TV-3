@@ -17,6 +17,7 @@ import 'widgets/channel_drawer.dart';
 import 'widgets/player_bar.dart';
 import 'widgets/player_options.dart';
 import 'widgets/player_overlays.dart';
+import 'widgets/seek_bar.dart';
 import 'widgets/touch_controls.dart';
 
 /// Tam ekran oynatıcı (eski sürümün özellikleriyle). Kumanda:
@@ -158,6 +159,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _barTimer?.cancel();
     _digitTimer?.cancel();
     _noticeTimer?.cancel();
+    _seekTimer?.cancel();
     _session.removeListener(_onSession);
     _session.dispose();
     unawaited(_engine.dispose());
@@ -183,6 +185,25 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       default:
         break;
     }
+  }
+
+  /// Film/dizi: 10 sn ileri (+1) ya da geri (-1) sar.
+  void _seekBy(int direction) {
+    if (_bar) _restartBarTimer();
+    unawaited(_engine.seek(_engine.position.value + PlayerGestures.seekStep * direction));
+  }
+
+  /// TV: ◄► ile sarılırken altta kısa süre sarma çubuğu.
+  bool _seekShown = false;
+  Timer? _seekTimer;
+
+  void _keySeek(int direction) {
+    _seekBy(direction);
+    _seekTimer?.cancel();
+    setState(() => _seekShown = true);
+    _seekTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _seekShown = false);
+    });
   }
 
   /// Kanal veya akış değişince çubuğu ve ipuçlarını kısa süre göster.
@@ -320,6 +341,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       _session.zap(1);
     } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.channelDown) {
       _session.zap(-1);
+    } else if ((key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) &&
+        _engine.state.value.seekable) {
+      // Film/dizi: ◄► 10 sn geri/ileri (kanal listesi çubuktaki düğmede).
+      _keySeek(key == LogicalKeyboardKey.arrowLeft ? -1 : 1);
     } else if (key == LogicalKeyboardKey.arrowLeft) {
       _openDrawer();
     } else if (key == LogicalKeyboardKey.arrowRight) {
@@ -418,6 +443,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                           : (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
                       onZap: _gestures ? s.zap : null,
                       adjust: _gestures,
+                      // Film/dizi: sağa/sola çift dokunma ±10 sn.
+                      onSeekSide: _gestures && e.seekable ? _seekBy : null,
                       child: _engine.view(fit: _scale.fit),
                     ),
                   if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
@@ -442,6 +469,19 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                       onNextStream: s.nextStream,
                       onScale: () => _setScale(VideoScale.values[(_scale.index + 1) % VideoScale.values.length]),
                       onOptions: _openOptions,
+                      onSeekBy: e.seekable ? _seekBy : null,
+                      seekBar: e.seekable
+                          ? SeekBar(
+                              position: _engine.position,
+                              duration: e.duration,
+                              onSeek: (to) {
+                                _restartBarTimer();
+                                unawaited(_engine.seek(to));
+                              },
+                              // Sürüklerken çubuk kapanmasın.
+                              onDragging: (dragging) => dragging ? _barTimer?.cancel() : _restartBarTimer(),
+                            )
+                          : null,
                     ),
                   // Dokunmatikte panelin dışına dokunmak Seçenekler'i kapatır
                   // (önceden kapatacak yer yoktu).
@@ -460,6 +500,22 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                             maxWidth: math.min(360, MediaQuery.sizeOf(context).width - 32),
                           ),
                           child: _optionsPanel(e, s, closable: true),
+                        ),
+                      ),
+                    ),
+                  if (_keys && _seekShown && !_bar && e.seekable)
+                    Positioned(
+                      left: 24,
+                      right: 24,
+                      bottom: 24,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC000000),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          child: SeekBar(position: _engine.position, duration: e.duration),
                         ),
                       ),
                     ),
@@ -491,6 +547,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                                 child: PlayerHints(multiStream: s.streamCount > 1),
                               ),
                               const SizedBox(height: 10),
+                            ],
+                            if (e.seekable) ...[
+                              SeekBar(position: _engine.position, duration: e.duration),
+                              const SizedBox(height: 8),
                             ],
                             PlayerBar(
                               channel: s.channel,

@@ -27,6 +27,8 @@ class MediaKitEngine implements PlaybackEngine {
       s.buffering.listen((v) => _update(_state.value.copyWith(buffering: v))),
       s.width.listen((v) => unawaited(_onWidth(v))),
       s.height.listen((v) => _update(_state.value.copyWith(height: () => v))),
+      s.duration.listen((v) => _update(_state.value.copyWith(duration: v))),
+      s.position.listen((v) => _position.value = v),
       s.tracks.listen(_onTracks),
       s.track.listen(
         (t) => _update(
@@ -321,6 +323,19 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Future<void> playOrPause() => _player.playOrPause();
 
+  final _position = ValueNotifier(Duration.zero);
+
+  @override
+  ValueListenable<Duration> get position => _position;
+
+  @override
+  Future<void> seek(Duration to) {
+    final end = _state.value.duration;
+    final clamped = to < Duration.zero ? Duration.zero : (end > Duration.zero && to > end ? end : to);
+    _position.value = clamped;
+    return _player.seek(clamped);
+  }
+
   @override
   Future<void> setMuted(bool muted) => _player.setVolume(muted ? 0 : 100);
 
@@ -371,6 +386,7 @@ class MediaKitEngine implements PlaybackEngine {
     }
     await _errors.close();
     _state.dispose();
+    _position.dispose();
     await _player.dispose();
   }
 }

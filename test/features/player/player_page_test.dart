@@ -11,6 +11,7 @@ import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/channel_drawer.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
 import 'package:redox_tv/features/player/widgets/player_options.dart';
+import 'package:redox_tv/features/player/widgets/seek_bar.dart';
 import 'package:redox_tv/features/player/widgets/touch_controls.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
 
@@ -207,6 +208,21 @@ void main() {
     expect(find.byType(PlayerOptions), findsOneWidget);
   });
 
+  testWidgets('TV: film/dizide ◄► 10 sn sarar ve altta sarma çubuğu görünür; canlıda ◄ kanal listesi', (tester) async {
+    final e = await _open(tester);
+    e.setDuration(const Duration(minutes: 50), at: const Duration(minutes: 5));
+    await tester.pump(PlayerPage.announceDuration);
+    await _settle(tester);
+    await _key(tester, LogicalKeyboardKey.arrowRight);
+    expect(e.seeks.last, const Duration(minutes: 5, seconds: 10));
+    expect(find.byType(SeekBar), findsOneWidget);
+    await _key(tester, LogicalKeyboardKey.arrowLeft);
+    expect(e.seeks.last, const Duration(minutes: 5));
+    expect(find.byType(ChannelDrawer), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.byType(SeekBar), findsNothing);
+  });
+
   testWidgets('OK çubuğu açar (odak oynat/duraklatta); Geri katmanları sırayla kapatır, sonra çıkar', (tester) async {
     final e = await _open(tester);
     await tester.pump(PlayerPage.announceDuration);
@@ -336,6 +352,67 @@ void main() {
       await tester.tapAt(const Offset(60, 200));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.byType(PlayerOptions), findsNothing);
+    });
+
+    for (final (f, size) in const [(FormFactor.phone, Size(844, 390)), (FormFactor.tablet, Size(1280, 800))]) {
+      testWidgets('${f.name}: film/dizide sarma çubuğu, ±10 sn düğmeleri, sağa/sola çift dokunma', (tester) async {
+        final e = await _open(tester, formFactor: f, size: size);
+        e.setDuration(const Duration(minutes: 90), at: const Duration(minutes: 30));
+        await tester.pump(PlayerPage.announceDuration);
+        await _settle(tester);
+        final w = size.width;
+
+        // Sağ üçte bire çift dokunma: +10 sn; art arda: toplam gösterilir.
+        await tester.tapAt(Offset(w * 0.85, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 60));
+        await tester.tapAt(Offset(w * 0.85, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(e.seeks.last, const Duration(minutes: 30, seconds: 10));
+        expect(find.text('+10 sn'), findsOneWidget);
+        await tester.tapAt(Offset(w * 0.85, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 60));
+        await tester.tapAt(Offset(w * 0.85, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('+20 sn'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 1));
+
+        // Sol üçte bir: -10 sn.
+        await tester.tapAt(Offset(w * 0.1, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 60));
+        await tester.tapAt(Offset(w * 0.1, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(e.seeks.last, const Duration(minutes: 30, seconds: 10));
+        await tester.pump(const Duration(seconds: 1));
+
+        // Katman: sarma çubuğu ve ±10 sn düğmeleri (kanal düğmeleri yerine).
+        await tester.tapAt(Offset(w / 2, size.height / 2));
+        await tester.pump(const Duration(milliseconds: 400));
+        await _settle(tester);
+        expect(find.byType(SeekBar), findsOneWidget);
+        expect(find.text('1:30:00'), findsOneWidget);
+        expect(find.bySemanticsLabel('Önceki kanal'), findsNothing);
+        await tester.tap(find.bySemanticsLabel('10 sn ileri'));
+        expect(e.seeks.last, const Duration(minutes: 30, seconds: 20));
+        // Çubuğun ortasına dokunma: ~45. dakikaya.
+        final slider = tester.getRect(find.byType(Slider));
+        await tester.tapAt(slider.center);
+        await tester.pump();
+        expect(e.seeks.last.inMinutes, inInclusiveRange(43, 47));
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('canlı yayında sarma yok: çubuk yok, çift dokunma ekranı doldurur', (tester) async {
+      final e = await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      await tester.pump(PlayerPage.announceDuration);
+      await _settle(tester);
+      await tester.tapAt(const Offset(780, 200));
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tapAt(const Offset(780, 200));
+      await _settle(tester);
+      expect(e.seeks, isEmpty);
+      expect(find.text(VideoScale.fill.label), findsWidgets);
+      expect(find.byType(SeekBar), findsNothing);
     });
 
     testWidgets('dokunma katmanı kapar/açar; yatay kaydırma kanal değiştirir', (tester) async {

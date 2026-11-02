@@ -37,7 +37,15 @@ class TouchControls extends StatelessWidget {
     this.onNextStream,
     this.onScale,
     this.onOptions,
+    this.seekBar,
+    this.onSeekBy,
   });
+
+  /// Film/dizi: alt satırın üstünde sarma çubuğu; canlı yayında null.
+  final Widget? seekBar;
+
+  /// Film/dizi: ortadaki düğmeler kanal yerine ±10 sn sarar (-1/+1).
+  final ValueChanged<int>? onSeekBy;
 
   final LiveChannel channel;
   final bool playing;
@@ -136,12 +144,20 @@ class TouchControls extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      GlassCircle(
-                        icon: RedoxIcons.previous,
-                        label: 'Önceki kanal',
-                        size: 56,
-                        onPressed: onPreviousChannel,
-                      ),
+                      if (onSeekBy case final seekBy?)
+                        GlassCircle(
+                          icon: RedoxIcons.replay10,
+                          label: '10 sn geri',
+                          size: 56,
+                          onPressed: () => seekBy(-1),
+                        )
+                      else
+                        GlassCircle(
+                          icon: RedoxIcons.previous,
+                          label: 'Önceki kanal',
+                          size: 56,
+                          onPressed: onPreviousChannel,
+                        ),
                       const SizedBox(width: 32),
                       GlassCircle(
                         icon: playing ? RedoxIcons.pause : RedoxIcons.play,
@@ -151,10 +167,19 @@ class TouchControls extends StatelessWidget {
                         onPressed: onPlayPause,
                       ),
                       const SizedBox(width: 32),
-                      GlassCircle(icon: RedoxIcons.next, label: 'Sonraki kanal', size: 56, onPressed: onNextChannel),
+                      if (onSeekBy case final seekBy?)
+                        GlassCircle(
+                          icon: RedoxIcons.forward10,
+                          label: '10 sn ileri',
+                          size: 56,
+                          onPressed: () => seekBy(1),
+                        )
+                      else
+                        GlassCircle(icon: RedoxIcons.next, label: 'Sonraki kanal', size: 56, onPressed: onNextChannel),
                     ],
                   ),
                 const Spacer(),
+                if (seekBar case final bar?) ...[bar, const SizedBox(height: 4)],
                 Row(
                   children: [
                     if (c.live) ...[
@@ -268,7 +293,8 @@ class _Chip extends StatelessWidget {
 }
 
 /// Oynatıcı jestleri (dokunmatik): dokunma katmanı açar/kapar; çift dokunma
-/// ve iki parmakla açma/kapama ekranı doldurur/sığdırır; yatay kaydırma
+/// ve iki parmakla açma/kapama ekranı doldurur/sığdırır (film/dizide sağa
+/// çift dokunma 10 sn ileri, sola geri sarar); yatay kaydırma
 /// kanal değiştirir (sola: sonraki); solda dikey kaydırma parlaklık, sağda
 /// ses (cihaz sesi, [DeviceControls]). Ayarlanan değer ortada gösterilir.
 class PlayerGestures extends StatefulWidget {
@@ -280,7 +306,16 @@ class PlayerGestures extends StatefulWidget {
     this.onZap,
     this.onPinch,
     this.adjust = true,
+    this.onSeekSide,
   });
+
+  /// Film/dizi: ekranın sağ üçte birine çift dokunma ileri (+1), sol üçte
+  /// birine geri (-1) sarar; ortası [onDoubleTap]. Null ise her yer
+  /// [onDoubleTap].
+  final ValueChanged<int>? onSeekSide;
+
+  /// Bir çift dokunmanın sardığı süre.
+  static const seekStep = Duration(seconds: 10);
 
   /// Dikey kaydırma ses ve parlaklığı değiştirir (Ayarlar › Dokunma
   /// hareketleri kapalıysa false).
@@ -320,9 +355,43 @@ class PlayerGesturesState extends State<PlayerGestures> {
   ({RedoxIcons icon, double value})? level;
   Timer? _hide;
 
+  /// Çift dokunmanın yeri; son sarma göstergesi (yön ve art arda toplam).
+  Offset? _doubleTapAt;
+  ({int side, int seconds})? seekFlash;
+  Timer? _seekHide;
+
+  void _onDoubleTap() {
+    final side = widget.onSeekSide;
+    final at = _doubleTapAt;
+    final width = context.size?.width ?? 0;
+    final dir = at == null || width == 0
+        ? 0
+        : at.dx < width / 3
+        ? -1
+        : at.dx > width * 2 / 3
+        ? 1
+        : 0;
+    if (side == null || dir == 0) {
+      widget.onDoubleTap?.call();
+      return;
+    }
+    side(dir);
+    // Art arda çift dokunmalar toplanır: "+30 sn".
+    final step = PlayerGestures.seekStep.inSeconds;
+    final previous = seekFlash;
+    _seekHide?.cancel();
+    setState(
+      () => seekFlash = (side: dir, seconds: previous != null && previous.side == dir ? previous.seconds + step : step),
+    );
+    _seekHide = Timer(const Duration(milliseconds: 900), () {
+      if (mounted) setState(() => seekFlash = null);
+    });
+  }
+
   @override
   void dispose() {
     _hide?.cancel();
+    _seekHide?.cancel();
     super.dispose();
   }
 
@@ -390,7 +459,8 @@ class PlayerGesturesState extends State<PlayerGestures> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
-      onDoubleTap: widget.onDoubleTap,
+      onDoubleTapDown: (d) => _doubleTapAt = d.localPosition,
+      onDoubleTap: widget.onDoubleTap == null && widget.onSeekSide == null ? null : _onDoubleTap,
       onScaleStart: _onStart,
       onScaleUpdate: (d) => unawaited(_onUpdate(d)),
       onScaleEnd: _onEnd,
@@ -398,6 +468,43 @@ class PlayerGesturesState extends State<PlayerGestures> {
         fit: StackFit.expand,
         children: [
           widget.child,
+          if (seekFlash case final f?)
+            Align(
+              alignment: f.side < 0 ? Alignment.centerLeft : Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: 1 / 3,
+                heightFactor: 1,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: f.side < 0 ? Alignment.centerLeft : Alignment.centerRight,
+                        radius: 1,
+                        colors: const [Color(0x55FFFFFF), Color(0x00FFFFFF)],
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RedoxIcon(
+                            f.side < 0 ? RedoxIcons.replay10 : RedoxIcons.forward10,
+                            size: 40,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${f.side < 0 ? '−' : '+'}${f.seconds} sn',
+                            style: Theme.of(context).textTheme.titleMedium!
+                                .copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (l != null)
             Center(
               child: Container(

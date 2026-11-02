@@ -33,6 +33,7 @@ class EngineState {
     this.videoTrack = autoTrack,
     this.audioTrack = autoTrack,
     this.subtitleTrack = autoTrack,
+    this.duration = Duration.zero,
   });
 
   static const autoTrack = 'auto';
@@ -52,6 +53,12 @@ class EngineState {
   final String audioTrack;
   final String subtitleTrack;
 
+  /// Yayının süresi; canlı yayında sıfır (sarılamaz).
+  final Duration duration;
+
+  /// Sarılabilir mi (film, dizi bölümü; canlı yayın değil).
+  bool get seekable => duration > Duration.zero;
+
   /// Görüntü geldi mi (yayın gerçekten açıldı mı).
   bool get hasVideo => (width ?? 0) > 0 && (height ?? 0) > 0;
 
@@ -66,6 +73,7 @@ class EngineState {
     String? videoTrack,
     String? audioTrack,
     String? subtitleTrack,
+    Duration? duration,
   }) => EngineState(
     playing: playing ?? this.playing,
     buffering: buffering ?? this.buffering,
@@ -77,6 +85,7 @@ class EngineState {
     videoTrack: videoTrack ?? this.videoTrack,
     audioTrack: audioTrack ?? this.audioTrack,
     subtitleTrack: subtitleTrack ?? this.subtitleTrack,
+    duration: duration ?? this.duration,
   );
 }
 
@@ -93,6 +102,12 @@ abstract class PlaybackEngine {
   Future<void> open(String url);
 
   Future<void> playOrPause();
+
+  /// Oynatma konumu (sık değişir: durumdan ayrı, yalnız sarma çubuğu dinler).
+  ValueListenable<Duration> get position;
+
+  /// Konuma sar (süre içinde kırpılır).
+  Future<void> seek(Duration to);
 
   /// Sesi kapatır/açar (Bölünmüş Ekran: yalnız odaktaki karo duyulur).
   Future<void> setMuted(bool muted);

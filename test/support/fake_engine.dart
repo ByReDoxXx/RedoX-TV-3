@@ -66,6 +66,28 @@ class FakeEngine implements PlaybackEngine {
   void showVideo({int width = 1280, int height = 720}) =>
       _state.value = _state.value.copyWith(playing: true, width: () => width, height: () => height);
 
+  final _position = ValueNotifier(Duration.zero);
+
+  @override
+  ValueListenable<Duration> get position => _position;
+
+  /// Sarılan konumlar, sırasıyla.
+  final seeks = <Duration>[];
+
+  @override
+  Future<void> seek(Duration to) async {
+    final end = _state.value.duration;
+    final clamped = to < Duration.zero ? Duration.zero : (end > Duration.zero && to > end ? end : to);
+    seeks.add(clamped);
+    _position.value = clamped;
+  }
+
+  /// Yayın süresi (film/dizi: sarma çubuğu görünür); konum.
+  void setDuration(Duration d, {Duration at = Duration.zero}) {
+    _state.value = _state.value.copyWith(duration: d);
+    _position.value = at;
+  }
+
   @override
   Future<void> playOrPause() async => _state.value = _state.value.copyWith(playing: !_state.value.playing);
 
