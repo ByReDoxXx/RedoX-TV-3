@@ -12,6 +12,7 @@ import 'core/content/live_channel.dart';
 import 'core/content/favorites.dart';
 import 'core/content/profiles.dart';
 import 'core/content/radio_source.dart';
+import 'core/content/song_history.dart';
 import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
 import 'core/playback/frame_grabber.dart';
@@ -73,7 +74,7 @@ Future<void> main() async {
       history: history,
       favorites: favorites,
       sources: sources,
-      radio: RadioController(stations: stations),
+      radio: RadioController(stations: stations, songs: await SongHistory.load()),
       frames: FrameStore(startDelay: const Duration(seconds: 3)),
       rank: StreamProbe().rank,
     ),

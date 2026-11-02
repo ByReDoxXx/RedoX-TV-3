@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
+import 'package:redox_tv/core/content/song_history.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/playback/radio_controller.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -60,6 +61,23 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('"Son şarkılar" çipi son dinlenen şarkıları listeler; dokununca istasyon açılır', (tester) async {
+    await _size(tester, const Size(960, 540));
+    final audio = FakeRadioAudio();
+    final songs = SongHistory()..record('Sezen Aksu - Gidiyorum', station: _stations[2].name, stationNumber: 3);
+    final radio = RadioController(stations: ValueNotifier(_stations), audio: () => audio, songs: songs);
+    addTearDown(radio.dispose);
+    await tester.pumpWidget(_app(FormFactor.tv, radio, Favorites()));
+    await _settle(tester);
+    await tester.tap(find.text('Son şarkılar'));
+    await _settle(tester);
+    expect(find.text('Sezen Aksu - Gidiyorum'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Sezen Aksu - Gidiyorum'));
+    await _settle(tester);
+    expect(radio.current, _stations[2]);
+  });
+
   testWidgets('TV: liste, çipler ve paneller taşmasız; Favoriler çipi süzer', (tester) async {
     await _size(tester, const Size(960, 540));
     final (radio, _, fav) = _setup();

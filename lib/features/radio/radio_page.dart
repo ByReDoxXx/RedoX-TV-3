@@ -67,6 +67,10 @@ class RadioPage extends StatefulWidget {
   /// "Favoriler" çipinin süzgeç adı.
   static const favoritesFilter = 'Favoriler';
 
+  /// "Son şarkılar" çipi: istasyon yerine son dinlenen şarkılar (kullanıcı
+  /// isteği: son 15).
+  static const songsFilter = 'Son şarkılar';
+
   /// Odak halkası payı (TvPage ile aynı).
   static const ringRoom = 12.0;
 
@@ -95,6 +99,7 @@ class _RadioPageState extends State<RadioPage> {
 
   List<LiveChannel> _filtered(List<LiveChannel> all) => switch (_filter) {
     null => all,
+    RadioPage.songsFilter => const [],
     RadioPage.favoritesFilter => [
       for (final n in widget.favorites?.radios ?? const <int>[]) ?all.where((s) => s.number == n).firstOrNull,
     ],
@@ -122,7 +127,7 @@ class _RadioPageState extends State<RadioPage> {
     final phone = metrics.formFactor == FormFactor.phone;
     final padding = PageLayout.scrollPadding(context, metrics);
     return ListenableBuilder(
-      listenable: Listenable.merge([_radio, _radio.stationsListenable, ?widget.favorites]),
+      listenable: Listenable.merge([_radio, _radio.stationsListenable, ?widget.favorites, ?_radio.songs]),
       builder: (context, _) {
         final all = _radio.stations;
         final list = _filtered(all);
@@ -138,7 +143,7 @@ class _RadioPageState extends State<RadioPage> {
           children: [
             _chips(all),
             const SizedBox(height: 4),
-            Expanded(child: _list(list, phone)),
+            Expanded(child: _filter == RadioPage.songsFilter ? _songs(all) : _list(list, phone)),
           ],
         );
         return Padding(
@@ -181,6 +186,7 @@ class _RadioPageState extends State<RadioPage> {
     final chips = <(String?, String, int)>[
       (null, 'Tümü', all.length),
       if (widget.favorites != null) (RadioPage.favoritesFilter, RadioPage.favoritesFilter, favCount),
+      if (_radio.songs case final songs?) (RadioPage.songsFilter, RadioPage.songsFilter, songs.value.length),
       for (final g in _genres(all)) (g, g, all.where((s) => s.category == g).length),
     ];
     return ScrollHintRow(
@@ -198,6 +204,77 @@ class _RadioPageState extends State<RadioPage> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Son dinlenen şarkılar: şarkı adı, istasyon ve saat; OK/dokunma o
+  /// istasyonu açar.
+  Widget _songs(List<LiveChannel> all) {
+    final t = Theme.of(context).textTheme;
+    final songs = _radio.songs?.value ?? const [];
+    if (songs.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(RadioPage.ringRoom),
+        child: Text(
+          'Henüz şarkı yok. Radyo dinlerken yayının bildirdiği şarkı adları burada listelenir.',
+          style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+        ),
+      );
+    }
+    String clock(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(RadioPage.ringRoom, 6, RadioPage.ringRoom, 16),
+      itemCount: songs.length,
+      itemBuilder: (context, i) {
+        final e = songs[i];
+        final station = all.where((s) => s.number == e.stationNumber).firstOrNull;
+        final radius = BorderRadius.circular(RedoxRadius.lg);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: FocusGlow(
+            borderRadius: radius,
+            scale: 1,
+            builder: (context, active) => Material(
+              color: active ? RedoxRoles.surfaceContainerHigh : RedoxRoles.surfaceContainer,
+              borderRadius: radius,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                autofocus: i == 0,
+                focusColor: Colors.transparent,
+                onTap: station == null ? null : () => _open(station, all),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Row(
+                    children: [
+                      if (station != null) StationAvatar(station: station, size: 44) else const SizedBox(width: 44),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              e.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface),
+                            ),
+                            Text(
+                              '${e.station} · ${clock(e.at)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

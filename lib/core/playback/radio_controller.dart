@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../content/live_channel.dart';
+import '../content/song_history.dart';
 import 'radio_audio.dart';
 
 /// Radyonun durumu (arayüzdeki rozet ve düğmeler buna göre).
@@ -27,6 +28,7 @@ class RadioController extends ChangeNotifier {
     required this._stations,
     RadioAudio Function()? audio,
     this.connectTimeout = const Duration(seconds: 12),
+    this.songs,
   }) : _audioFactory = audio ?? MediaKitRadioAudio.new;
 
   final ValueListenable<List<LiveChannel>> _stations;
@@ -34,6 +36,9 @@ class RadioController extends ChangeNotifier {
 
   /// Bu sürede ses gelmezse sıradaki yayın denenir.
   final Duration connectTimeout;
+
+  /// Çalan şarkıların geçmişi (Radyo › Son şarkılar); null ise tutulmaz.
+  final SongHistory? songs;
 
   RadioAudio? _audio;
   final _subscriptions = <StreamSubscription<Object?>>[];
@@ -110,6 +115,7 @@ class RadioController extends ChangeNotifier {
     });
     a.title.addListener(() {
       _title = a.title.value;
+      if ((_title, _current) case (final t?, final s?)) songs?.record(t, station: s.name, stationNumber: s.number);
       _notify();
     });
     return _audio = a;
