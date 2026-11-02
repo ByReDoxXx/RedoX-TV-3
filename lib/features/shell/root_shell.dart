@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
@@ -18,6 +19,7 @@ import '../../core/ui/bottom_nav_bar.dart';
 import '../../core/ui/nav_rail.dart';
 import '../../core/ui/redox_icon.dart';
 import '../home/home_content.dart';
+import '../locks/lock_scope.dart';
 import '../home/home_page.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../player/player_page.dart';
@@ -52,6 +54,7 @@ class RootShell extends StatefulWidget {
     this.rank,
     this.radio,
     this.favorites,
+    this.locks,
     this.sources,
     this.profile,
     this.profiles,
@@ -98,6 +101,9 @@ class RootShell extends StatefulWidget {
 
   /// Profilin favorileri (kanal ve radyo).
   final Favorites? favorites;
+
+  /// Kilitli kanallar ve klasörler; null ise oturumluk boş küme (testler).
+  final ContentLocks? locks;
 
   /// Kullanıcının M3U listeleri; null ise Kaynaklar "yakında" sayfasıdır.
   final UserSources? sources;
@@ -150,6 +156,9 @@ class _RootShellState extends State<RootShell> {
   }
 
   bool _watching = false;
+
+  /// Kilitler (LockScope ile sayfalara).
+  late final ContentLocks _locks = widget.locks ?? ContentLocks();
 
   /// Bölünmüş Ekran karoları (oturum boyunca).
   late final _split = SplitScreen();
@@ -223,7 +232,17 @@ class _RootShellState extends State<RootShell> {
   /// Klasör kanalları izleme geçmişine yazılmaz (numaraları ana listeyle
   /// çakışır).
   Future<void> _watch(BuildContext context, LiveChannel c, {List<LiveChannel>? from}) async {
-    final list = from ?? _tv.channels;
+    // Kilitli kanal PIN ister; oynatıcıda ▲▼ açılmamış kilitli kanallara
+    // girmez (listeden çıkar).
+    String lockOf(LiveChannel x) =>
+        from == null ? ContentLocks.channel(x.number) : ContentLocks.item(x.streams.firstOrNull ?? x.name);
+    final gate = LockScope.maybeOf(context);
+    if (gate != null && !await gate.pass(context, lockOf(c))) return;
+    if (!context.mounted) return;
+    final list = [
+      for (final x in from ?? _tv.channels)
+        if (x == c || !_locks.blocks(lockOf(x))) x,
+    ];
     _watching = true;
     // TV kanalı başlayınca radyo susar.
     unawaited(widget.radio?.stop());
@@ -369,41 +388,45 @@ class _RootShellState extends State<RootShell> {
     final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
     return DoubleBackToExit(
       onBack: _onBack,
-      child: SearchScope(
-        open: _search,
-        child: Scaffold(
-          // Çocuk profilinde alt menü yok (bölümler "Diğer" sayfasında).
-          bottomNavigationBar: phone && !_kids
-              ? RedoxBottomBar(
-                  items: AppDestinations.phoneBar,
-                  // Anasayfa ve "Diğer" bölümleri çubukta yoktur: seçili öğe yok.
-                  selectedIndex: AppDestinations.phoneBarSections.indexOf(_section),
-                  onSelected: (i) => _go(AppDestinations.phoneBarSections[i]),
-                )
-              : null,
-          // expand: Scaffold gövdeye gevşek kısıt verir; sayfa içeriğe
-          // büzülürse ray ekranın altına kadar uzanmaz.
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
-              KeyedSubtree(
-                key: ValueKey((_section, _tvView)),
-                child: Builder(builder: _page),
-              ),
-              if (!phone)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: RedoxNavRail(
-                    items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
-                    footer: _kids ? const [] : AppDestinations.footer,
-                    selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
-                    onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
-                  ),
+      child: LockScope(
+        locks: _locks,
+        profiles: widget.profiles,
+        child: SearchScope(
+          open: _search,
+          child: Scaffold(
+            // Çocuk profilinde alt menü yok (bölümler "Diğer" sayfasında).
+            bottomNavigationBar: phone && !_kids
+                ? RedoxBottomBar(
+                    items: AppDestinations.phoneBar,
+                    // Anasayfa ve "Diğer" bölümleri çubukta yoktur: seçili öğe yok.
+                    selectedIndex: AppDestinations.phoneBarSections.indexOf(_section),
+                    onSelected: (i) => _go(AppDestinations.phoneBarSections[i]),
+                  )
+                : null,
+            // expand: Scaffold gövdeye gevşek kısıt verir; sayfa içeriğe
+            // büzülürse ray ekranın altına kadar uzanmaz.
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
+                KeyedSubtree(
+                  key: ValueKey((_section, _tvView)),
+                  child: Builder(builder: _page),
                 ),
-            ],
+                if (!phone)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: RedoxNavRail(
+                      items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
+                      footer: _kids ? const [] : AppDestinations.footer,
+                      selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
+                      onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

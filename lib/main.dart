@@ -6,6 +6,7 @@ import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
 import 'core/content/channel_source.dart';
+import 'core/content/content_locks.dart';
 import 'core/content/data_pack.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
@@ -73,6 +74,7 @@ Future<void> main() async {
       profiles: profiles,
       history: history,
       favorites: favorites,
+      locks: await ContentLocks.load(),
       sources: sources,
       radio: RadioController(stations: stations, songs: await SongHistory.load()),
       frames: FrameStore(startDelay: const Duration(seconds: 3)),

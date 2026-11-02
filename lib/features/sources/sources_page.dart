@@ -10,6 +10,7 @@ import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
+import '../locks/lock_scope.dart';
 import 'source_channels_page.dart';
 import 'widgets/source_widgets.dart';
 
@@ -124,9 +125,19 @@ class SourcesPage extends StatelessWidget {
     );
   }
 
-  Future<void> _open(BuildContext context, UserSource s) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => SourceChannelsPage(sources: sources, source: s, onWatch: onWatch, favorites: favorites),
-    ),
-  );
+  /// Kilitli kaynak PIN ister.
+  Future<void> _open(BuildContext context, UserSource s) async {
+    final gate = LockScope.maybeOf(context);
+    if (gate?.locks.folderLock(s.id, const []) case final key?) {
+      if (!await gate!.pass(context, key)) return;
+    }
+    if (!context.mounted) return;
+    final page = SourceChannelsPage(sources: sources, source: s, onWatch: onWatch, favorites: favorites);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        // Yeni rota kabuğun altında değil: kilit kapsamı taşınır.
+        builder: (_) => gate == null ? page : LockScope(locks: gate.locks, profiles: gate.profiles, child: page),
+      ),
+    );
+  }
 }

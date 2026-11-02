@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/content/channel_folder.dart';
+import '../../core/content/content_locks.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/user_sources.dart';
@@ -15,6 +16,7 @@ import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/segmented_toggle.dart';
+import '../locks/lock_scope.dart';
 import '../radio/widgets/station_avatar.dart';
 
 /// Kaynağın içi: iki görünüm (kullanıcı isteği). **Klasör:** kanallar grup
@@ -61,6 +63,15 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
   }
 
   void _up() => setState(() => _path.removeLast());
+
+  /// Alt klasöre girer; kilitliyse (kendisi ya da üstü) PIN sorar.
+  Future<void> _enter(String name) async {
+    final gate = LockScope.maybeOf(context);
+    if (gate?.locks.folderLock(_source.id, [..._path, name]) case final key?) {
+      if (!await gate!.pass(context, key)) return;
+    }
+    if (mounted) setState(() => _path.add(name));
+  }
 
   void _toast(String text) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(text)));
 
@@ -148,6 +159,11 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
                       ),
                     const SizedBox(width: 10),
                     GlassButton(label: 'Sil', icon: RedoxIcons.close, iconOnly: phone, onPressed: _delete),
+                    // Bütün kaynağın kilidi.
+                    if (LockScope.maybeOf(context)?.profiles != null) ...[
+                      const SizedBox(width: 10),
+                      LockButton(lockKey: ContentLocks.folder(_source.id, const [])),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -206,6 +222,7 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
             autofocus: i == 0,
             favorite: fav?.hasSource(c.streams.first),
             onFavorite: fav == null ? null : () => fav.toggleSource(FavoriteItem.of(c)),
+            lockKey: ContentLocks.item(c.streams.first),
             onPressed: widget.onWatch == null ? null : () => unawaited(widget.onWatch!(items, i - prefix.length)),
           ),
         );
@@ -232,7 +249,8 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
           name: f.name,
           detail: '${f.total} kayıt',
           autofocus: _path.isEmpty && i == 0,
-          onPressed: () => setState(() => _path.add(f.name)),
+          lockKey: ContentLocks.folder(_source.id, [..._path, f.name]),
+          onPressed: () => unawaited(_enter(f.name)),
         ),
     ];
     if (prefix.isEmpty && folder.items.isEmpty) {
@@ -261,6 +279,7 @@ class _FolderRow extends StatelessWidget {
     required this.onPressed,
     this.up = false,
     this.autofocus = false,
+    this.lockKey,
   });
 
   final String name;
@@ -269,11 +288,14 @@ class _FolderRow extends StatelessWidget {
   final bool up;
   final bool autofocus;
 
+  /// Klasörün kilit anahtarı; null ise kilit düğmesi yok ("Yukarı").
+  final String? lockKey;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final radius = BorderRadius.circular(RedoxRadius.md);
-    return FocusGlow(
+    final row = FocusGlow(
       borderRadius: radius,
       scale: 1,
       builder: (context, active) => Material(
@@ -318,11 +340,35 @@ class _FolderRow extends StatelessWidget {
         ),
       ),
     );
+    return _withLock(context, row, lockKey);
   }
 }
 
+/// Satırın sağına kilit düğmesi (kilit kapsamı ve anahtar varsa).
+Widget _withLock(BuildContext context, Widget row, String? lockKey, {List<Widget> before = const []}) {
+  final lockable = lockKey != null && LockScope.maybeOf(context)?.profiles != null;
+  if (!lockable && before.isEmpty) return row;
+  return Row(
+    children: [
+      Expanded(child: row),
+      ...before,
+      if (lockable) ...[const SizedBox(width: 8), LockButton(lockKey: lockKey)],
+    ],
+  );
+}
+
 class _ChannelRow extends StatelessWidget {
-  const _ChannelRow({required this.channel, this.onPressed, this.autofocus = false, this.favorite, this.onFavorite});
+  const _ChannelRow({
+    required this.channel,
+    this.onPressed,
+    this.autofocus = false,
+    this.favorite,
+    this.onFavorite,
+    this.lockKey,
+  });
+
+  /// Kaydın kilit anahtarı; null ise kilit düğmesi yok.
+  final String? lockKey;
 
   final LiveChannel channel;
   final VoidCallback? onPressed;
@@ -389,12 +435,12 @@ class _ChannelRow extends StatelessWidget {
       ),
     );
     final fav = favorite;
-    if (fav == null) return row;
-    return Row(
-      children: [
-        Expanded(child: row),
-        const SizedBox(width: 8),
-        _StarButton(favorite: fav, onPressed: onFavorite),
+    return _withLock(
+      context,
+      row,
+      lockKey,
+      before: [
+        if (fav != null) ...[const SizedBox(width: 8), _StarButton(favorite: fav, onPressed: onFavorite)],
       ],
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'core/layout/form_factor.dart';
 import 'core/theme/redox_theme.dart';
+import 'core/content/content_locks.dart';
 import 'core/content/profiles.dart';
 import 'core/content/favorites.dart';
 import 'core/content/user_sources.dart';
@@ -24,6 +25,7 @@ class RedoxApp extends StatefulWidget {
     this.profiles,
     this.history,
     this.favorites,
+    this.locks,
     this.sources,
     this.radio,
     this.frames,
@@ -42,6 +44,9 @@ class RedoxApp extends StatefulWidget {
 
   /// Profilin favorileri (kanal ve radyo).
   final Favorites Function(String profileId)? favorites;
+
+  /// Kilitli kanallar ve klasörler (cihaz başına, bütün profillerde).
+  final ContentLocks? locks;
 
   /// Kullanıcının M3U listeleri (Kaynaklar; cihaz başına, profillerden bağımsız).
   final UserSources? sources;
@@ -136,6 +141,7 @@ class _RedoxAppState extends State<RedoxApp> {
         history: widget.history?.call(profile?.id ?? ProfileStore.defaults.first.id),
         favorites: widget.favorites?.call(profile?.id ?? ProfileStore.defaults.first.id),
         radio: widget.radio,
+        locks: widget.locks,
         sources: widget.sources,
         frames: widget.frames,
         rank: widget.rank,

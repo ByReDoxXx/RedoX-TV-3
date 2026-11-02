@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/content/content_locks.dart';
 import '../../../core/content/live_channel.dart';
 import '../../../core/layout/form_factor.dart';
 import '../../../core/theme/redox_metrics.dart';
@@ -11,6 +12,7 @@ import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../../core/ui/redox_progress_bar.dart';
 import '../../../core/ui/status_badge.dart';
+import '../../locks/lock_scope.dart';
 
 /// Televizyon sayfasının sağ paneli (TV/tablet): OK'e basılan kanalın logosu,
 /// şimdiki ve sonraki program, tam ekran düğmesi (aynı kanalda ikinci OK de
@@ -161,6 +163,11 @@ class ChannelPreview extends StatelessWidget {
                     iconOnly: true,
                     onPressed: onSplit,
                   ),
+                ],
+                // Kanal kilidi (ebeveyn PIN'i); kilit kapsamı yoksa çizilmez.
+                if (LockScope.maybeOf(context)?.profiles != null) ...[
+                  const SizedBox(width: 8),
+                  LockButton(lockKey: ContentLocks.channel(c.number), size: 40),
                 ],
               ],
             ),

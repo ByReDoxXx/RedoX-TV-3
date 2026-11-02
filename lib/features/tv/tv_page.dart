@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
@@ -22,6 +23,7 @@ import '../../core/playback/engine/media_kit_engine.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../../core/playback/playback_session.dart';
 import '../../core/playback/stream_probe.dart';
+import '../locks/lock_scope.dart';
 import 'tv_content.dart';
 import 'widgets/channel_preview.dart';
 import 'widgets/epg_grid.dart';
@@ -136,6 +138,13 @@ class _TvPageState extends State<TvPage> {
   }
 
   /// Kanalı önizlemeye al ve panelde oynat.
+  /// Kilitli kanalın önizlemesi de PIN ister (tam ekranı RootShell sorar).
+  Future<void> _previewLocked(LiveChannel c) async {
+    final gate = LockScope.maybeOf(context);
+    if (gate != null && !await gate.pass(context, ContentLocks.channel(c.number))) return;
+    if (mounted) _preview(c);
+  }
+
   void _preview(LiveChannel c) {
     setState(() => _previewed = c);
     final index = widget.content.channels.indexOf(c);
@@ -455,7 +464,7 @@ class _TvPageState extends State<TvPage> {
               selected: preview && _previewed == c,
               // İlk OK/dokunma önizler, aynı kanalda ikincisi tam ekran açar.
               // Telefonda panel yok: doğrudan tam ekran.
-              onPressed: () => preview && _previewed != c ? _preview(c) : unawaited(_watch(c)),
+              onPressed: () => preview && _previewed != c ? unawaited(_previewLocked(c)) : unawaited(_watch(c)),
               // Uzun OK / yıldız: favori.
               favorite: fav?.hasChannel(c.number) ?? false,
               onFavorite: fav == null ? null : () => _toggleFavorite(fav, c),
