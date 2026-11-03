@@ -101,4 +101,16 @@ void main() {
       expect(films.last.streams.single, endsWith('Dune (2021).mp4'));
     },
   );
+
+  test('tek video seçilir: ad uzantısız dosya adı, kategori bulunduğu klasör', () async {
+    final disk = await _dir('redox-ssd-');
+    await _touch(disk, 'Filmler/Oppenheimer(2023).mkv');
+    await _touch(disk, 'Filmler/Başka.mkv');
+    final sources = await UserSources.open(await _dir('redox-kaynak-'));
+    final s = await sources.addFolder('', '${disk.path}/Filmler/Oppenheimer(2023).mkv');
+    expect((s.name, s.count), ('Oppenheimer(2023)', 1));
+    final film = (await sources.channels(s)).single;
+    expect((film.name, film.category), ('Oppenheimer(2023)', 'Filmler'));
+    expect((await sources.refresh(s)).count, 1, reason: 'yenileyince yine yalnız o video');
+  });
 }

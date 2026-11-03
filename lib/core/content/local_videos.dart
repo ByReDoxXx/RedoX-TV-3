@@ -33,7 +33,8 @@ abstract final class LocalVideos {
     return dot > 0 && extensions.contains(path.substring(dot + 1).toLowerCase());
   }
 
-  /// [root]'taki videolar; tarama ayrı iş parçacığında (büyük diskte binlerce
+  /// [root]'taki videolar; [root] tek bir video dosyasıysa yalnız o (kategori
+  /// bulunduğu klasör). Tarama ayrı iş parçacığında (büyük diskte binlerce
   /// klasör). Klasör yoksa ya da okunamazsa [SourceException].
   static Future<List<LiveChannel>> scan(String root, SourceKind kind) => Isolate.run(_Scan(root, kind).call);
 
@@ -109,6 +110,11 @@ class _Scan {
   final SourceKind kind;
 
   List<LiveChannel> call() {
+    // Tek dosya (gezginde videonun kendisi seçildi).
+    final file = File(root);
+    if (LocalVideos.isVideo(root) && file.existsSync()) {
+      return LocalVideos.build(file.parent.path, [root], kind);
+    }
     final dir = Directory(root);
     if (!dir.existsSync()) throw SourceException('Klasör bulunamadı: $root (sürücü çıkarılmış olabilir).');
     final files = <String>[];

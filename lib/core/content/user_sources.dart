@@ -272,10 +272,12 @@ class UserSources extends ChangeNotifier {
   }
 
   /// Cihazdaki klasörün videoları (takılı SSD, USB bellek, SD kart): alt
-  /// klasörleriyle taranır; yenileyince yeni eklenen dosyalar da gelir. Ad
-  /// boşsa klasörün adı.
+  /// klasörleriyle taranır; yenileyince yeni eklenen dosyalar da gelir.
+  /// [path] tek bir video da olabilir. Ad boşsa klasörün (dosyanın) adı.
   Future<UserSource> addFolder(String name, String path, {SourceKind kind = SourceKind.film}) async {
-    final folder = path.split(RegExp(r'[/\\]')).lastWhere((p) => p.isNotEmpty, orElse: () => 'Klasör');
+    final last = path.split(RegExp(r'[/\\]')).lastWhere((p) => p.isNotEmpty, orElse: () => 'Klasör');
+    // Tek video seçildiyse ad uzantısız dosya adı.
+    final folder = LocalVideos.isVideo(last) ? last.substring(0, last.lastIndexOf('.')) : last;
     return _store(
       name.trim().isEmpty ? folder : name,
       await LocalVideos.scan(path, kind),

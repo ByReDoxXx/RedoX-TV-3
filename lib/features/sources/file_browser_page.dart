@@ -20,9 +20,9 @@ import '../../core/ui/redox_icon.dart';
 /// dosyalar (M3U, M3U8, JSON, TXT, HTML). OK klasöre girer ya da dosyayı
 /// seçer; Geri üst klasöre, köklerde sayfadan çıkar. Döner: dosyanın yolu.
 ///
-/// [folder] kipinde (Kaynak ekle › Klasörden) klasör seçilir: klasörler ve
-/// içlerindeki videolar listelenir (videolar seçilmez), üstteki "Bu klasörü
-/// ekle" açık klasörü döner.
+/// [folder] kipinde (Kaynak ekle › Klasörden) klasörler ve içlerindeki
+/// videolar listelenir: üstteki "Bu klasörü ekle" açık klasörü, videoya basmak
+/// yalnız o videoyu döner (kullanıcı isteği: "Oppenheimer'ı seçemiyorum").
 class FileBrowserPage extends StatefulWidget {
   const FileBrowserPage({super.key, this.roots, this.folder = false});
 
@@ -249,10 +249,8 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
           _Row(
             icon: e is Directory ? RedoxIcons.folder : (widget.folder ? RedoxIcons.film : RedoxIcons.uploadFile),
             name: _name(e.path),
-            detail: e is Directory ? 'Klasör' : (widget.folder ? 'Video' : 'Liste dosyası'),
-            onPressed: e is Directory
-                ? () => _open(e.path)
-                : (widget.folder ? null : () => Navigator.of(context).pop(e.path)),
+            detail: e is Directory ? 'Klasör' : (widget.folder ? 'Yalnız bu videoyu ekle' : 'Liste dosyası'),
+            onPressed: e is Directory ? () => _open(e.path) : () => Navigator.of(context).pop(e.path),
           ),
       ],
     ];
