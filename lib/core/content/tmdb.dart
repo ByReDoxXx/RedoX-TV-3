@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -156,17 +157,38 @@ class Tmdb {
 
   /// Benzerlerden listede olanlar (oynatılabilenler), TMDB sırasıyla: ad
   /// sadeleştirilip ([cleanName]) Türkçe ya da özgün adla eşlenir.
-  static List<(TmdbInfo, LiveChannel)> inLibrary(List<TmdbInfo> similar, List<LiveChannel> library) {
+  static Future<List<(TmdbInfo, LiveChannel)>> inLibrary(List<TmdbInfo> similar, List<LiveChannel> library) async {
     if (similar.isEmpty) return const [];
-    final byName = <String, LiveChannel>{};
-    for (final c in library) {
-      byName.putIfAbsent(matchKey(cleanName(c.name).$1), () => c);
-    }
+    final byName = await _index(library);
     return [
       for (final s in similar)
         if (byName[matchKey(s.title)] ?? byName[matchKey(s.originalTitle ?? '')] case final c?) (s, c),
     ];
   }
+
+  /// Listenin ad dizini (eşleme anahtarı → kayıt); liste başına bir kez
+  /// kurulur. Büyük listede anahtarlar ayrı isolate'ta çıkarılır: on binlerce
+  /// adın sadeleştirilmesi Chromecast'te ana iş parçacığını saniyelerce
+  /// kilitliyordu (ANR).
+  static Future<Map<String, LiveChannel>> _index(List<LiveChannel> library) => _indexes[library] ??= () async {
+    final names = [for (final c in library) c.name];
+    final keys = names.length < isolateThreshold ? _keysOf(names) : await _keysInIsolate(names);
+    final byName = <String, LiveChannel>{};
+    for (var i = 0; i < keys.length; i++) {
+      byName.putIfAbsent(keys[i], () => library[i]);
+    }
+    return byName;
+  }();
+
+  static List<String> _keysOf(List<String> names) => [for (final n in names) matchKey(cleanName(n).$1)];
+
+  /// Ayrı işlev: isolate'a yalnız adlar gider (kayıtlar kopyalanmaz).
+  static Future<List<String>> _keysInIsolate(List<String> names) => Isolate.run(() => _keysOf(names));
+
+  static final _indexes = Expando<Future<Map<String, LiveChannel>>>();
+
+  /// Bu sayıdan kısa listenin dizini ana iş parçacığında kurulur.
+  static const isolateThreshold = 2000;
 
   /// Eşleme anahtarı: küçük harf, yalnız harf ve rakam ("Yüzüklerin
   /// Efendisi: Kralın Dönüşü" → "yüzüklerinefendisikralındönüşü").

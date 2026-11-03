@@ -16,7 +16,7 @@ import 'widgets/tmdb_poster.dart';
 /// özet; "İzle" (odakta) filmi oynatır. TMDB'de bulunamazsa listedeki ad ve
 /// afişle açılır. Altta "Benzerleri": TMDB önerilerinden [library]'de
 /// olanlar; birine basmak [onSimilar] ile o filmin sayfasını açar.
-class FilmDetailPage extends StatelessWidget {
+class FilmDetailPage extends StatefulWidget {
   const FilmDetailPage({
     super.key,
     required this.film,
@@ -44,20 +44,30 @@ class FilmDetailPage extends StatelessWidget {
     builder: (_) => FilmDetailPage(film: film, tmdb: tmdb, onWatch: onWatch, library: library, onSimilar: onSimilar),
   );
 
+  @override
+  State<FilmDetailPage> createState() => _FilmDetailPageState();
+}
+
+class _FilmDetailPageState extends State<FilmDetailPage> {
+  // Gelecekler bir kez kurulur: sayfa yeniden çizildikçe (oynatıcı açılıp
+  // kapanınca) TMDB ve liste taraması yinelenmez.
+  late final Future<TmdbInfo?> _info = widget.tmdb.find(widget.film.name, series: false);
+  Future<List<(TmdbInfo, LiveChannel)>>? _similarOf;
+
   /// Benzerlerden listede olanlar (kendisi hariç).
   Future<List<(TmdbInfo, LiveChannel)>> _similar(TmdbInfo info) async {
-    final similar = await tmdb.similar(info, series: false);
+    final similar = await widget.tmdb.similar(info, series: false);
     return [
-      for (final pair in Tmdb.inLibrary(similar, library))
-        if (pair.$2 != film) pair,
+      for (final pair in await Tmdb.inLibrary(similar, widget.library))
+        if (pair.$2 != widget.film) pair,
     ];
   }
 
   Widget _shelf(TmdbInfo? info) {
-    final open = onSimilar;
-    if (info == null || open == null || library.isEmpty) return const SizedBox.shrink();
+    final open = widget.onSimilar;
+    if (info == null || open == null || widget.library.isEmpty) return const SizedBox.shrink();
     return FutureBuilder(
-      future: _similar(info),
+      future: _similarOf ??= _similar(info),
       builder: (context, snap) => switch (snap.data) {
         final items? when items.isNotEmpty => Padding(
           padding: const EdgeInsets.only(top: 28),
@@ -75,7 +85,7 @@ class FilmDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: FutureBuilder(
-        future: tmdb.find(film.name, series: false),
+        future: _info,
         builder: (context, snap) {
           final info = snap.data;
           final backdrop = info?.backdrop;
@@ -116,7 +126,7 @@ class FilmDetailPage extends StatelessWidget {
       width: width,
       child: AspectRatio(
         aspectRatio: 2 / 3,
-        child: TmdbPoster(name: film.name, url: film.logoUrl ?? info?.poster),
+        child: TmdbPoster(name: widget.film.name, url: widget.film.logoUrl ?? info?.poster),
       ),
     ),
   );
@@ -157,15 +167,15 @@ class FilmDetailPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(info?.title ?? film.name, style: t.displaySmall!.copyWith(color: RedoxRoles.onSurface)),
-        if (info != null && info.title != film.name) ...[
+        Text(info?.title ?? widget.film.name, style: t.displaySmall!.copyWith(color: RedoxRoles.onSurface)),
+        if (info != null && info.title != widget.film.name) ...[
           const SizedBox(height: 4),
-          Text(film.name, style: t.bodyMedium!.copyWith(color: RedoxRoles.outline)),
+          Text(widget.film.name, style: t.bodyMedium!.copyWith(color: RedoxRoles.outline)),
         ],
         const SizedBox(height: 12),
         RatingLine(
           info: info,
-          extra: [film.category],
+          extra: [widget.film.category],
           style: t.titleMedium!.copyWith(color: RedoxRoles.tertiary),
         ),
         if (info != null && info.overview.isNotEmpty) ...[
@@ -185,7 +195,7 @@ class FilmDetailPage extends StatelessWidget {
               icon: RedoxIcons.play,
               autofocus: true,
               // Sayfa açık kalır: oynatıcıdan Geri film sayfasına döner.
-              onPressed: onWatch,
+              onPressed: widget.onWatch,
             ),
           ],
         ),

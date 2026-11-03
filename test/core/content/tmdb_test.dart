@@ -78,7 +78,7 @@ void main() {
     expect((await again.find('TR: Inception (2010) [4K]', series: false))?.title, 'Başlangıç');
   });
 
-  test('inLibrary: öneriler Türkçe ya da özgün adla listedekilerle eşlenir, TMDB sırasıyla', () {
+  test('inLibrary: öneriler Türkçe ya da özgün adla listedekilerle eşlenir, TMDB sırasıyla', () async {
     const library = [
       LiveChannel(name: 'TR: Yüzüklerin Efendisi (2001) [4K]', number: 1, category: 'Film'),
       LiveChannel(name: 'Inception 2010 FHD', number: 2, category: 'Film'),
@@ -88,8 +88,17 @@ void main() {
       TmdbInfo(id: 2, title: 'Olmayan'),
       TmdbInfo(id: 3, title: 'Yüzüklerin efendisi'),
     ];
-    final pairs = Tmdb.inLibrary(similar, library);
+    final pairs = await Tmdb.inLibrary(similar, library);
     expect([for (final (i, c) in pairs) (i.id, c.number)], [(1, 2), (3, 1)]);
+  });
+
+  test('inLibrary: büyük listede dizin ayrı isolate’ta kurulur', () async {
+    final library = [
+      for (var i = 0; i < Tmdb.isolateThreshold + 10; i++)
+        LiveChannel(name: 'TR: Film $i (2001) [4K]', number: i, category: 'Film'),
+    ];
+    final pairs = await Tmdb.inLibrary(const [TmdbInfo(id: 1, title: 'Film 1500')], library);
+    expect([for (final (_, c) in pairs) c.number], [1500]);
   });
 
   test('similar: recommendations uç noktası, oturumda bir kez; ağ yoksa boş', () async {
