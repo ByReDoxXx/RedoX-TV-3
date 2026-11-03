@@ -140,6 +140,7 @@ class MediaKitEngine implements PlaybackEngine {
         '$name=${await get(name)}',
     ];
     Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
+    unawaited(_logDrops(native));
   }
 
   /// İlk görüntü boyutu geldi. Android'de önce yayının HDR olup olmadığına
@@ -211,14 +212,18 @@ class MediaKitEngine implements PlaybackEngine {
   }
 
   Future<void> _hdrToSdr(NativePlayer native) async {
-    if (!_android || _sdrPath) return;
+    // TV'de kopyalı yol yok: Chromecast 4K HDR'de 10 sn'de 15 kare atladı,
+    // ses görüntünün önüne geçti (kullanıcı: "kasıyor, ses önden gidiyor").
+    // TV kutusu HDR'yi donanımla doğrudan ekrana verir (HDR10/HLG destekli
+    // televizyonda renk doğru); pembe görüntü yalnız telefonda görüldü.
+    if (!_android || _tv || _sdrPath) return;
     final gamma = await native.getProperty('video-dec-params/gamma');
     final hdr = gamma == 'pq' || gamma == 'hlg';
     // Telefon/tablette HEVC de: kopyasız yol bazı HEVC filmlerde (SDR,
     // BT.709 bildiren) yeşil-mor görüntü veriyordu; kopyalı yolda doğru
     // (Pixel'de görüldü, 0 kare atlama). TV'de kopyalı yol 1080p'de bile
     // kare atlattığı için (Chromecast) yalnız HDR'de.
-    final hevc = !_tv && (await native.getProperty('video-codec')).contains('hevc');
+    final hevc = (await native.getProperty('video-codec')).contains('hevc');
     if (!hdr && !hevc) return;
     _sdrPath = true;
     Diagnostics.instance.log(
@@ -227,17 +232,17 @@ class MediaKitEngine implements PlaybackEngine {
     );
     // Yüzey henüz yoksa media_kit yüzeyi bağlayınca dinleyici uygular.
     await _locked(_applySdrPath);
-    unawaited(_logDrops(native));
   }
 
-  /// Kopyalı yolun yükü: 10 sn sonra atlanan kareler günlüğe.
+  /// Oynatmanın yükü: 10 sn sonra atlanan kareler günlüğe (takılma
+  /// şikâyetlerini ayırt etmek için; her yayında bir kez).
   Future<void> _logDrops(NativePlayer native) async {
     await Future<void>.delayed(const Duration(seconds: 10));
-    if (!_sdrPath) return;
     final drops = await native.getProperty('frame-drop-count');
     final decoderDrops = await native.getProperty('decoder-frame-drop-count');
     final fps = await native.getProperty('estimated-vf-fps');
-    Diagnostics.instance.log('görüntü', 'HDR→SDR 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
+    final path = _sdrPath ? 'kopyalı' : 'kopyasız';
+    Diagnostics.instance.log('görüntü', '$path yol 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
   }
 
   /// HDR yayın için kopyalı, ton eşlemeli yol.
