@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:redox_tv/core/content/channel_folder.dart';
@@ -159,6 +160,73 @@ void main() {
       expect(watched!.$1.single.streams.single, 'http://ornek/fb.mp4');
     });
   }
+
+  testWidgets('TV: odaktaki afiş büyüyünce ızgaranın içinde kalır (kesilmez)', (tester) async {
+    await _size(tester, const Size(960, 540));
+    final dir = (await tester.runAsync(() => Directory.systemTemp.createTemp('redox-odak-')))!;
+    addTearDown(() => dir.delete(recursive: true));
+    final sources = (await tester.runAsync(() async {
+      final s = await UserSources.open(dir);
+      final m3u = StringBuffer('#EXTM3U\n');
+      for (var i = 0; i < 40; i++) {
+        m3u.write('#EXTINF:-1 group-title="${i.isEven ? 'Aksiyon' : 'Komedi'}",Film $i\nhttp://ornek/f$i.mp4\n');
+      }
+      await s.addText('Filmlerim', m3u.toString(), origin: SourceOrigin.file, kind: SourceKind.film);
+      return s;
+    }))!;
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: _app(
+          FormFactor.tv,
+          LibraryPage(
+            kind: SourceKind.film,
+            sources: sources,
+            clock: '20:45',
+            profileName: 'Profil 1',
+            onWatch: (_, _) async {},
+          ),
+        ),
+      ),
+    );
+    await _settle(tester);
+    FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
+    addTearDown(() => FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic);
+    final grid = tester.getRect(find.byType(GridView));
+    Future<void> check(String name) async {
+      // Kaydırma ve büyüme yayları biter.
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      final focused = FocusManager.instance.primaryFocus!.context!;
+      final card = tester.getRect(
+        find.ancestor(of: find.byWidget(focused.widget), matching: find.byType(MediaCard)).first,
+      );
+      // Büyüme (1.08: her kenarda %4) ve halka (2 dp ofset + 2 dp) dahil kart
+      // ızgaranın görünür alanında kalmalı.
+      final grown = Rect.fromCenter(center: card.center, width: card.width * 1.08 + 9, height: card.height * 1.08 + 9);
+      expect(grid.contains(grown.topLeft) && grid.contains(grown.bottomRight), isTrue, reason: '$name $card / $grid');
+      await maybeSnapshot(tester, key, 'build/kutuphane/odak-$name.png', pixelRatio: 2);
+    }
+
+    // İlk kart odakta (kartın yazısının en yakın odak düğümü: InkWell).
+    Focus.of(tester.element(find.descendant(of: find.byType(MediaCard).first, matching: find.byType(Text)).first))
+        .requestFocus();
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus!.context!.findAncestorWidgetOfExactType<MediaCard>(), isNotNull);
+    await check('ilk');
+    for (var i = 0; i < 3; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await check('asagi');
+    for (var i = 0; i < 5; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await check('sag');
+  });
 
   for (final (f, size) in const [(FormFactor.tv, Size(960, 540)), (FormFactor.phone, Size(412, 915))]) {
     testWidgets('${f.name}: Dizi afiş ızgarası; dizi sayfası sezonlar ve bölümlerle, bölüm sezonun listesiyle açılır', (

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/content/app_settings.dart';
 import '../../core/content/profiles.dart';
@@ -15,6 +16,7 @@ import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
 import '../../core/ui/app_header.dart';
+import '../../core/ui/center_on_focus.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/hiding_header.dart';
 import '../../core/ui/redox_icon.dart';
@@ -105,6 +107,70 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   late SettingsSection? _open = widget.initialSection;
+
+  /// TV: bölüm satırlarının odak düğümleri (sağ bölmeden sola dönüş).
+  final _rows = <SettingsSection, FocusNode>{};
+  FocusNode _row(SettingsSection s) => _rows[s] ??= FocusNode(debugLabel: 'ayar ${s.name}');
+
+  /// TV: sağ bölme (seçili bölümün ayarları).
+  final _pane = FocusNode(debugLabel: 'ayar bölmesi', canRequestFocus: false, skipTraversal: true);
+
+  @override
+  void dispose() {
+    for (final n in _rows.values) {
+      n.dispose();
+    }
+    _pane.dispose();
+    super.dispose();
+  }
+
+  static TraversalDirection? _direction(KeyEvent e) => e is KeyUpEvent
+      ? null
+      : switch (e.logicalKey) {
+          LogicalKeyboardKey.arrowLeft => TraversalDirection.left,
+          LogicalKeyboardKey.arrowRight => TraversalDirection.right,
+          LogicalKeyboardKey.arrowUp => TraversalDirection.up,
+          LogicalKeyboardKey.arrowDown => TraversalDirection.down,
+          _ => null,
+        };
+
+  /// TV'de sağ bölmede ok tuşları. Varsayılan yön gezintisi en yakın öğeye
+  /// gidiyordu: son ayardan aşağı basınca soldaki listeye atlıyor, soldan
+  /// çıkınca seçili bölüm yerine hizadaki satıra düşüyordu (TV'de görüldü).
+  /// Bölmede o yönde öğe varsa varsayılan gezinti; yoksa sola basınca seçili
+  /// bölümün satırı, öbür yönlerde odak yerinde kalır.
+  KeyEventResult _paneKey(FocusNode pane, KeyEvent e, SettingsSection current) {
+    final dir = _direction(e);
+    final from = FocusManager.instance.primaryFocus;
+    if (dir == null || from == null) return KeyEventResult.ignored;
+    // Yazı alanında ◄► imleci gezdirir.
+    final editing = from.context?.widget is EditableText;
+    if (editing && (dir == TraversalDirection.left || dir == TraversalDirection.right)) return KeyEventResult.ignored;
+    final r = from.rect;
+    bool ahead(Rect o) => switch (dir) {
+      TraversalDirection.left => o.right <= r.left + 1,
+      TraversalDirection.right => o.left >= r.right - 1,
+      TraversalDirection.up => o.bottom <= r.top + 1,
+      TraversalDirection.down => o.top >= r.bottom - 1,
+    };
+    if (pane.traversalDescendants.any((n) => n != from && ahead(n.rect))) return KeyEventResult.ignored;
+    if (dir == TraversalDirection.left) _row(current).requestFocus();
+    return KeyEventResult.handled;
+  }
+
+  /// TV'de bölüm listesinde ► sağ bölmenin ilk ayarına gider (bölme
+  /// kaymışsa ortadaki bir ayara değil).
+  KeyEventResult _listKey(KeyEvent e) {
+    if (_direction(e) != TraversalDirection.right) return KeyEventResult.ignored;
+    final nodes = _pane.traversalDescendants.toList()
+      ..sort(
+        (a, b) => a.rect.top != b.rect.top ? a.rect.top.compareTo(b.rect.top) : a.rect.left.compareTo(b.rect.left),
+      );
+    final first = nodes.firstOrNull;
+    if (first == null) return KeyEventResult.ignored;
+    first.requestFocus();
+    return KeyEventResult.handled;
+  }
 
   List<SettingsSection> get _sections => [
     for (final s in SettingsSection.values)
@@ -202,26 +268,46 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    width: 280,
-                    child: ListView(
-                      padding: EdgeInsets.only(bottom: padding.bottom),
-                      children: [
-                        const _Title(),
-                        for (final (i, s) in _sections.indexed)
-                          _SectionRow(
-                            section: s,
-                            selected: s == current,
-                            autofocus: i == 0,
-                            onPressed: () => setState(() => _open = s),
-                          ),
-                      ],
+                    width: 296,
+                    child: Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onKeyEvent: (_, e) => _listKey(e),
+                      child: ListView(
+                        // Yanlarda odak halkası payı (liste kırpar).
+                        padding: EdgeInsets.fromLTRB(6, 6, 10, padding.bottom),
+                        children: [
+                          const _Title(),
+                          for (final s in _sections)
+                            CenterOnFocus(
+                              child: _SectionRow(
+                                section: s,
+                                selected: s == current,
+                                // Açılan bölümün satırı odakta (ilk satır odak
+                                // alınca açılış bölümünü değiştiriyordu).
+                                autofocus: s == current,
+                                focusNode: _row(s),
+                                // Kumandayla satıra gelince bölüm açılır (OK beklemeden).
+                                onFocused: () {
+                                  if (_open != s) setState(() => _open = s);
+                                },
+                                onPressed: () => setState(() => _open = s),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 32),
+                  const SizedBox(width: 18),
                   Expanded(
-                    child: KeyedSubtree(
-                      key: ValueKey(current),
-                      child: _content(current, EdgeInsets.fromLTRB(0, 4, padding.right, padding.bottom)),
+                    child: Focus(
+                      focusNode: _pane,
+                      onKeyEvent: (node, e) => _paneKey(node, e, current),
+                      child: KeyedSubtree(
+                        key: ValueKey(current),
+                        // Solda odak halkası payı: kenardaki çipin halkası kesiliyordu.
+                        child: _content(current, EdgeInsets.fromLTRB(10, 10, padding.right, padding.bottom)),
+                      ),
                     ),
                   ),
                 ],
@@ -260,15 +346,24 @@ class _SectionRow extends StatelessWidget {
     required this.onPressed,
     this.selected = false,
     this.autofocus = false,
+    this.focusNode,
+    this.onFocused,
   });
 
-  const _SectionRow.back({required this.onPressed}) : section = null, selected = false, autofocus = true;
+  const _SectionRow.back({required this.onPressed})
+    : section = null,
+      selected = false,
+      autofocus = true,
+      focusNode = null,
+      onFocused = null;
 
   /// null: telefonda bölümden listeye dönüş satırı.
   final SettingsSection? section;
   final VoidCallback onPressed;
   final bool selected;
   final bool autofocus;
+  final FocusNode? focusNode;
+  final VoidCallback? onFocused;
 
   @override
   Widget build(BuildContext context) {
@@ -282,13 +377,18 @@ class _SectionRow extends StatelessWidget {
         scale: 1,
         builder: (context, active) => Material(
           color: active || selected ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainer,
-          shape: RoundedRectangleBorder(
-            borderRadius: radius,
-            side: selected ? const BorderSide(color: RedoxRoles.primaryContainer, width: 2) : BorderSide.none,
-          ),
+          // Seçili bölüm solda kızıl çizgiyle gösterilir; çerçeve odak
+          // halkasıyla karışıyordu (ikisi de kızıldı).
+          shape: RoundedRectangleBorder(borderRadius: radius),
           child: InkWell(
             onTap: onPressed,
             autofocus: autofocus,
+            focusNode: focusNode,
+            onFocusChange: onFocused == null
+                ? null
+                : (f) {
+                    if (f) onFocused!();
+                  },
             borderRadius: radius,
             focusColor: Colors.transparent,
             hoverColor: Colors.transparent,
@@ -296,6 +396,16 @@ class _SectionRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 4,
+                    height: 34,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: selected ? RedoxRoles.primaryContainer : Colors.transparent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                   RedoxIcon(s?.icon ?? RedoxIcons.back, color: RedoxSeeds.gold, size: 24),
                   const SizedBox(width: 14),
                   Expanded(
@@ -309,7 +419,8 @@ class _SectionRow extends StatelessWidget {
                         if (s != null)
                           Text(
                             s.summary,
-                            maxLines: 1,
+                            // İki satır: TV'de tek satıra sığmayıp kesiliyordu.
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
                           ),

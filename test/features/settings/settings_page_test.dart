@@ -99,13 +99,14 @@ void main() {
     await tester.pump();
     expect(settings.quality, QualityCap.fullHd);
 
-    await tester.ensureVisible(find.text('Telefon kumandası').first);
+    // Satırlar iki satırlı açıklamayla uzadı: liste tembel kurulur, kaydırılır.
+    await tester.dragUntilVisible(find.text('Telefon kumandası'), find.byType(ListView).first, const Offset(0, -60));
     await tester.tap(find.text('Telefon kumandası').first);
     await _settle(tester);
     expect(find.textContaining('Salon TV'), findsOneWidget);
     expect(find.textContaining('Eşleşmiş telefon: 2'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Hakkında').first);
+    await tester.dragUntilVisible(find.text('Hakkında'), find.byType(ListView).first, const Offset(0, -60));
     await tester.tap(find.text('Hakkında').first);
     await _settle(tester);
     expect(find.text('RedoX TV $appVersion'), findsOneWidget);

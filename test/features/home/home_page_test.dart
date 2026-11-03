@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/watch_history.dart';
+import 'package:redox_tv/core/content/watch_progress.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/theme/redox_colors.dart';
@@ -20,12 +22,17 @@ import 'package:redox_tv/features/home/widgets/hero_banner.dart';
 
 import '../../support/render.dart';
 
-Widget _app(Key boundary, {bool previewFocus = false}) => MaterialApp(
+Widget _app(Key boundary, {bool previewFocus = false, WatchProgress? progress}) => MaterialApp(
   debugShowCheckedModeBanner: false,
   theme: RedoxTheme.dark(),
   home: RepaintBoundary(
     key: boundary,
-    child: RootShell(tv: TvContent.preview, history: WatchHistory(const [104, 1, 24, 42]), previewFocus: previewFocus),
+    child: RootShell(
+      tv: TvContent.preview,
+      history: WatchHistory(const [104, 1, 24, 42]),
+      previewFocus: previewFocus,
+      progress: progress,
+    ),
   ),
 );
 
@@ -52,6 +59,53 @@ void main() {
       // Kısayol yuvası daraltıldı; en uzun etiket yine kesilmeden sığar.
       expect(tester.renderObject<RenderParagraph>(find.text('Televizyon').first).didExceedMaxLines, isFalse);
       await maybeSnapshot(tester, key, 'build/home/anasayfa-4k.png', pixelRatio: 4);
+    }),
+  );
+
+  testWidgets(
+    'izlemeye devam et ve sıradaki bölümler rafları',
+    (tester) => withRealShadows(() async {
+      await loadSora(tester);
+      tester.view.physicalSize = const Size(960, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      LiveChannel item(String name) => LiveChannel(name: name, number: 0, category: 'X', streams: ['http://v/$name']);
+      final progress = WatchProgress()
+        ..record(
+          item('Adanalı S01E09'),
+          position: const Duration(minutes: 44),
+          duration: const Duration(minutes: 45),
+          series: true,
+        )
+        ..record(
+          item('|MULTI| Başlangıç (2010)'),
+          position: const Duration(minutes: 40),
+          duration: const Duration(minutes: 148),
+          series: false,
+        )
+        ..record(
+          item('Kurtlar Vadisi S02E05'),
+          position: const Duration(minutes: 12),
+          duration: const Duration(minutes: 90),
+          series: true,
+        );
+
+      final key = GlobalKey();
+      await tester.pumpWidget(_app(key, previewFocus: true, progress: progress));
+      await settleAssets(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('İzlemeye devam et'), findsOneWidget);
+      expect(find.text('Sezon 2 · Bölüm 5'), findsOneWidget);
+      expect(find.text('Başlangıç'), findsOneWidget);
+      expect(find.text('1 sa 48 dk kaldı'), findsOneWidget);
+      expect(find.text('Sıradaki bölümler'), findsOneWidget);
+      expect(find.text('S1 · B9 bitti'), findsOneWidget);
+      await maybeSnapshot(tester, key, 'build/home/anasayfa-devam.png', pixelRatio: 2);
+      // Yeni kayıt rafları yeniler.
+      progress.remove('http://v/Adanalı S01E09');
+      await tester.pump();
+      expect(find.text('Sıradaki bölümler'), findsNothing);
     }),
   );
 

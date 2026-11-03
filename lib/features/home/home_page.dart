@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/content/live_channel.dart';
+import '../../core/content/tmdb.dart';
+import '../../core/content/watch_progress.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/navigation/destinations.dart';
@@ -20,12 +22,14 @@ import '../../core/ui/section_header.dart';
 import '../../core/ui/shelf.dart';
 import '../../core/ui/story_avatar.dart';
 import 'home_content.dart';
+import 'widgets/continue_card.dart';
 import 'widgets/hero_banner.dart';
 
 /// Anasayfa: bölüm kısayolları, vitrin (şu an yayında olan kanal) ve son
 /// izlenen kanallar (geçmiş boşsa ulusal kanallar); kart ve vitrin görseli
-/// yayından alınan gerçek karedir (FrameStore). Dizi, film ve radyo rafları
-/// o bölümler yazılınca gelecek; uydurma içerik gösterilmez.
+/// yayından alınan gerçek karedir (FrameStore). Vitrinin altında yarıda
+/// bırakılan film/bölümler ("İzlemeye devam et") ve bitmiş bölümlerin
+/// sıradakileri; uydurma içerik gösterilmez.
 /// TV tuvali 960×540 dp (Android TV tasarım ölçüsü); içerik dikey kayar.
 /// Ray, alt menü ve Geri kök kabuktadır (RootShell).
 class HomePage extends StatelessWidget {
@@ -40,7 +44,18 @@ class HomePage extends StatelessWidget {
     this.onMore,
     this.onProfile,
     this.kids = false,
+    this.resume = const [],
+    this.onResume,
+    this.tmdb,
   });
+
+  /// Yarıda bırakılan filmler ve dizilerin son bölümleri (en yeni önde):
+  /// "İzlemeye devam et" ve (bitmiş bölümler) "Sıradaki bölümler" rafları.
+  final List<ProgressEntry> resume;
+  final ValueChanged<ProgressEntry>? onResume;
+
+  /// Devam kartlarının görseli (TMDB arka planı).
+  final Tmdb? tmdb;
 
   /// Telefonda "Diğer" düğmesi; null ise bölümlerin "Diğer" sayfası.
   final VoidCallback? onMore;
@@ -102,6 +117,14 @@ class HomePage extends StatelessWidget {
     // Telefonda raf başına görünen kart: dört kart sığmaz, yazılar kesilir.
     final phone = metrics.formFactor == FormFactor.phone;
     final hero = content.hero;
+    final going = [
+      for (final e in resume)
+        if (!e.finished) e,
+    ];
+    final next = [
+      for (final e in resume)
+        if (e.finished && e.series) e,
+    ];
     return LayoutBuilder(
       builder: (context, box) {
         final padding = PageLayout.scrollPadding(context, metrics);
@@ -161,6 +184,22 @@ class HomePage extends StatelessWidget {
                   onGuide: onGuide,
                 ),
               ),
+            for (final (title, subtitle, list) in [
+              ('İzlemeye devam et', 'Kaldığın yerden sürdür', going),
+              ('Sıradaki bölümler', 'İzlediğin dizilerin yeni bölümü', next),
+            ])
+              if (list.isNotEmpty) ...[
+                const SizedBox(height: 40),
+                Shelf(
+                  header: SectionHeader(title: title, subtitle: subtitle),
+                  children: [
+                    for (final e in list)
+                      CenterOnFocus(
+                        child: ContinueCard(entry: e, width: card, tmdb: tmdb, onPressed: () => onResume?.call(e)),
+                      ),
+                  ],
+                ),
+              ],
             if (content.channels.isNotEmpty) ...[
               const SizedBox(height: 40),
               Shelf(

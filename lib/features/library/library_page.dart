@@ -16,6 +16,7 @@ import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/hiding_header.dart';
+import '../../core/ui/center_on_focus.dart';
 import '../../core/ui/media_card.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
@@ -261,7 +262,9 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
         Expanded(
           child: GridView.builder(
-            padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, phone ? padding.bottom : 16),
+            // Üstte/altta odak payı: büyüyen (1.08) afiş ve halkası ilk ve
+            // son satırda ızgaranın kenarında kesilmesin.
+            padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, phone ? padding.bottom : 24),
             gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: phone ? 130 : 150,
               mainAxisSpacing: 16,
@@ -271,17 +274,21 @@ class _LibraryPageState extends State<LibraryPage> {
             itemCount: list.length,
             itemBuilder: (context, i) {
               final x = list[i];
+              // D-pad odağında afiş ortalanır: kenara yaslanınca büyüyen kart
+              // ızgaranın altında/üstünde kesiliyordu (TV'de görüldü).
               return LayoutBuilder(
-                builder: (context, box) => MediaCard(
-                  title: titleOf(x),
-                  badge: switch (badgeOf?.call(x)) {
-                    final text? => _Badge(text),
-                    null => null,
-                  },
-                  width: box.maxWidth,
-                  focused: null,
-                  artwork: artworkOf(x),
-                  onPressed: onOpen == null ? null : () => onOpen(list, i),
+                builder: (context, box) => CenterOnFocus(
+                  child: MediaCard(
+                    title: titleOf(x),
+                    badge: switch (badgeOf?.call(x)) {
+                      final text? => _Badge(text),
+                      null => null,
+                    },
+                    width: box.maxWidth,
+                    focused: null,
+                    artwork: artworkOf(x),
+                    onPressed: onOpen == null ? null : () => onOpen(list, i),
+                  ),
                 ),
               );
             },

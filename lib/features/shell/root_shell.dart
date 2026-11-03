@@ -10,6 +10,7 @@ import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/user_sources.dart';
+import '../../core/content/series_catalog.dart';
 import '../../core/content/profiles.dart';
 import '../../core/content/watch_history.dart';
 import '../../core/playback/frame_grabber.dart';
@@ -289,6 +290,45 @@ class _RootShellState extends State<RootShell> {
         kids: _kids,
       );
 
+  /// Anasayfadaki devam kartı: film kaldığı yerden açılır. Dizide bölümün
+  /// sezonu açılır (oynatıcıda "Sonraki bölüm" çalışsın); bitmiş bölümde
+  /// sıradaki bölümden (sezon bittiyse sonraki sezonun ilkinden) başlar.
+  Future<void> _resume(BuildContext context, ProgressEntry e) async {
+    final ep = e.episode;
+    if (ep == null) return _watch(context, e.channel, from: [e.channel], mode: PlayerMode.film);
+    final sources = widget.sources;
+    final loaded = <(String, List<LiveChannel>)>[];
+    for (final s in sources?.of(SourceKind.series) ?? const <UserSource>[]) {
+      try {
+        loaded.add((s.id, await sources!.channels(s)));
+      } on Object {
+        // Okunamayan liste atlanır.
+      }
+    }
+    if (!context.mounted) return;
+    final key = ep.series.toLowerCase();
+    final series = SeriesCatalog.build(loaded).where((s) => s.name.toLowerCase() == key).firstOrNull;
+    List<LiveChannel> season(int n) => [for (final x in series?.episodes(n) ?? const <Episode>[]) x.channel];
+    var list = season(ep.season);
+    var i = list.indexWhere((c) => c.streams.contains(e.url));
+    if (i < 0) {
+      // Bölüm artık listede yok (liste değişti): kaydedilen adresle açılır.
+      list = [e.channel];
+      i = 0;
+    } else if (e.finished) {
+      if (i + 1 < list.length) {
+        i++;
+      } else if (series!.seasons.where((n) => n > ep.season).firstOrNull case final n?) {
+        list = season(n);
+        i = 0;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${series.name}: son bölümü izledin.')));
+        return;
+      }
+    }
+    return _watch(context, list[i], from: list, mode: PlayerMode.series);
+  }
+
   /// Kanalı tam ekran açar; görüntü gelince geçmişe yazılır. Oynatıcıda ▲▼
   /// bütün kanallarda gezer (kategori süzgecinden bağımsız).
   /// [from]: kanalın listesi (Kaynaklar'daki klasör); null ise TV kanalları.
@@ -368,8 +408,8 @@ class _RootShellState extends State<RootShell> {
 
   Widget _page(BuildContext context) => switch (_section) {
     AppSection.home => ListenableBuilder(
-      // Geçmiş değişince "Son izlenen kanallar" yenilenir.
-      listenable: widget.history ?? const _NoHistory(),
+      // Geçmiş ya da izleme ilerlemesi değişince raflar yenilenir.
+      listenable: Listenable.merge([widget.history, widget.progress]),
       builder: (context, _) => HomePage(
         content: _home,
         previewFocus: widget.previewFocus,
@@ -380,6 +420,9 @@ class _RootShellState extends State<RootShell> {
         onMore: () => _showMore(context),
         onProfile: widget.onSwitchProfile,
         kids: _kids,
+        resume: _kids ? const [] : widget.progress?.recent ?? const [],
+        onResume: (e) => _resume(context, e),
+        tmdb: Tmdb.shared,
       ),
     ),
     AppSection.tv => TvPage(
@@ -525,15 +568,4 @@ class _RootShellState extends State<RootShell> {
       ),
     );
   }
-}
-
-/// Geçmiş verilmediğinde dinlenecek boş Listenable.
-class _NoHistory implements Listenable {
-  const _NoHistory();
-
-  @override
-  void addListener(VoidCallback listener) {}
-
-  @override
-  void removeListener(VoidCallback listener) {}
 }

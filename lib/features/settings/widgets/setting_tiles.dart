@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/ui/category_chip.dart';
+import '../../../core/ui/center_on_focus.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../sources/widgets/source_widgets.dart';
@@ -21,7 +22,13 @@ class SettingsBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(title: title),
-        for (final c in children) Padding(padding: const EdgeInsets.only(top: 20), child: c),
+        // D-pad odağında ayar ortalanır: kenara yaslanınca büyüyen çip ve
+        // halkası kesiliyordu.
+        for (final c in children)
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: CenterOnFocus(child: c),
+          ),
       ],
     ),
   );
