@@ -9,7 +9,7 @@ import 'package:redox_tv/core/playback/frame_grabber.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/story_avatar.dart';
 import 'package:redox_tv/features/home/home_content.dart';
-import 'package:redox_tv/features/home/widgets/hero_banner.dart';
+import 'package:redox_tv/features/home/widgets/live_board.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/shell/section_placeholder.dart';
@@ -255,9 +255,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       // Geçmiş boş: raf ulusal kanallar (TRT 1, Show TV); Show TV'nin akışı yok.
       expect(grabbed, ['a']);
-      final heroImage = find.descendant(of: find.byType(HeroBanner), matching: find.byType(Image));
+      // Büyük kartın görseli (küçük kartlar ayrı: Show TV'nin karesi yok).
+      final heroImage = find.descendant(of: find.byType(LiveBoard), matching: find.byType(Image));
       expect(heroImage, findsOneWidget);
-      expect((tester.widget<Image>(heroImage).image as MemoryImage).bytes, _png);
+      // Kart boyuna küçültülerek çözülür (ResizeImage).
+      final image = tester.widget<Image>(heroImage).image as ResizeImage;
+      expect((image.imageProvider as MemoryImage).bytes, _png);
 
       // İzlerken geçmiş değişir (raf yenilenir) ama kare alınmaz: oynatmayla yarışmasın.
       await tester.tap(find.text('Canlı yayına gir'));
@@ -271,7 +274,7 @@ void main() {
 
     testWidgets('"Yayın akışı" Televizyon sayfasının EPG çizelgesini açar', (tester) async {
       await open(tester);
-      await tester.tap(find.text('Yayın akışı'));
+      await tester.tap(find.byTooltip('Yayın akışı'));
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.byType(EpgGrid), findsOneWidget);
     });

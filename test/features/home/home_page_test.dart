@@ -18,7 +18,7 @@ import 'package:redox_tv/core/ui/redox_icon.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
 import 'package:redox_tv/core/ui/story_avatar.dart';
-import 'package:redox_tv/features/home/widgets/hero_banner.dart';
+import 'package:redox_tv/features/home/widgets/live_board.dart';
 import 'package:redox_tv/features/home/widgets/resume_board.dart';
 
 import '../../support/render.dart';
@@ -54,9 +54,12 @@ void main() {
       await settleAssets(tester);
 
       expect(tester.takeException(), isNull);
-      // Vitrin: en son izlenen kanal (104) ve şimdiki programı.
-      expect(find.descendant(of: find.byType(HeroBanner), matching: find.text('Çeyrek Final')), findsOneWidget);
+      // Kayıt yok: canlı pano; büyük kartta en son izlenen kanal (104), yanında
+      // sonraki iki kanal; şeritte tekrarlanmazlar.
+      expect(find.descendant(of: find.byType(LiveBoard), matching: find.text('Çeyrek Final')), findsOneWidget);
       expect(find.text('SPOR 1 4K · Kanal 104'), findsOneWidget);
+      expect(find.byType(LiveBoardTile), findsNWidgets(2));
+      expect(tester.getRect(find.byType(LiveBoard)).bottom, lessThan(540));
       // Saate göre selam; TV'de bölüm kısayolları yok (ray var).
       expect(find.text('İyi akşamlar, Profil 1'), findsOneWidget);
       expect(find.byType(StoryAvatar), findsNothing);
@@ -99,7 +102,7 @@ void main() {
       expect(tester.takeException(), isNull);
       // Kayıt varken vitrin yerine pano: en yeni kayıt büyük kart.
       expect(find.text('Kaldığın yerden devam et'), findsOneWidget);
-      expect(find.byType(HeroBanner), findsNothing);
+      expect(find.byType(LiveBoard), findsNothing);
       final large = find.byWidgetPredicate((w) => w is ResumeTile && w.large);
       expect(find.descendant(of: large, matching: find.text('Kurtlar Vadisi')), findsOneWidget);
       expect(find.text('Sezon 2 · Bölüm 5 · 1 sa 18 dk kaldı'), findsOneWidget);
@@ -221,7 +224,7 @@ void main() {
       // Vitrin düğmeleri yan yana; telefonda "OK" ipucu yok (kumanda yok).
       final primaryY = tester.getCenter(find.text('Canlı yayına gir')).dy;
       expect(tester.getCenter(find.byTooltip('Yayın akışı')).dy, closeTo(primaryY, 1));
-      expect(find.descendant(of: find.byType(HeroBanner), matching: find.text('OK')), findsNothing);
+      expect(find.descendant(of: find.byType(LiveBoard), matching: find.text('OK')), findsNothing);
 
       await tester.tap(find.bySemanticsLabel('Diğer'));
       await tester.pump(const Duration(milliseconds: 600));
@@ -262,8 +265,8 @@ void main() {
     expect(profileIcon.left - 11 - search.right, closeTo(16, 0.01));
     expect(clockIcon.left, greaterThan(profileIcon.right));
 
-    // Vitrin içerik genişliğinin tamamını kaplar (düğmeler Wrap'te olsa da).
-    expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(AppHeader)).width);
+    // Pano içerik genişliğinin tamamını kaplar.
+    expect(tester.getSize(find.byType(LiveBoard)).width, tester.getSize(find.byType(AppHeader)).width);
   });
 
   WatchProgress sample() {

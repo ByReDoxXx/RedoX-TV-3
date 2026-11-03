@@ -22,14 +22,15 @@ import '../../core/ui/shelf.dart';
 import '../../core/ui/story_avatar.dart';
 import 'home_content.dart';
 import 'widgets/continue_card.dart';
-import 'widgets/hero_banner.dart';
+import 'widgets/live_board.dart';
 import 'widgets/live_tile.dart';
 import 'widgets/resume_board.dart';
 
 /// Anasayfa, kişisel pano (B tasarımı): saate göre selam; yarıda bırakılan
 /// film/bölümler ve bitmiş bölümlerin sıradakileri panoda (en yeni büyük
-/// kart), kayıt yoksa vitrin (şu an yayında olan kanal); altında "Şu an
-/// yayında" şeridi (son izlenen kanallar, geçmiş boşsa ulusal kanallar).
+/// kart); kayıt yoksa pano canlıdır (büyük kartta şu an yayında olan kanal,
+/// yanında sonraki iki kanal); altında "Şu an yayında" şeridi (son izlenen
+/// kanallar, geçmiş boşsa ulusal kanallar; canlı panodakiler hariç).
 /// Görseller yayından alınan gerçek karedir (FrameStore); uydurma içerik
 /// gösterilmez. Bölüm kısayolları yalnız telefonda (TV/tablette ray var).
 /// TV tuvali 960×540 dp (Android TV tasarım ölçüsü); içerik dikey kayar.
@@ -111,6 +112,14 @@ class HomePage extends StatelessWidget {
     },
   );
 
+  /// Pano kartının görseli: yayın karesi; yoksa sağda kanal logosu (yazılar solda).
+  Widget _boardArtwork(LiveChannel c, double width, double dpr) => _withFrames(
+    () => switch (frames?.frameOf(c)) {
+      final jpeg? => Image.memory(jpeg, fit: BoxFit.cover, cacheWidth: (width * dpr).round(), gaplessPlayback: true),
+      null => LiveBoardLogo(channel: c),
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
@@ -126,6 +135,10 @@ class HomePage extends StatelessWidget {
         if (!e.finished || e.series) e,
     ];
     final more = board.skip(ResumeBoard.size).toList();
+    // Canlı panoda (kayıt yokken) ilk kanal büyük, sonraki ikisi küçük kart;
+    // şeritte tekrarlanmaz.
+    final live = board.isEmpty && hero != null;
+    final strip = live ? content.channels.skip(ResumeBoard.size).toList() : content.channels;
     return LayoutBuilder(
       builder: (context, box) {
         final padding = PageLayout.scrollPadding(context, metrics);
@@ -194,16 +207,15 @@ class HomePage extends StatelessWidget {
             if (board.isNotEmpty)
               ResumeBoard(entries: board, tmdb: tmdb, onResume: onResume, previewFocus: previewFocus)
             else if (hero != null)
-              _withFrames(
-                () => HeroBanner(
-                  hero: hero,
-                  frame: frames?.frameOf(hero.channel),
-                  primaryFocused: previewFocus ? true : null,
-                  onWatch: () => onWatch?.call(hero.channel),
-                  onGuide: onGuide,
-                ),
+              LiveBoard(
+                hero: hero,
+                others: content.channels.where((c) => c != hero.channel).take(ResumeBoard.size - 1).toList(),
+                artwork: (c, w) => _boardArtwork(c, w, dpr),
+                primaryFocused: previewFocus ? true : null,
+                onWatch: onWatch,
+                onGuide: onGuide,
               ),
-            if (content.channels.isNotEmpty) ...[
+            if (strip.isNotEmpty) ...[
               const SizedBox(height: 28),
               Shelf(
                 gutter: stripGap,
@@ -215,7 +227,7 @@ class HomePage extends StatelessWidget {
                         accent: RedoxSeeds.amber,
                       ),
                 children: [
-                  for (final c in content.channels)
+                  for (final c in strip)
                     // D-pad odağında kart ortalanır: ekranın alt kenarında
                     // halkası kesiliyordu (gerçek TV'de görüldü).
                     CenterOnFocus(
