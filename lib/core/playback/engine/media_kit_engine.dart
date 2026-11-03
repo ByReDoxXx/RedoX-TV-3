@@ -167,6 +167,15 @@ class MediaKitEngine implements PlaybackEngine {
   /// HDR yayında.
   bool _sdrPath = false;
 
+  /// Kopyalı yolun çözücüsü: "mediacodec-copy" (HDR, HEVC) ya da "no"
+  /// (yazılım; eski MPEG-4 Part 2 / Xvid / DivX, [_legacy]).
+  String _copyHwdec = 'mediacodec-copy';
+
+  /// Donanım çözücüsünde kare atlatan eski kodekler: Pixel'in (Exynos) MPEG-4
+  /// çözücüsü Xvid AVI dizilerde 10 sn'de 40 kare atlattı ("Arrow kasıyor";
+  /// günlükte görüldü). Bu yayınlar düşük çözünürlüklü, yazılımla rahat çözülür.
+  static bool _legacy(String codec) => RegExp(r'mpeg4|mpeg-4 part 2|msmpeg4|h263|divx|xvid').hasMatch(codec);
+
   /// media_kit'in Android denetleyicisi (yüzey ve kilit); dışa açık türü
   /// yok, alanlarına dinamik erişilir. Bulunamazsa null.
   dynamic _android0;
@@ -223,13 +232,17 @@ class MediaKitEngine implements PlaybackEngine {
     // BT.709 bildiren) yeşil-mor görüntü veriyordu; kopyalı yolda doğru
     // (Pixel'de görüldü, 0 kare atlama). TV'de kopyalı yol 1080p'de bile
     // kare atlattığı için (Chromecast) yalnız HDR'de.
-    final hevc = (await native.getProperty('video-codec')).contains('hevc');
-    if (!hdr && !hevc) return;
+    final codec = (await native.getProperty('video-codec')).toLowerCase();
+    final hevc = codec.contains('hevc');
+    final legacy = _legacy(codec);
+    if (!hdr && !hevc && !legacy) return;
     _sdrPath = true;
-    Diagnostics.instance.log(
-      'görüntü',
-      hdr ? "HDR ($gamma): SDR'ye ton eşlemeli kopyalı yola geçildi" : 'HEVC: renk için kopyalı yola geçildi',
-    );
+    _copyHwdec = legacy ? 'no' : 'mediacodec-copy';
+    Diagnostics.instance.log('görüntü', switch ((hdr, hevc)) {
+      (true, _) => "HDR ($gamma): SDR'ye ton eşlemeli kopyalı yola geçildi",
+      (_, true) => 'HEVC: renk için kopyalı yola geçildi',
+      _ => 'Eski MPEG-4 (Xvid/DivX): yazılımla çözülüyor',
+    });
     // Yüzey henüz yoksa media_kit yüzeyi bağlayınca dinleyici uygular.
     await _locked(_applySdrPath);
   }
@@ -241,16 +254,16 @@ class MediaKitEngine implements PlaybackEngine {
     final drops = await native.getProperty('frame-drop-count');
     final decoderDrops = await native.getProperty('decoder-frame-drop-count');
     final fps = await native.getProperty('estimated-vf-fps');
-    final path = _sdrPath ? 'kopyalı' : 'kopyasız';
+    final path = !_sdrPath ? 'kopyasız' : (_copyHwdec == 'no' ? 'yazılım' : 'kopyalı');
     Diagnostics.instance.log('görüntü', '$path yol 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
   }
 
-  /// HDR yayın için kopyalı, ton eşlemeli yol.
+  /// HDR/HEVC için kopyalı, ton eşlemeli yol; eski MPEG-4'te yazılım çözücüyle.
   Future<void> _applySdrPath() async {
     final native = _player.platform;
     if (native is! NativePlayer || !await _surfaceReady(native)) return;
     await native.setProperty('vo', 'null');
-    await native.setProperty('hwdec', 'mediacodec-copy');
+    await native.setProperty('hwdec', _copyHwdec);
     await native.setProperty('tone-mapping', 'bt.2390');
     await native.setProperty('target-trc', 'srgb');
     await native.setProperty('target-prim', 'bt.709');
