@@ -88,7 +88,9 @@ class MediaCard extends StatelessWidget {
                         Text(
                           title,
                           style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface),
-                          maxLines: 2,
+                          // Tek kelime satır ortasından bölünmesin ("Oppenheim/er"):
+                          // sığmazsa üç noktayla biter.
+                          maxLines: title.trim().contains(' ') ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (active && subtitle != null)

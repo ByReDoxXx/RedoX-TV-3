@@ -208,7 +208,9 @@ class _SplitScreenPageState extends State<SplitScreenPage> {
                   h = maxH;
                   w = h * 16 / 9;
                 }
-                return Center(
+                // Üste yaslı: dikey tablette kutular ortada boşlukla kalıyordu.
+                return Align(
+                  alignment: Alignment.topCenter,
                   child: Wrap(
                     spacing: gap,
                     runSpacing: gap,

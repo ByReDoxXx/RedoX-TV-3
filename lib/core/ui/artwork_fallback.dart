@@ -28,9 +28,15 @@ class ArtworkFallback extends StatelessWidget {
   /// sürümler arasında değişebilir).
   Color get _tint => _tints[name.codeUnits.fold(0, (a, b) => a + b) % _tints.length];
 
+  static final _wordStart = RegExp(r'^[\p{L}\p{N}]', unicode: true);
+
   /// İlk iki kelimenin baş harfi, Türkçe büyük harf kuralıyla (i → İ, ı → I).
+  /// Harf ya da rakamla başlamayan parçalar ("(2010)", "|TR|", "-") atlanır:
+  /// "Başlangıç (2010)" afişinde "B(" yazıyordu.
   String get _initials {
-    final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final parts = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final real = parts.where((w) => _wordStart.hasMatch(w));
+    final words = real.isEmpty ? parts : real;
     final letters = words.take(2).map((w) => w.characters.first).join();
     return letters.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
   }

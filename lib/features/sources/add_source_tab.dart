@@ -264,7 +264,8 @@ class _AddSourceTabState extends State<AddSourceTab> {
           const SizedBox(height: 10),
           TileGrid(
             columns: 3,
-            minWidth: phone ? 0 : 130,
+            // Dikey tablette de üçü bir satırda.
+            minWidth: phone ? 0 : 96,
             children: [
               for (final c in SourceContent.values)
                 _ContentCard(
