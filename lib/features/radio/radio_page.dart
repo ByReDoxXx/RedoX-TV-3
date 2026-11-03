@@ -19,6 +19,7 @@ import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
 import '../../core/ui/status_badge.dart';
 import 'radio_player_page.dart';
+import 'widgets/recent_songs.dart';
 import 'widgets/sound_wave.dart';
 import 'widgets/station_avatar.dart';
 
@@ -207,76 +208,13 @@ class _RadioPageState extends State<RadioPage> {
     );
   }
 
-  /// Son dinlenen şarkılar: şarkı adı, istasyon ve saat; OK/dokunma o
-  /// istasyonu açar.
-  Widget _songs(List<LiveChannel> all) {
-    final t = Theme.of(context).textTheme;
-    final songs = _radio.songs?.value ?? const [];
-    if (songs.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(RadioPage.ringRoom),
-        child: Text(
-          'Henüz şarkı yok. Radyo dinlerken yayının bildirdiği şarkı adları burada listelenir.',
-          style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
-        ),
-      );
-    }
-    String clock(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(RadioPage.ringRoom, 6, RadioPage.ringRoom, 16),
-      itemCount: songs.length,
-      itemBuilder: (context, i) {
-        final e = songs[i];
-        final station = all.where((s) => s.number == e.stationNumber).firstOrNull;
-        final radius = BorderRadius.circular(RedoxRadius.lg);
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: FocusGlow(
-            borderRadius: radius,
-            scale: 1,
-            builder: (context, active) => Material(
-              color: active ? RedoxRoles.surfaceContainerHigh : RedoxRoles.surfaceContainer,
-              borderRadius: radius,
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                autofocus: i == 0,
-                focusColor: Colors.transparent,
-                onTap: station == null ? null : () => _open(station, all),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      if (station != null) StationAvatar(station: station, size: 44) else const SizedBox(width: 44),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              e.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface),
-                            ),
-                            Text(
-                              '${e.station} · ${clock(e.at)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  /// Son dinlenen şarkılar; OK/dokunma o istasyonu açar.
+  Widget _songs(List<LiveChannel> all) => RecentSongList(
+    songs: _radio.songs?.value ?? const [],
+    stations: all,
+    onOpen: (s) => _open(s, all),
+    padding: const EdgeInsets.fromLTRB(RadioPage.ringRoom, 6, RadioPage.ringRoom, 16),
+  );
 
   Widget _list(List<LiveChannel> list, bool phone) {
     final t = Theme.of(context).textTheme;

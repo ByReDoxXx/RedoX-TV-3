@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,13 +16,17 @@ import '../../core/ui/icon_action_button.dart';
 import '../../core/ui/key_hint.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/status_badge.dart';
+import 'widgets/radio_dial.dart';
 import 'widgets/radio_options.dart';
-import 'widgets/radio_wheel.dart';
+import 'widgets/recent_songs.dart';
 import 'widgets/sound_wave.dart';
+import 'widgets/station_avatar.dart';
 
-/// Tam ekran radyo, "Kadran tekerleği" (C tasarımı): üstte durum, büyük
-/// istasyon adı, çalan şarkı ve ses dalgası; altta yükselen tekerlekte
-/// istasyon logoları (ayarlı olan tepede), en altta düğmeler.
+/// Tam ekran radyo, "Yenilenmiş şerit" (A tasarımı; eski düz kadranın
+/// yenisi): üstte durum, büyük istasyon adı, çalan şarkı ve ses dalgası;
+/// altta amber ışıklı kadran şeridi (ibre ortada sabit, istasyonlar kayar),
+/// en altta düğmeler. Sonraki düğmesinin sağındaki "Son çalanlar" son
+/// dinlenen şarkıları açar; şarkıya basılırsa istasyonu çalar.
 ///
 /// Kumanda: ◄ ► kadranı çevirir, yeni istasyon [tuneDelay] sonra çalar (ses
 /// yeni yayın bağlanana kadar kesilmez); OK duraklat/sürdür; ▲ listeye dön;
@@ -53,13 +58,15 @@ class RadioPlayerPage extends StatefulWidget {
 }
 
 class _RadioPlayerPageState extends State<RadioPlayerPage> {
+  /// Kadrandaki istasyonlar: listede seçili tür; Son çalanlar'dan başka
+  /// türde bir istasyon açılınca bütün istasyonlar.
+  late List<LiveChannel> _list = widget.stations;
   late int _tuned = _indexOfCurrent();
   Timer? _tune;
   bool _dialFocused = false;
   double _drag = 0;
 
   RadioController get _radio => widget.radio;
-  List<LiveChannel> get _list => widget.stations;
 
   int _indexOfCurrent() {
     final i = _radio.current == null ? -1 : _list.indexOf(_radio.current!);
@@ -113,6 +120,19 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
     return KeyEventResult.handled;
   }
 
+  /// Son çalanlar paneli; seçilen şarkının istasyonu kadrana gelir ve çalar.
+  Future<void> _recent() async {
+    final songs = _radio.songs;
+    if (songs == null) return;
+    final s = await showRecentSongs(context, songs: songs, stations: _radio.stations);
+    if (s == null || !mounted) return;
+    setState(() {
+      if (!_list.contains(s)) _list = _radio.stations;
+      _tuned = math.max(0, _list.indexOf(s));
+    });
+    _playTuned();
+  }
+
   Future<void> _options() async {
     final closed = await showRadioOptions(context, radio: _radio, favorites: widget.favorites);
     if ((closed ?? false) && mounted) Navigator.maybePop(context);
@@ -162,8 +182,8 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
     };
     final info = [?tuned?.category, if (m > 0) 'yayın $n/$m'].join(' · ');
     final sleep = _radio.sleepLeft;
-    // Tekerlek: telefonda dikey boşluk geniş, TV'de 540 dp'ye düğmelerle sığar.
-    final dialHeight = (box.maxHeight * (phone ? 0.28 : 0.36)).clamp(130.0, 280.0);
+    // Kadran: TV'de 540 dp'ye düğmelerle sığar.
+    final dialHeight = (box.maxHeight * (phone ? 0.2 : 0.32)).clamp(150.0, 210.0);
     final fav = tuned != null && (widget.favorites?.hasRadio(tuned.number) ?? false);
     final playing = status == RadioStatus.playing || status == RadioStatus.connecting;
     final pad = phone ? 16.0 : 40.0;
@@ -197,6 +217,19 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
             ],
           ),
           const Spacer(),
+          // Dokunmatik ekranda dikey boşluk geniş: istasyonun logosu büyük.
+          if (touch && tuned != null) ...[
+            AnimatedOpacity(
+              opacity: browsing ? 0.55 : 1,
+              duration: const Duration(milliseconds: 200),
+              child: StationAvatar(
+                station: tuned,
+                size: (box.maxHeight * 0.2).clamp(96.0, 180.0),
+                radius: RedoxRadius.xl,
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
           Wrap(
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -256,39 +289,57 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
               onFocusChange: (v) => setState(() => _dialFocused = v),
               child: Semantics(
                 label: 'Kadran: ${tuned?.name ?? ''}',
-                child: RadioWheel(stations: _list, index: _tuned, active: _dialFocused, height: dialHeight),
+                child: RadioDial(stations: _list, index: _tuned, active: _dialFocused, height: dialHeight),
               ),
             ),
           ),
           const SizedBox(height: 12),
           if (touch)
             Text(
-              'Tekerleği kaydırarak istasyon değiştirin',
+              'Kadranı kaydırarak istasyon değiştirin',
               style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
             )
           else
             const _Hints(),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            // Oynat her zaman ortada: iki yandaki düğme sayısı farklı olsa da
+            // (sağda Son çalanlar ve TV'de Seçenekler) yan gruplar eşit genişlikte.
             children: [
-              if (widget.favorites != null && tuned != null) ...[
-                _ToggleIcon(
-                  icon: RedoxIcons.favorites,
-                  filled: fav,
-                  onPressed: () => widget.favorites!.toggleRadio(tuned.number),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (widget.favorites != null && tuned != null) ...[
+                      _ToggleIcon(
+                        icon: RedoxIcons.favorites,
+                        filled: fav,
+                        onPressed: () => widget.favorites!.toggleRadio(tuned.number),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
+                    IconActionButton(icon: RedoxIcons.previous, onPressed: () => _turnAndPlay(-1)),
+                  ],
                 ),
-                const SizedBox(width: 16),
-              ],
-              IconActionButton(icon: RedoxIcons.previous, onPressed: () => _turnAndPlay(-1)),
+              ),
               const SizedBox(width: 16),
               _PlayButton(playing: playing, onPressed: _ok),
               const SizedBox(width: 16),
-              IconActionButton(icon: RedoxIcons.next, onPressed: () => _turnAndPlay(1)),
-              if (!phone) ...[
-                const SizedBox(width: 16),
-                IconActionButton(icon: RedoxIcons.moreHorizontal, onPressed: _options),
-              ],
+              Expanded(
+                child: Row(
+                  children: [
+                    IconActionButton(icon: RedoxIcons.next, onPressed: () => _turnAndPlay(1)),
+                    if (_radio.songs != null) ...[
+                      const SizedBox(width: 16),
+                      IconActionButton(icon: RedoxIcons.history, onPressed: _recent),
+                    ],
+                    if (!phone) ...[
+                      const SizedBox(width: 16),
+                      IconActionButton(icon: RedoxIcons.moreHorizontal, onPressed: _options),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         ],

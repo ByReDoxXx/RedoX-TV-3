@@ -32,7 +32,12 @@ final _stations = [
 
 (RadioController, FakeRadioAudio, Favorites) _setup() {
   final audio = FakeRadioAudio();
-  final radio = RadioController(stations: ValueNotifier(_stations), audio: () => audio);
+  // Son çalanlar: biri Pop dışı türde (Son çalanlar'dan açılınca kadran
+  // bütün istasyonlara geçer).
+  final songs = SongHistory()
+    ..record('Barış Manço - Gülpembe', station: _stations[8].name, stationNumber: 9)
+    ..record('Sezen Aksu - Gidiyorum', station: _stations[2].name, stationNumber: 3);
+  final radio = RadioController(stations: ValueNotifier(_stations), audio: () => audio, songs: songs);
   addTearDown(radio.dispose);
   return (radio, audio, Favorites(radios: const [2]));
 }
@@ -148,6 +153,33 @@ void main() {
     radio.setSleep(null);
   });
 
+  for (final (f, size) in const [(FormFactor.tv, Size(960, 540)), (FormFactor.phone, Size(390, 844))]) {
+    testWidgets('${f.name}: kadranda Son çalanlar sonrakinin sağında; şarkıya basınca istasyonu çalar', (tester) async {
+      await _size(tester, size);
+      final (radio, _, fav) = _setup();
+      await tester.pumpWidget(_app(f, radio, fav));
+      await _settle(tester);
+      await tester.tap(find.text('Yıldız Pop').first);
+      await _settle(tester);
+      final next = tester.getCenter(find.bySemanticsLabel('Sonraki').last);
+      final recent = tester.getCenter(find.bySemanticsLabel('Son çalanlar').last);
+      expect(recent.dx, greaterThan(next.dx));
+      expect(recent.dy, closeTo(next.dy, 1));
+      // Oynat ekranın ortasında (sağda bir düğme fazla olsa da).
+      final play = tester.getCenter(find.bySemanticsLabel(RegExp('^(Oynat|Duraklat)\$')).last);
+      expect(play.dx, closeTo(size.width / 2, 1));
+      await tester.tap(find.bySemanticsLabel('Son çalanlar').last);
+      await _settle(tester);
+      expect(find.text('Barış Manço - Gülpembe'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Barış Manço - Gülpembe'));
+      await _settle(tester);
+      await tester.pump(RadioPlayerPage.tuneDelay);
+      expect(radio.current, _stations[8]);
+      expect(find.text(_stations[8].name), findsWidgets, reason: 'kadran o istasyona döner');
+    });
+  }
+
   testWidgets('görüntüler: TV ve telefon (liste, kadran, seçenekler)', (tester) async {
     await withRealShadows(() async {
       for (final (f, size, name) in const [
@@ -177,6 +209,14 @@ void main() {
         await _settle(tester);
         await settleAssets(tester, rounds: 2);
         await maybeSnapshot(tester, key, 'build/radyo/$name-3-secenekler.png', pixelRatio: 2);
+        expect(tester.takeException(), isNull);
+        Navigator.of(tester.element(find.byType(RadioOptions))).pop();
+        await _settle(tester);
+
+        await tester.tap(find.bySemanticsLabel('Son çalanlar').first);
+        await _settle(tester);
+        await settleAssets(tester, rounds: 2);
+        await maybeSnapshot(tester, key, 'build/radyo/$name-4-son-calanlar.png', pixelRatio: 2);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       }
