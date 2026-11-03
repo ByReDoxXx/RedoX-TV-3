@@ -3,14 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/double_back_to_exit.dart';
+import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/header_search.dart';
 
 // TV emülatöründe görülen iki sorun: D-pad kutunun üstünden geçerken klavye
 // açılıyordu; Geri ilk basışta klavyeyi, ikincide uygulamayı kapatıyordu.
 
-Widget _app() => MaterialApp(
-  theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+Widget _app({FormFactor formFactor = FormFactor.tablet}) => MaterialApp(
+  theme: RedoxTheme.dark(formFactor: formFactor),
   home: DoubleBackToExit(
     child: Scaffold(
       body: Column(
@@ -24,7 +25,30 @@ Widget _app() => MaterialApp(
 );
 
 void main() {
-  testWidgets('D-pad kutuya gelince klavye açılmaz; OK yazmayı başlatır; Geri yazmayı bitirir', (tester) async {
+  testWidgets('TV: OK cihazın klavyesiyle yerel kutuyu açar (Flutter metin alanı yok); yazılan aranır', (tester) async {
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final asked = <String>[];
+    SystemTextInput.debugOverride = (title, value, kind) async {
+      asked.add(title);
+      return 'spor';
+    };
+    addTearDown(() => SystemTextInput.debugOverride = null);
+    await tester.pumpWidget(_app(formFactor: FormFactor.tv));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    await tester.pump();
+    expect(asked, ['Ara']);
+    expect(find.byType(TextField), findsNothing);
+    expect(tester.testTextInput.isVisible, isFalse);
+    expect(find.text('spor'), findsOneWidget);
+  });
+
+  testWidgets('tablet: D-pad kutuya gelince klavye açılmaz; OK yazmayı başlatır; Geri yazmayı bitirir', (tester) async {
     tester.view.physicalSize = const Size(960, 540);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/search_scope.dart';
+import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/header_search.dart';
 import 'package:redox_tv/features/search/search_page.dart';
@@ -57,5 +58,33 @@ void main() {
     expect(find.text('Kanallar (1)'), findsOneWidget);
     await tester.tap(find.text('Show TV'));
     expect(watched?.name, 'Show TV');
+  });
+
+  testWidgets('TV: boş açılınca cihazın klavyesi (yerel kutu) gelir; yazılan aranır, OK yeniden açar', (tester) async {
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final answers = ['trt', 'show'];
+    final values = <String>[];
+    SystemTextInput.debugOverride = (title, value, kind) async {
+      values.add(value);
+      return answers.removeAt(0);
+    };
+    addTearDown(() => SystemTextInput.debugOverride = null);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+        home: const SearchPage(channels: _channels),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Kanallar (2)'), findsOneWidget);
+    await tester.tap(find.text('trt'));
+    await tester.pump();
+    await tester.pump();
+    expect(values, ['', 'trt'], reason: 'ikinci açılışta yazılan metinle');
+    expect(find.text('Kanallar (1)'), findsOneWidget);
   });
 }

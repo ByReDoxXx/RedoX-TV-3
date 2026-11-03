@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../navigation/search_scope.dart';
 import '../layout/form_factor.dart';
+import '../navigation/search_scope.dart';
+import '../platform/system_text_input.dart';
 import '../navigation/double_back_to_exit.dart';
 import '../theme/redox_colors.dart';
 import '../theme/redox_metrics.dart';
@@ -21,6 +24,10 @@ import 'redox_icon.dart';
 /// - **Yazma:** OK (veya dokunma/tıklama) ile açılır; klavye gelir. Klavyenin
 ///   onay tuşu, Geri ya da klavyenin kapanması yazmayı bitirir ve odak kutuya
 ///   döner. Geri bu sırada uygulamadan çıkmaz.
+///
+/// TV'de yazma kipi yoktur: OK cihazın kendi klavyesiyle yerel metin kutusunu
+/// açar ([SystemTextInput]). Flutter metin alanı açıkken Gboard kumandanın yön
+/// tuşlarını alamıyordu (Chromecast'te: "klavye kumandadan hareket etmiyor").
 class HeaderSearch extends StatefulWidget {
   const HeaderSearch({super.key, this.hint = 'Kanal, program veya film ara…', this.onOpen, this.onSubmitted});
 
@@ -78,12 +85,32 @@ class _HeaderSearchState extends State<HeaderSearch> {
   }
 
   void _start() {
+    if (Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.tv) {
+      unawaited(_askSystem());
+      return;
+    }
     _backGuard = DoubleBackToExit.maybeOf(context)?..addHandler(_onBack);
     setState(() => _editing = true);
     // Alan bir sonraki karede ağaca girer; odak orada istenir.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _editing) _fieldNode.requestFocus();
     });
+  }
+
+  /// TV: yerel kutuda yazılır; onaylanırsa arama yapılır.
+  Future<void> _askSystem() async {
+    final q = await SystemTextInput.ask(title: 'Ara', value: _controller.text);
+    if (q == null || !mounted) return;
+    setState(() => _controller.text = q);
+    _submit(q);
+  }
+
+  void _submit(String q) {
+    if (widget.onSubmitted case final submit?) {
+      submit(q);
+    } else if (q.trim().isNotEmpty) {
+      SearchScope.maybeOf(context)?.open(context, q);
+    }
   }
 
   void _stop() {
@@ -129,11 +156,7 @@ class _HeaderSearchState extends State<HeaderSearch> {
           textInputAction: TextInputAction.search,
           onSubmitted: (q) {
             _stop();
-            if (widget.onSubmitted case final submit?) {
-              submit(q);
-            } else if (q.trim().isNotEmpty) {
-              SearchScope.maybeOf(context)?.open(context, q);
-            }
+            _submit(q);
           },
           onTapOutside: (_) => _stop(),
           style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),

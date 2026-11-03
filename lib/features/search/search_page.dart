@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
+import '../../core/platform/system_text_input.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
@@ -74,6 +77,24 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   late final _controller = TextEditingController(text: widget.initialQuery);
 
+  bool get _tv => Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.tv;
+
+  @override
+  void initState() {
+    super.initState();
+    // TV'de boş açılınca klavye hemen gelsin (telefondaki autofocus gibi).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _tv && _controller.text.isEmpty) unawaited(_ask());
+    });
+  }
+
+  /// TV: cihazın klavyesiyle yerel metin kutusu (Flutter metin alanında
+  /// Gboard kumandanın yön tuşlarını alamıyor; HeaderSearch).
+  Future<void> _ask() async {
+    final q = await SystemTextInput.ask(title: 'Ara', value: _controller.text);
+    if (q != null && mounted) setState(() => _controller.text = q);
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -101,36 +122,38 @@ class _SearchPageState extends State<SearchPage> {
                   IconActionButton(icon: RedoxIcons.close, onPressed: () => Navigator.of(context).maybePop()),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      // Telefonda boş açılır: klavye hemen gelsin.
-                      autofocus: phone || q.isEmpty,
-                      textInputAction: TextInputAction.search,
-                      onChanged: (_) => setState(() {}),
-                      style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),
-                      decoration: InputDecoration(
-                        hintText: 'Kanal, program veya radyo ara…',
-                        hintStyle: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: RedoxIcon(RedoxIcons.search, color: RedoxRoles.tertiary),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(RedoxRadius.full),
-                          borderSide: const BorderSide(color: RedoxSeeds.amber, width: 2),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(RedoxRadius.full),
-                          borderSide: BorderSide(color: RedoxRoles.outlineVariant.withValues(alpha: 0.5)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(RedoxRadius.full),
-                          borderSide: const BorderSide(color: RedoxSeeds.amber, width: 2),
-                        ),
-                      ),
-                    ),
+                    child: _tv
+                        ? _QueryButton(text: q, onPressed: _ask)
+                        : TextField(
+                            controller: _controller,
+                            // Telefonda boş açılır: klavye hemen gelsin.
+                            autofocus: phone || q.isEmpty,
+                            textInputAction: TextInputAction.search,
+                            onChanged: (_) => setState(() {}),
+                            style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface),
+                            decoration: InputDecoration(
+                              hintText: 'Kanal, program veya radyo ara…',
+                              hintStyle: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                              prefixIcon: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 14),
+                                child: RedoxIcon(RedoxIcons.search, color: RedoxRoles.tertiary),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(RedoxRadius.full),
+                                borderSide: const BorderSide(color: RedoxSeeds.amber, width: 2),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(RedoxRadius.full),
+                                borderSide: BorderSide(color: RedoxRoles.outlineVariant.withValues(alpha: 0.5)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(RedoxRadius.full),
+                                borderSide: const BorderSide(color: RedoxSeeds.amber, width: 2),
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -234,6 +257,63 @@ class _Result extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// TV'deki arama kutusu: odaklanır, OK yerel klavyeyi açar.
+class _QueryButton extends StatelessWidget {
+  const _QueryButton({required this.text, required this.onPressed});
+
+  final String text;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final pill = BorderRadius.circular(RedoxRadius.full);
+    return FocusGlow(
+      borderRadius: pill,
+      scale: 1,
+      builder: (context, active) => Material(
+        color: Colors.transparent,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: active ? RedoxSeeds.amber : RedoxRoles.outlineVariant.withValues(alpha: 0.5),
+            width: active ? 2 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          autofocus: true,
+          borderRadius: pill,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14),
+                  child: RedoxIcon(RedoxIcons.search, color: RedoxRoles.tertiary),
+                ),
+                Expanded(
+                  child: Text(
+                    text.isEmpty ? 'Kanal, program veya radyo ara… (OK)' : text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodyLarge!.copyWith(
+                      color: text.isEmpty ? RedoxRoles.onSurfaceVariant : RedoxRoles.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+              ],
             ),
           ),
         ),
