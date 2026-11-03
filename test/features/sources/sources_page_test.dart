@@ -103,7 +103,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Ayarlar'), findsOneWidget);
     expect(find.text(SettingsSection.addSource.label), findsOneWidget);
-    for (final m in AddMethod.values) {
+    for (final m in AddMethod.values.where((m) => m != AddMethod.folder)) {
       expect(find.text(m.title), findsOneWidget, reason: m.title);
     }
     expect(find.byType(QrImageView), findsNothing);
@@ -157,6 +157,8 @@ void main() {
     final s = await _sources(tester, empty: true);
     await tester.pumpWidget(_app(FormFactor.tv, s));
     await _settle(tester);
+    await tester.ensureVisible(find.text(AddMethod.xtream.title));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(AddMethod.xtream.title));
     await _settle(tester);
     expect(tester.takeException(), isNull);

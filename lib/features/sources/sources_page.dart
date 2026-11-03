@@ -7,18 +7,19 @@ import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
+import '../../core/ui/category_chip.dart';
 import '../../core/ui/hiding_header.dart';
 import '../../core/ui/app_header.dart';
-import '../../core/ui/redox_buttons.dart';
-import '../../core/ui/redox_icon.dart';
 import '../locks/lock_scope.dart';
 import 'source_channels_page.dart';
 import 'widgets/source_widgets.dart';
 
 /// Kaynaklar: kullanıcının eklediği listeler (eski "Özel M3U"). Her liste bir
 /// klasördür; içine girince kanalları, OK tam ekran. Ekleme Ayarlar > Kaynak
-/// ekle sekmesindedir (kullanıcı isteği); "Kaynak ekle" düğmesi oraya götürür.
-class SourcesPage extends StatelessWidget {
+/// ekle sekmesindedir (kullanıcı isteği); ilk kart "Kaynak ekle" oraya
+/// götürür. Üstte türe göre süzme (Tümü, Canlı TV, Film, Dizi); kartlarda
+/// ekleme yolu, kayıt sayısı ve son güncelleme.
+class SourcesPage extends StatefulWidget {
   const SourcesPage({
     super.key,
     required this.sources,
@@ -49,23 +50,41 @@ class SourcesPage extends StatelessWidget {
   final VoidCallback? onProfile;
 
   @override
+  State<SourcesPage> createState() => _SourcesPageState();
+}
+
+class _SourcesPageState extends State<SourcesPage> {
+  /// Süzgeç; null: Tümü.
+  SourceKind? _kind;
+
+  UserSources get _sources => widget.sources;
+
+  @override
   Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final padding = PageLayout.scrollPadding(context, metrics);
     final phone = metrics.formFactor == FormFactor.phone;
     final t = Theme.of(context).textTheme;
+    final onAdd = widget.onAdd;
     return ListenableBuilder(
-      listenable: sources,
+      listenable: _sources,
       builder: (context, _) {
         // Bütün listeler (Canlı TV, Film, Dizi): Film ve Dizi listeleri kendi
         // bölümlerinde de görünür; burada silinince oradan da kalkar.
-        final items = [for (final k in SourceKind.values) ...sources.of(k)];
+        final all = [for (final k in SourceKind.values) ..._sources.of(k)];
+        final kinds = [
+          for (final k in SourceKind.values)
+            if (_sources.of(k).isNotEmpty) k,
+        ];
+        // Süzülen tür kalmadıysa (silindi) Tümü.
+        final kind = kinds.contains(_kind) ? _kind : null;
+        final items = kind == null ? all : _sources.of(kind);
         final header = AppHeader(
-          clock: clock,
-          profileName: profileName,
-          onHome: onHome,
-          onMore: onMore,
-          onProfile: onProfile,
+          clock: widget.clock,
+          profileName: widget.profileName,
+          onHome: widget.onHome,
+          onMore: widget.onMore,
+          onProfile: widget.onProfile,
         );
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,27 +92,50 @@ class SourcesPage extends StatelessWidget {
             SectionTitle(
               title: 'Listelerim',
               trailing: Text(
-                '${items.length} liste · ${sources.channelCount} kayıt',
+                '${all.length} liste · ${_sources.channelCount} kayıt',
                 style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
               ),
             ),
-            const SizedBox(height: 12),
-            if (items.isEmpty)
-              Text(
-                'Henüz liste yok. Ayarlar > Kaynak ekle\'den M3U, JSON, HTML, Xtream, portal ya da telefonla ekleyin; '
-                'her liste burada bir klasör olur.',
-                style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
-              )
-            else
-              TileGrid(
-                columns: phone ? 1 : 3,
+            if (kinds.length > 1) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
                 children: [
-                  for (final (i, s) in items.indexed)
-                    FolderCard(source: s, autofocus: i == 0, onPressed: () => _open(context, s)),
+                  CategoryChip(
+                    label: 'Tümü',
+                    count: all.length,
+                    selected: kind == null,
+                    onPressed: () => setState(() => _kind = null),
+                  ),
+                  for (final k in kinds)
+                    CategoryChip(
+                      label: k.label,
+                      count: _sources.of(k).length,
+                      selected: kind == k,
+                      onPressed: () => setState(() => _kind = k),
+                    ),
                 ],
               ),
-            const SizedBox(height: 18),
-            if (onAdd != null) GlassButton(label: 'Kaynak ekle', icon: RedoxIcons.add, onPressed: onAdd),
+            ],
+            const SizedBox(height: 16),
+            if (all.isEmpty) ...[
+              Text(
+                "Henüz liste yok. Ayarlar > Kaynak ekle'den M3U, JSON, HTML, Xtream, portal, dosya, USB/SSD klasörü "
+                'ya da telefonla ekleyin; her liste burada bir klasör olur.',
+                style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+              ),
+              const SizedBox(height: 16),
+            ],
+            TileGrid(
+              columns: phone ? 1 : 3,
+              minWidth: phone ? 0 : 230,
+              children: [
+                if (onAdd != null) AddSourceCard(onPressed: onAdd, autofocus: all.isEmpty),
+                for (final (i, s) in items.indexed)
+                  FolderCard(source: s, autofocus: i == 0, onPressed: () => _open(context, s)),
+              ],
+            ),
           ],
         );
         // Telefonda başlık üstte; aşağı kaydırınca gizlenir, yukarı kaydırınca
@@ -132,7 +174,7 @@ class SourcesPage extends StatelessWidget {
       if (!await gate!.pass(context, key)) return;
     }
     if (!context.mounted) return;
-    final page = SourceChannelsPage(sources: sources, source: s, onWatch: onWatch, favorites: favorites);
+    final page = SourceChannelsPage(sources: _sources, source: s, onWatch: widget.onWatch, favorites: widget.favorites);
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         // Yeni rota kabuğun altında değil: kilit kapsamı taşınır.

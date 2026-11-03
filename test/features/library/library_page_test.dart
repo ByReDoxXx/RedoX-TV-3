@@ -339,8 +339,9 @@ void main() {
     await _settle(tester);
     expect(find.text('Canlı'), findsOneWidget);
     expect(find.text('Filmlerim'), findsOneWidget);
-    expect(find.text('2 film · Film · Dosya'), findsOneWidget);
-    expect(find.text('3 bölüm · Dizi · Dosya'), findsOneWidget);
+    expect(find.text('2 film'), findsOneWidget);
+    expect(find.text('3 bölüm'), findsOneWidget);
+    expect(find.text('Dosya · az önce'), findsNWidgets(3));
   });
 
   testWidgets("Kaynaklar'dan silinen dizi Dizi bölümünden, favorilerden ve kilitlerden de kalkar", (tester) async {

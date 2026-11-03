@@ -61,8 +61,8 @@ void main() {
     );
     await tester.tap(find.text('Aç'));
     await _settle(tester);
-    expect(find.text('Deneme diski'), findsOneWidget);
-    await tester.tap(find.text('Deneme diski'));
+    expect(find.text('Deneme diski'), findsWidgets);
+    await tester.tap(find.text('Deneme diski').first);
     await _settle(tester);
     expect(find.text('Listeler'), findsOneWidget);
     expect(find.text('foto.jpg'), findsNothing);
@@ -118,9 +118,11 @@ void main() {
       ),
     );
     await _settle(tester);
+    await tester.ensureVisible(find.text('Dosyadan'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Dosyadan'));
     await _settle(tester);
-    await tester.tap(find.text('Deneme diski'));
+    await tester.tap(find.text('Deneme diski').first);
     await _settle(tester);
     await tester.tap(find.text('Listeler'));
     await _settle(tester);
@@ -161,10 +163,12 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('Dizi'));
     await _settle(tester);
+    await tester.ensureVisible(find.text('Klasörden'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Klasörden'));
     await _settle(tester);
     expect(find.text('Klasör seç'), findsOneWidget);
-    await tester.tap(find.text('Harici SSD'));
+    await tester.tap(find.text('Harici SSD').first);
     await _settle(tester);
     await tester.tap(find.text('Diziler'));
     await _settle(tester);
@@ -179,5 +183,64 @@ void main() {
     final eps = (await tester.runAsync(() => sources.channels(added)))!;
     expect(eps.map((c) => c.name), ['Arrow S01E01', 'Arrow S01E02']);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('görüntü: TV ve telefon, klasör kipi (konumlar, konum yolu, videolar)', (tester) async {
+    await withRealShadows(() async {
+      for (final (f, size, name) in const [
+        (FormFactor.tv, Size(960, 540), 'tv'),
+        (FormFactor.phone, Size(390, 844), 'telefon'),
+      ]) {
+        await _tv(tester);
+        tester.view.physicalSize = size;
+        final (internal, ssd) = (await tester.runAsync(() async {
+          final a = await Directory.systemTemp.createTemp('redox-dahili-');
+          final b = await Directory.systemTemp.createTemp('redox-ssd-');
+          addTearDown(() async {
+            await a.delete(recursive: true);
+            await b.delete(recursive: true);
+          });
+          for (final rel in [
+            'Filmler/Aksiyon/Mad Max (2015).mkv',
+            'Filmler/Oppenheimer (2023).mkv',
+            'Filmler/Dune (2021).mp4',
+            'Filmler/Başlangıç (2010).avi',
+            'Filmler/Belgeseller/Doğa.mov',
+          ]) {
+            final file = File('${b.path}/$rel');
+            await file.parent.create(recursive: true);
+            await file.writeAsBytes(List.filled(rel.length * 37000, 0));
+          }
+          await Directory('${b.path}/Diziler').create();
+          return (a, b);
+        }))!;
+        final key = GlobalKey();
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: key,
+            child: MaterialApp(
+              theme: RedoxTheme.dark(formFactor: f),
+              home: FileBrowserPage(
+                folder: true,
+                roots: [('Dahili depolama', internal.path), ('USB / SD kart (6AE9-B46A)', ssd.path)],
+              ),
+            ),
+          ),
+        );
+        await _settle(tester);
+        await tester.tap(find.text('USB / SD kart (6AE9-B46A)').first);
+        await _settle(tester);
+        await tester.tap(find.text('Filmler').first);
+        // Dosya boyutları da okunur: birkaç tur bekle.
+        for (var i = 0; i < 3; i++) {
+          await _settle(tester);
+        }
+        expect(find.text('Oppenheimer (2023).mkv'), findsOneWidget);
+        expect(find.text('Bu klasörü ekle'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await maybeSnapshot(tester, key, 'build/gezgin/$name-klasor.png', pixelRatio: 2);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
   });
 }

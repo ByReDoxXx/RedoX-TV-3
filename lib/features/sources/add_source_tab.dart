@@ -8,9 +8,6 @@ import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
-import '../../core/theme/redox_shapes.dart';
-import '../../core/ui/category_chip.dart';
-import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_icon.dart';
 import 'file_browser_page.dart';
 import 'widgets/phone_qr_dialog.dart';
@@ -229,15 +226,24 @@ class _AddSourceTabState extends State<AddSourceTab> {
     });
   }
 
+  /// Yöntem grupları (başlık, açıklama, yöntemler).
+  static const _groups = [
+    ('İnternetten', 'Liste ya da sayfa adresiyle', [AddMethod.m3u, AddMethod.json, AddMethod.html, AddMethod.bulk]),
+    ('Hesapla', 'Sağlayıcının verdiği bilgilerle', [AddMethod.xtream, AddMethod.portal, AddMethod.mediaHub]),
+    ('Bu cihazdan', 'Dosya, USB/SSD klasörü ya da telefon', [AddMethod.file, AddMethod.folder, AddMethod.phone]),
+  ];
+
+  /// Bu içerikte ve cihazda görünen yöntem mi: telefonda "Telefondan", Canlı
+  /// TV'de "Klasörden" (videolar Film/Dizi olur) yok.
+  bool _shown(AddMethod m, {required bool phone}) =>
+      !(phone && m == AddMethod.phone) && !(_content == SourceContent.live && m == AddMethod.folder);
+
   @override
   Widget build(BuildContext context) {
     final metrics = Theme.of(context).extension<RedoxMetrics>()!;
     final phone = metrics.formFactor == FormFactor.phone;
     final t = Theme.of(context).textTheme;
-    final methods = [
-      for (final m in AddMethod.values)
-        if (!(phone && m == AddMethod.phone)) m,
-    ];
+    var first = true;
     return SingleChildScrollView(
       padding: widget.padding,
       child: Column(
@@ -252,42 +258,163 @@ class _AddSourceTabState extends State<AddSourceTab> {
                   )
                 : null,
           ),
+          const SizedBox(height: 14),
+          // 1. İçerik: Canlı TV, Film, Dizi.
+          _StepTitle(number: 1, title: 'Ne ekliyorsunuz?'),
           const SizedBox(height: 10),
-          // İçerik: Canlı TV, Film, Dizi.
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
+          TileGrid(
+            columns: 3,
+            minWidth: phone ? 0 : 130,
             children: [
               for (final c in SourceContent.values)
-                CategoryChip(label: c.label, selected: c == _content, onPressed: () => setState(() => _content = c)),
+                _ContentCard(
+                  content: c,
+                  selected: c == _content,
+                  compact: phone,
+                  onPressed: () => setState(() => _content = c),
+                ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             'Eklenen her liste ${_content.section} bölümünde bir klasör olur.',
-            style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+            style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
           ),
-          const SizedBox(height: 12),
-          TileGrid(
-            columns: phone ? 2 : 3,
-            minWidth: phone ? 0 : 200,
-            children: [
-              for (final (i, m) in methods.indexed)
-                _MethodTile(method: m, compact: phone, autofocus: i == 0, onPressed: _busy ? null : () => _choose(m)),
+          const SizedBox(height: 18),
+          // 2. Yöntem, gruplar hâlinde.
+          _StepTitle(number: 2, title: 'Nereden?'),
+          for (final (title, detail, methods) in _groups)
+            if (methods.where((m) => _shown(m, phone: phone)).toList() case final shown when shown.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: title,
+                      style: const TextStyle(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                    ),
+                    TextSpan(text: '  ·  $detail'),
+                  ],
+                ),
+                style: t.labelLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              TileGrid(
+                columns: phone ? 2 : 3,
+                minWidth: phone ? 0 : 200,
+                children: [
+                  for (final m in shown)
+                    _MethodTile(
+                      method: m,
+                      tint: kindTint(_content.kind),
+                      compact: phone,
+                      autofocus: () {
+                        final f = first;
+                        first = false;
+                        return f;
+                      }(),
+                      onPressed: _busy ? null : () => _choose(m),
+                    ),
+                ],
+              ),
             ],
-          ),
         ],
       ),
     );
   }
 }
 
+/// Adım başlığı: kızıl daire içinde numara ve soru.
+class _StepTitle extends StatelessWidget {
+  const _StepTitle({required this.number, required this.title});
+
+  final int number;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(color: RedoxSeeds.crimson, shape: BoxShape.circle),
+          child: Text(
+            '$number',
+            style: t.labelMedium!.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
+}
+
+/// İçerik kartı (Canlı TV, Film, Dizi): seçili olan kızıl çerçeveli,
+/// ikonu türün renginde.
+class _ContentCard extends StatelessWidget {
+  const _ContentCard({required this.content, required this.selected, required this.onPressed, this.compact = false});
+
+  final SourceContent content;
+  final bool selected;
+  final bool compact;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tint = kindTint(content.kind);
+    final label = Text(
+      content.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: t.titleSmall!.copyWith(
+        color: selected ? RedoxRoles.onSurface : RedoxRoles.onSurfaceVariant,
+        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+      ),
+    );
+    return CardShell(
+      onPressed: onPressed,
+      selected: selected,
+      height: compact ? 56 : 88,
+      // Dar bölmede (Ayarlar'ın sağı) ikon üstte, ad altta: yan yana "Canlı
+      // TV" kesiliyordu.
+      builder: (active) => compact
+          ? Center(child: label)
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconTile(icon: content.icon, tint: tint, active: active || selected, size: 36),
+                const SizedBox(height: 6),
+                label,
+              ],
+            ),
+    );
+  }
+}
+
+/// Ekleme yöntemi kutusu: renkli ikon, tek satır başlık ve açıklama; bütün
+/// kutular eşit yükseklikte (önce açıklama sarılınca boylar farklıydı).
 class _MethodTile extends StatelessWidget {
-  const _MethodTile({required this.method, this.onPressed, this.autofocus = false, this.compact = false});
+  const _MethodTile({
+    required this.method,
+    required this.tint,
+    this.onPressed,
+    this.autofocus = false,
+    this.compact = false,
+  });
 
   final AddMethod method;
+  final Color tint;
 
-  /// Telefon: dar kutu; başlık iki satıra iner, açıklama yok.
+  /// Telefon: dar kutu; açıklama yok.
   final bool compact;
   final VoidCallback? onPressed;
   final bool autofocus;
@@ -296,55 +423,36 @@ class _MethodTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final m = method;
-    final radius = BorderRadius.circular(RedoxRadius.lg);
-    return FocusGlow(
-      borderRadius: radius,
-      builder: (context, active) => Material(
-        color: active ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainer,
-        borderRadius: radius,
-        child: InkWell(
-          onTap: onPressed,
-          autofocus: autofocus,
-          borderRadius: radius,
-          focusColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
+    return CardShell(
+      onPressed: onPressed,
+      autofocus: autofocus,
+      height: compact ? 64 : 86,
+      builder: (active) => Row(
+        children: [
+          IconTile(icon: m.icon, tint: active ? RedoxSeeds.amber : tint, active: active, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: (active ? RedoxSeeds.amber : RedoxSeeds.crimson).withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: RedoxIcon(m.icon, size: 20, color: active ? RedoxSeeds.amber : RedoxRoles.primary),
+                Text(
+                  m.title,
+                  maxLines: compact ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-                      ),
-                      if (!compact)
-                        Text(
-                          m.subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                        ),
-                    ],
+                if (!compact)
+                  Text(
+                    m.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
                   ),
-                ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
