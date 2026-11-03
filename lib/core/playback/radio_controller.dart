@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../content/live_channel.dart';
 import '../content/song_history.dart';
 import 'radio_audio.dart';
+import 'sleep_timer.dart';
 
 /// Radyonun durumu (arayüzdeki rozet ve düğmeler buna göre).
 enum RadioStatus {
@@ -100,7 +101,7 @@ class RadioController extends ChangeNotifier {
   }
 
   /// Uyku zamanlayıcısı seçenekleri (dakika).
-  static const sleepChoices = [30, 60, 90];
+  static const sleepChoices = SleepTimer.choices;
 
   RadioAudio _ensureAudio() {
     final existing = _audio;

@@ -32,6 +32,7 @@ class PlaybackSession extends ChangeNotifier {
     required int initialIndex,
     this.startupTimeout = defaultStartupTimeout,
     this.staleErrorWindow = const Duration(seconds: 1),
+    this.stallTimeout = defaultStallTimeout,
     this.rank,
     this.resolve,
     this.failover = true,
@@ -60,6 +61,13 @@ class PlaybackSession extends ChangeNotifier {
   /// [startupTimeout] yakalar.
   final Duration staleErrorWindow;
 
+  /// Açılmış canlı yayın bu süre ön belleğe alınırsa (donarsa) sıradaki
+  /// akışa geçilir; tek akışlı kanalda aynı akış yeniden açılır. mpv kısa
+  /// takılmaları kendisi atlatır; süre onlara dokunmayacak kadar uzun.
+  final Duration stallTimeout;
+
+  static const defaultStallTimeout = Duration(seconds: 12);
+
   /// Akış sıralayıcı; null ise listedeki sıra.
   final StreamRanker? rank;
 
@@ -75,6 +83,7 @@ class PlaybackSession extends ChangeNotifier {
   late final StreamSubscription<String> _errorSubscription;
   Timer? _startupTimer;
   Timer? _staleTimer;
+  Timer? _stallTimer;
 
   int _index = 0;
   int _stream = 0;
@@ -135,6 +144,8 @@ class PlaybackSession extends ChangeNotifier {
 
   void _play() {
     _startupTimer?.cancel();
+    _stallTimer?.cancel();
+    _stallTimer = null;
     _lastError = null;
     if (_streams.isEmpty) {
       _setStatus(PlaybackStatus.failed);
@@ -170,10 +181,30 @@ class PlaybackSession extends ChangeNotifier {
   }
 
   void _onEngine() {
-    if (_status == PlaybackStatus.loading && engine.state.value.hasVideo) {
+    final e = engine.state.value;
+    if (_status == PlaybackStatus.loading && e.hasVideo) {
       _startupTimer?.cancel();
       _setStatus(PlaybackStatus.playing);
     }
+    // Yalnız canlı yayın: filmde yeniden açmak izlenen yeri kaybettirir.
+    if (failover && _status == PlaybackStatus.playing && e.buffering && !e.seekable) {
+      _stallTimer ??= Timer(stallTimeout, _onStall);
+    } else {
+      _stallTimer?.cancel();
+      _stallTimer = null;
+    }
+  }
+
+  /// Açılmış yayın [stallTimeout] boyunca dondu.
+  void _onStall() {
+    _stallTimer = null;
+    final next = streamCount > 1 ? (_stream + 1) % streamCount : _stream;
+    Diagnostics.instance.log(
+      'oynatıcı',
+      '${channel.name}: akış ${_stream + 1} dondu, ${next == _stream ? 'yeniden açıldı' : 'akış ${next + 1} açıldı'}',
+    );
+    _stream = next;
+    _play();
   }
 
   void _onError(String message) {
@@ -239,6 +270,7 @@ class PlaybackSession extends ChangeNotifier {
     _disposed = true;
     _startupTimer?.cancel();
     _staleTimer?.cancel();
+    _stallTimer?.cancel();
     unawaited(_errorSubscription.cancel());
     engine.state.removeListener(_onEngine);
     super.dispose();

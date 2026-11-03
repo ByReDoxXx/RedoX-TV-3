@@ -386,6 +386,33 @@ class MediaKitEngine implements PlaybackEngine {
   });
 
   @override
+  Future<StreamStats> stats() async {
+    final native = _player.platform;
+    if (native is! NativePlayer) return const StreamStats();
+    Future<String?> get(String name) async {
+      try {
+        final v = (await native.getProperty(name)).trim();
+        return v.isEmpty ? null : v;
+      } on Object {
+        return null;
+      }
+    }
+
+    final hwdec = await get('hwdec-current');
+    final cache = double.tryParse(await get('demuxer-cache-duration') ?? '');
+    return StreamStats(
+      videoCodec: await get('video-codec'),
+      audioCodec: await get('audio-codec-name'),
+      decoder: hwdec == null || hwdec == 'no' ? 'yazılım' : hwdec,
+      fps: double.tryParse(await get('estimated-vf-fps') ?? ''),
+      videoBitrate: double.tryParse(await get('video-bitrate') ?? '')?.round(),
+      audioBitrate: double.tryParse(await get('audio-bitrate') ?? '')?.round(),
+      cache: cache == null ? null : Duration(milliseconds: (cache * 1000).round()),
+      droppedFrames: int.tryParse(await get('frame-drop-count') ?? ''),
+    );
+  }
+
+  @override
   Widget view({BoxFit fit = BoxFit.contain}) =>
       // Denetimler uygulamanındır (alt çubuk); media_kit'inkiler kapalı.
       Video(

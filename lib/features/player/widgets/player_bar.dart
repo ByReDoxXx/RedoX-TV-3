@@ -428,10 +428,13 @@ class _BarButton extends StatelessWidget {
 /// (eski sürümdeki gibi): OK Kontroller · ▲▼ Kanal · ◄ Kanal listesi ·
 /// ► Sonraki akış.
 class PlayerHints extends StatelessWidget {
-  const PlayerHints({super.key, required this.multiStream});
+  const PlayerHints({super.key, required this.multiStream, this.previous = false});
 
   /// Tek akışlı kanalda "Sonraki akış" ipucu yazılmaz.
   final bool multiStream;
+
+  /// Önceki kanal var: "0 Önceki kanal" ipucu.
+  final bool previous;
 
   @override
   Widget build(BuildContext context) {
@@ -467,6 +470,7 @@ class PlayerHints extends StatelessWidget {
             hint(keyIcons(const [RedoxIcons.expandLess, RedoxIcons.expandMore]), 'Kanal'),
             hint(keyIcons(const [RedoxIcons.chevronLeft]), 'Kanal listesi'),
             if (multiStream) hint(keyIcons(const [RedoxIcons.chevronRight]), 'Sonraki akış'),
+            if (previous) hint(const KeyHint('0', color: fg), 'Önceki kanal'),
           ],
         ),
       ),

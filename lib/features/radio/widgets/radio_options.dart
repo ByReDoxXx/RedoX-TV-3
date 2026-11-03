@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/content/favorites.dart';
 import '../../../core/layout/form_factor.dart';
 import '../../../core/playback/radio_controller.dart';
+import '../../../core/playback/sleep_timer.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
@@ -51,17 +52,10 @@ class RadioOptions extends StatelessWidget {
   final RadioController radio;
   final Favorites? favorites;
 
-  static String sleepLabel(Duration? left) => switch (left) {
-    null => 'Kapalı',
-    final d => '${(d.inSeconds / 60).ceil()} dk',
-  };
+  static String sleepLabel(Duration? left) => SleepTimer.label(left);
 
   /// Sıradaki uyku süresi: Kapalı → 30 → 60 → 90 → Kapalı.
-  static int? nextSleep(Duration? left) {
-    if (left == null) return RadioController.sleepChoices.first;
-    final m = (left.inSeconds / 60).ceil();
-    return RadioController.sleepChoices.where((c) => c > m).firstOrNull;
-  }
+  static int? nextSleep(Duration? left) => SleepTimer.next(left);
 
   @override
   Widget build(BuildContext context) {

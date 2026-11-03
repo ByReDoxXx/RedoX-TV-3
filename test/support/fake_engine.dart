@@ -116,6 +116,21 @@ class FakeEngine implements PlaybackEngine {
   }
 
   @override
+  Future<StreamStats> stats() async => const StreamStats(
+    videoCodec: 'h264',
+    audioCodec: 'aac',
+    decoder: 'mediacodec',
+    fps: 25,
+    videoBitrate: 4200000,
+    audioBitrate: 128000,
+    cache: Duration(seconds: 8),
+    droppedFrames: 0,
+  );
+
+  /// Yayın takıldı (ön belleğe alınıyor) ya da sürüyor.
+  void setBuffering(bool v) => _state.value = _state.value.copyWith(buffering: v);
+
+  @override
   Future<void> dispose() async {
     disposed = true;
     await _errors.close();

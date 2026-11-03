@@ -23,7 +23,8 @@ enum VideoScale {
 /// Oynatıcı Seçenekler menüsü (eski sürümden): Kalite, Ses, Altyazı, Ölçek,
 /// Önceki kanal, Oynatıcıdan çık; altta ölçülen çözünürlük. Seçimli satır
 /// alt listeye geçer; Geri alt listeden ana listeye, ana listeden kapatır
-/// ([handleBack]). Eski sürümdeki gece modu, küçük pencere, 2×2, kanalı gizle
+/// ([handleBack]). Uyku zamanlayıcı ve yayın bilgisi tek satırda değişir.
+/// Eski sürümdeki gece modu, küçük pencere, 2×2, kanalı gizle
 /// sonraki aşamadadır: işlevi olmayan satır gösterilmez.
 class PlayerOptions extends StatefulWidget {
   const PlayerOptions({
@@ -40,7 +41,20 @@ class PlayerOptions extends StatefulWidget {
     this.onExit,
     this.onClose,
     this.onRestart,
+    this.sleepLabel,
+    this.onSleep,
+    this.statsShown = false,
+    this.onStats,
   });
+
+  /// Uyku zamanlayıcı ("Kapalı", "28 dk"); satıra basmak sıradaki süreye
+  /// geçer (Kapalı → 30 → 60 → 90 → Kapalı).
+  final String? sleepLabel;
+  final VoidCallback? onSleep;
+
+  /// Yayın bilgisi paneli açık mı; satır açar/kapatır.
+  final bool statsShown;
+  final VoidCallback? onStats;
 
   final EngineState engine;
   final VideoScale scale;
@@ -201,6 +215,15 @@ class PlayerOptionsState extends State<PlayerOptions> {
         label: 'Önceki kanal',
         value: widget.previousChannelName!,
         onPressed: widget.onPreviousChannel,
+      ),
+    if (widget.onSleep case final sleep?)
+      _Row(icon: RedoxIcons.clock, label: 'Uyku zamanlayıcı', value: widget.sleepLabel, onPressed: sleep),
+    if (widget.onStats case final stats?)
+      _Row(
+        icon: RedoxIcons.info,
+        label: 'Yayın bilgisi',
+        value: widget.statsShown ? 'Açık' : 'Kapalı',
+        onPressed: stats,
       ),
     _Row(icon: RedoxIcons.close, label: 'Oynatıcıdan çık', onPressed: widget.onExit),
   ];

@@ -14,6 +14,7 @@ import '../../core/theme/redox_metrics.dart';
 import '../../core/playback/engine/media_kit_engine.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../../core/playback/playback_session.dart';
+import '../../core/playback/sleep_timer.dart';
 import '../../core/playback/stream_probe.dart';
 import 'widgets/channel_drawer.dart';
 import 'widgets/player_bar.dart';
@@ -28,6 +29,8 @@ import 'widgets/vod_title.dart';
 /// - ▲ / ▼ (ve Kanal +/-): sonraki / önceki kanal.
 /// - ◄: hızlı kanal listesi. ►: sonraki akış.
 /// - 0-9: kanal numarası (1,5 sn sonra açılır); tek başına 0: önceki kanal.
+/// Seçenekler'de uyku zamanlayıcı (süre dolunca yayın durur, oynatıcı
+/// kapanır; son dakikada uyarı) ve yayın bilgisi paneli.
 /// - Geri: açık menüyü, listeyi, çubuğu kapatır; hiçbiri açık değilse çıkar.
 /// Kanal değişince çubuk ve ipuçları 3,8 sn görünür (eski sürümdeki gibi).
 /// Dokunmatikte videoya dokunmak çubuğu açıp kapatır.
@@ -127,6 +130,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   bool _hints = false;
   bool _options = false;
   bool _drawer = false;
+  bool _stats = false;
   String _digits = '';
   String? _notice;
 
@@ -146,6 +150,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   Timer? _barTimer;
   Timer? _digitTimer;
   Timer? _noticeTimer;
+
+  /// Uyku zamanlayıcı: süre dolunca oynatıcı kapanır.
+  late final _sleep = SleepTimer(_onSleep);
+  Timer? _sleepWarning;
 
   bool get _keys => Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
 
@@ -187,6 +195,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _digitTimer?.cancel();
     _noticeTimer?.cancel();
     _seekTimer?.cancel();
+    _sleep.cancel();
+    _sleepWarning?.cancel();
     _session.removeListener(_onSession);
     _session.dispose();
     unawaited(_engine.dispose());
@@ -248,6 +258,26 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       duration: e.duration,
       series: widget.mode == PlayerMode.series,
     );
+  }
+
+  /// Seçenekler › Uyku zamanlayıcı: sıradaki süre.
+  void _cycleSleep() {
+    final minutes = SleepTimer.next(_sleep.left);
+    _sleep.set(minutes);
+    _sleepWarning?.cancel();
+    if (minutes != null) {
+      _sleepWarning = Timer(Duration(minutes: minutes - 1), () {
+        if (mounted) _notify('Oynatıcı 1 dk sonra kapanacak');
+      });
+    }
+    setState(() {});
+    _notify(minutes == null ? 'Uyku zamanlayıcı kapalı' : '$minutes dk sonra kapanacak');
+  }
+
+  void _onSleep() {
+    if (!mounted) return;
+    if (_engine.state.value.playing) unawaited(_engine.playOrPause());
+    Navigator.of(context).pop();
   }
 
   /// Baştan izle (Seçenekler).
@@ -538,6 +568,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         _closeOptions();
         s.openPrevious();
       },
+      sleepLabel: SleepTimer.label(_sleep.left),
+      onSleep: _cycleSleep,
+      statsShown: _stats,
+      onStats: () => setState(() => _stats = !_stats),
       onExit: () => Navigator.of(context).pop(),
     ),
   );
@@ -683,7 +717,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                             if (_hints) ...[
                               Align(
                                 alignment: Alignment.centerLeft,
-                                child: PlayerHints(multiStream: s.streamCount > 1),
+                                child: PlayerHints(multiStream: s.streamCount > 1, previous: s.previousChannel != null),
                               ),
                               const SizedBox(height: 10),
                             ],
@@ -728,6 +762,14 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                             s.openAt(i);
                           },
                         ),
+                      ),
+                    ),
+                  if (_stats)
+                    Positioned(
+                      top: _keys ? 64 : 72,
+                      right: 24,
+                      child: SafeArea(
+                        child: PlayerStats(engine: _engine, stream: 'Akış ${s.streamIndex + 1}/${s.streamCount}'),
                       ),
                     ),
                   if (_digits.isNotEmpty) Positioned(top: 24, left: 24, child: PlayerDigits(_digits)),

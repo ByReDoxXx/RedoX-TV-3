@@ -93,6 +93,37 @@ class EngineState {
   );
 }
 
+/// Yayın bilgisi paneli (Seçenekler › Yayın bilgisi): motorun ölçtükleri;
+/// bilinmeyen değer null.
+@immutable
+class StreamStats {
+  const StreamStats({
+    this.videoCodec,
+    this.audioCodec,
+    this.decoder,
+    this.fps,
+    this.videoBitrate,
+    this.audioBitrate,
+    this.cache,
+    this.droppedFrames,
+  });
+
+  final String? videoCodec;
+  final String? audioCodec;
+
+  /// Donanım çözücü ("mediacodec"); yazılımla çözülüyorsa "yazılım".
+  final String? decoder;
+  final double? fps;
+
+  /// Bit hızı (bit/sn).
+  final int? videoBitrate;
+  final int? audioBitrate;
+
+  /// Ön bellekteki süre (ileriye okunan).
+  final Duration? cache;
+  final int? droppedFrames;
+}
+
 /// Oynatma motoru: arayüz, kullanılan kütüphaneden (media_kit) bağımsızdır.
 /// Testler sahte bir motorla koşar (yerel video kütüphanesi test ortamında
 /// yoktur).
@@ -119,6 +150,9 @@ abstract class PlaybackEngine {
   Future<void> selectVideoTrack(String id);
   Future<void> selectAudioTrack(String id);
   Future<void> selectSubtitleTrack(String id);
+
+  /// Anlık yayın bilgisi (panel saniyede bir sorar).
+  Future<StreamStats> stats();
 
   /// Görüntü yüzeyi.
   Widget view({BoxFit fit = BoxFit.contain});

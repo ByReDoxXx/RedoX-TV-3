@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/redox_colors.dart';
@@ -5,6 +7,7 @@ import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
+import '../../../core/playback/engine/playback_engine.dart';
 import '../../../core/playback/playback_session.dart';
 
 // Oynatıcının görüntü üstü katmanları (PlayerPage).
@@ -141,4 +144,93 @@ class PlayerNotice extends StatelessWidget {
     ),
     child: Text(text, style: RedoxType.labelLg.copyWith(color: RedoxRoles.onSurface)),
   );
+}
+
+/// Yayın bilgisi paneli (Seçenekler › Yayın bilgisi): çözünürlük, kodek,
+/// çözücü, kare hızı, bit hızı, ön bellek ve atlanan kare; saniyede bir
+/// motordan okunur. Bozuk akışları ayırt etmek için.
+class PlayerStats extends StatefulWidget {
+  const PlayerStats({super.key, required this.engine, required this.stream});
+
+  final PlaybackEngine engine;
+
+  /// Örn. "Akış 1/2".
+  final String stream;
+
+  /// Örn. 4200000 → "4,2 Mb/sn", 128000 → "128 kb/sn".
+  static String bitrate(int? bps) => switch (bps) {
+    null || <= 0 => '—',
+    final b when b >= 1000000 => '${_decimal(b / 1000000)} Mb/sn',
+    final b => '${(b / 1000).round()} kb/sn',
+  };
+
+  /// Tek basamaklı ondalık, virgülle: 8.25 → "8,3".
+  static String _decimal(double v) => v.toStringAsFixed(1).replaceAll('.', ',');
+
+  @override
+  State<PlayerStats> createState() => _PlayerStatsState();
+}
+
+class _PlayerStatsState extends State<PlayerStats> {
+  StreamStats _stats = const StreamStats();
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_read());
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => unawaited(_read()));
+  }
+
+  Future<void> _read() async {
+    final s = await widget.engine.stats();
+    if (mounted) setState(() => _stats = s);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.engine.state.value;
+    final s = _stats;
+    final rows = [
+      ('Görüntü', e.hasVideo ? '${e.width}×${e.height}' : '—'),
+      ('Kodek', '${s.videoCodec ?? '—'} · ${s.audioCodec ?? '—'}'),
+      ('Çözücü', s.decoder ?? '—'),
+      ('Kare hızı', s.fps == null ? '—' : '${PlayerStats._decimal(s.fps!)} fps'),
+      ('Bit hızı', '${PlayerStats.bitrate(s.videoBitrate)} · ${PlayerStats.bitrate(s.audioBitrate)}'),
+      ('Ön bellek', s.cache == null ? '—' : '${PlayerStats._decimal(s.cache!.inMilliseconds / 1000)} sn'),
+      ('Atlanan kare', '${s.droppedFrames ?? '—'}'),
+      ('Akış', widget.stream),
+    ];
+    final label = RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant);
+    final value = RedoxType.bodySm.copyWith(
+      color: RedoxRoles.onSurface,
+      fontWeight: FontWeight.w600,
+      fontFeatures: RedoxType.tabular,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(color: const Color(0xCC000000), borderRadius: BorderRadius.circular(RedoxRadius.md)),
+      child: Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
+        children: [
+          for (final (k, v) in rows)
+            TableRow(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12, bottom: 2),
+                  child: Text(k, style: label),
+                ),
+                Text(v, style: value),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 }

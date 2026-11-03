@@ -11,6 +11,7 @@ import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/channel_drawer.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
 import 'package:redox_tv/features/player/widgets/player_options.dart';
+import 'package:redox_tv/features/player/widgets/player_overlays.dart';
 import 'package:redox_tv/features/player/widgets/seek_bar.dart';
 import 'package:redox_tv/features/player/widgets/touch_controls.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
@@ -141,6 +142,83 @@ void main() {
     await _settle(tester);
     expect(find.text('Tekrar dene'), findsNothing);
     await tester.pump(PlaybackSession.defaultStartupTimeout);
+  });
+
+  testWidgets('açılmış yayın donarsa (12 sn ön bellek) yedek akışa geçer; kısa takılma geçmez', (tester) async {
+    final e = await _open(tester);
+    expect(_channels.first.streams.length, greaterThan(1));
+    e.setBuffering(true);
+    await tester.pump(const Duration(seconds: 5));
+    e.setBuffering(false);
+    await tester.pump(PlaybackSession.defaultStallTimeout);
+    expect(e.opened.length, 1);
+
+    e.setBuffering(true);
+    await tester.pump(PlaybackSession.defaultStallTimeout);
+    await _settle(tester);
+    expect(e.opened, [_channels.first.streams[0], _channels.first.streams[1]]);
+    expect(_bar(tester).streamIndex, 1);
+    await tester.pump(PlaybackSession.defaultStartupTimeout);
+  });
+
+  testWidgets('filmde donma yedeğe geçirmez (izlenen yer kaybolmasın)', (tester) async {
+    final e = await _open(tester);
+    e
+      ..setDuration(const Duration(minutes: 90))
+      ..setBuffering(true);
+    await tester.pump(PlaybackSession.defaultStallTimeout * 2);
+    expect(e.opened.length, 1);
+  });
+
+  testWidgets('Seçenekler: uyku zamanlayıcı 30 → 60 → 90 → kapalı; süre dolunca oynatıcı kapanır', (tester) async {
+    final e = await _open(tester);
+    await tester.pump(PlayerPage.announceDuration);
+    await _settle(tester);
+    await _key(tester, LogicalKeyboardKey.contextMenu);
+    await tester.tap(find.text('Uyku zamanlayıcı'));
+    await _settle(tester);
+    expect(find.text('30 dk sonra kapanacak'), findsOneWidget);
+    expect(find.text('30 dk'), findsOneWidget);
+    for (final next in ['60 dk', '90 dk', 'Kapalı']) {
+      await tester.tap(find.text('Uyku zamanlayıcı'));
+      await _settle(tester);
+      expect(find.descendant(of: find.byType(PlayerOptions), matching: find.text(next)), findsWidgets);
+    }
+    expect(find.text('Uyku zamanlayıcı kapalı'), findsOneWidget);
+
+    await tester.tap(find.text('Uyku zamanlayıcı'));
+    await _settle(tester);
+    await tester.pump(const Duration(minutes: 29));
+    await tester.pump();
+    expect(find.text('Oynatıcı 1 dk sonra kapanacak'), findsOneWidget);
+    await tester.pump(const Duration(minutes: 1));
+    await _settle(tester, const Duration(seconds: 1));
+    expect(find.byType(PlayerPage), findsNothing);
+    expect(e.state.value.playing, isFalse);
+  });
+
+  testWidgets('Seçenekler › Yayın bilgisi paneli açar ve kapatır', (tester) async {
+    await _open(tester);
+    await tester.pump(PlayerPage.announceDuration);
+    await _settle(tester);
+    await _key(tester, LogicalKeyboardKey.contextMenu);
+    await tester.tap(find.text('Yayın bilgisi'));
+    await _settle(tester);
+    expect(find.byType(PlayerStats), findsOneWidget);
+    expect(find.text('1280×720'), findsOneWidget);
+    expect(find.text('h264 · aac'), findsOneWidget);
+    expect(find.text('4,2 Mb/sn · 128 kb/sn'), findsOneWidget);
+    expect(find.text('8,0 sn'), findsOneWidget);
+    await tester.tap(find.text('Yayın bilgisi'));
+    await _settle(tester);
+    expect(find.byType(PlayerStats), findsNothing);
+  });
+
+  testWidgets('kanal değişince ipuçlarında "0 Önceki kanal"', (tester) async {
+    await _open(tester);
+    expect(find.text('Önceki kanal'), findsNothing);
+    await _key(tester, LogicalKeyboardKey.arrowUp);
+    expect(find.descendant(of: find.byType(PlayerHints), matching: find.text('Önceki kanal')), findsOneWidget);
   });
 
   testWidgets('▲▼ kanal değiştirir, ► sonraki akış, ◄ kanal listesi', (tester) async {
