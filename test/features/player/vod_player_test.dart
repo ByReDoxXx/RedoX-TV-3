@@ -1,13 +1,18 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
+import 'package:redox_tv/core/content/tmdb.dart';
 import 'package:redox_tv/core/content/watch_progress.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
 import 'package:redox_tv/features/player/widgets/touch_controls.dart';
+import 'package:redox_tv/features/player/widgets/vod_tv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fake_engine.dart';
 import '../../support/render.dart';
@@ -25,6 +30,7 @@ Future<FakeEngine> _open(
   WatchProgress? progress,
   List<LiveChannel> channels = _episodes,
   GlobalKey? boundary,
+  Tmdb? tmdb,
 }) async {
   await loadSora(tester);
   tester.view.physicalSize = size;
@@ -43,6 +49,7 @@ Future<FakeEngine> _open(
         engineFactory: () => e,
         mode: mode,
         progress: progress,
+        tmdb: tmdb,
       ),
     ),
   );
@@ -131,5 +138,75 @@ void main() {
     expect(e.opened, ['http://f/1'], reason: 'filmde ▲▼ kanal değiştirmez');
     await tester.pumpWidget(const SizedBox());
     expect(progress.resumeAt('http://f/1'), const Duration(minutes: 33));
+  });
+
+  testWidgets('TV dizi: ▲ bölüm şeridi (odak sıradakinde), OK bölümü açar, ▼ kapatır; duraklatınca afiş ve özet', (
+    tester,
+  ) async {
+    final progress = WatchProgress()
+      ..record(
+        _episodes[0],
+        position: const Duration(minutes: 20),
+        duration: const Duration(minutes: 45),
+        series: true,
+      );
+    final key = GlobalKey();
+    SharedPreferences.setMockInitialValues({});
+    final tmdb = Tmdb(
+      token: 'x',
+      fetch: (uri, _) async => utf8.encode(
+        jsonEncode({
+          'results': [
+            {'id': 7, 'name': 'Adanalı', 'overview': 'Bir dedektif dizisi.', 'vote_average': 7.6},
+          ],
+        }),
+      ),
+    );
+    final e = await _open(
+      tester,
+      f: FormFactor.tv,
+      size: const Size(960, 540),
+      mode: PlayerMode.series,
+      progress: progress,
+      boundary: key,
+      tmdb: tmdb,
+    );
+    e.setDuration(const Duration(minutes: 45), at: const Duration(minutes: 20));
+    await tester.pump(const Duration(seconds: 5));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(EpisodeStrip), findsOneWidget);
+    expect(find.byType(VodBar), findsOneWidget);
+    expect(find.text('B3 · oynatılıyor'), findsOneWidget);
+    expect(e.opened, ['http://o/s2e3.mkv'], reason: '▲ bölüm değiştirmez, şeridi açar');
+    expect(tester.takeException(), isNull);
+    await maybeSnapshot(tester, key, 'build/oynatici/dizi-serit-tv.png');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(EpisodeStrip), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(EpisodeStrip), findsNothing);
+    expect(e.opened.last, 'http://o/s2e4.mkv');
+
+    // Duraklat: solda afiş, ad, puan ve özet.
+    await tester.pump(PlayerPage.announceDuration);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(VodInfo), findsNothing, reason: 'oynarken çubuk kapalıyken bilgi yok');
+    await tester.sendKeyEvent(LogicalKeyboardKey.mediaPlayPause);
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byType(VodInfo), findsOneWidget);
+    expect(find.text('Bir dedektif dizisi.'), findsOneWidget);
+    expect(find.textContaining('7.6 TMDB', findRichText: true), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await maybeSnapshot(tester, key, 'build/oynatici/dizi-duraklat-tv.png');
+    await tester.pump(const Duration(seconds: 20));
   });
 }

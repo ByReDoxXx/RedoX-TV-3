@@ -393,6 +393,7 @@ class _RootShellState extends State<RootShell> {
           resolve: from == null ? null : widget.sources?.resolve,
           mode: mode,
           progress: mode == PlayerMode.live ? null : widget.progress,
+          tmdb: mode == PlayerMode.live ? null : Tmdb.shared,
         ),
       );
     } finally {

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../core/content/app_settings.dart';
 import '../../core/content/channel_folder.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/tmdb.dart';
 import '../../core/content/watch_progress.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/device_controls.dart';
@@ -24,10 +25,11 @@ import 'widgets/player_overlays.dart';
 import 'widgets/seek_bar.dart';
 import 'widgets/touch_controls.dart';
 import 'widgets/vod_title.dart';
+import 'widgets/vod_tv.dart';
 
 /// Tam ekran oynatıcı (eski sürümün özellikleriyle). Kumanda:
 /// - OK: alt çubuğu açar, odak oynat/duraklatta.
-/// - ▲ / ▼ (ve Kanal +/-): sonraki / önceki kanal.
+/// - ▲ / ▼ (ve Kanal +/-): sonraki / önceki kanal; dizide ▲ bölüm şeridi.
 /// - ◄: hızlı kanal listesi. ►: sonraki akış.
 /// - 0-9: kanal numarası (1,5 sn sonra açılır); tek başına 0: önceki kanal.
 /// Telefon/tablette Ana ekrana çıkınca resim içinde resim (yalnız görüntü).
@@ -52,9 +54,13 @@ class PlayerPage extends StatefulWidget {
     this.resolve,
     this.mode = PlayerMode.live,
     this.progress,
+    this.tmdb,
   });
 
   final PlayerMode mode;
+
+  /// Film/dizi bilgisi (TV'de duraklatınca afiş ve özet); null ise yalnız ad.
+  final Tmdb? tmdb;
 
   /// Film/dizi: kaldığı yerden devam (yazılır ve okunur); null ise yok.
   final WatchProgress? progress;
@@ -86,6 +92,7 @@ class PlayerPage extends StatefulWidget {
     Future<String> Function(String url)? resolve,
     PlayerMode mode = PlayerMode.live,
     WatchProgress? progress,
+    Tmdb? tmdb,
   }) => MaterialPageRoute(
     builder: (_) => PlayerPage(
       channels: channels,
@@ -97,6 +104,7 @@ class PlayerPage extends StatefulWidget {
       resolve: resolve,
       mode: mode,
       progress: progress,
+      tmdb: tmdb,
     ),
   );
 
@@ -338,12 +346,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   }
 
   Widget _vodBar(EngineState e, PlaybackSession s) {
-    final t = vodTitle(s.channel, series: widget.mode == PlayerMode.series);
     return VodBar(
-      title: t.title,
-      subtitle: t.subtitle,
       playing: e.playing,
-      seekBar: e.seekable ? SeekBar(position: _engine.position, duration: e.duration) : null,
+      seekBar: e.seekable ? SeekBar(position: _engine.position, duration: e.duration, remaining: true) : null,
       playFocusNode: _playFocus,
       resolution: e.hasVideo ? '${e.height}p' : null,
       nextLabel: _nextLabel(s),
@@ -397,7 +402,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void _restartBarTimer([Duration duration = PlayerPage.barTimeout]) {
     _barTimer?.cancel();
     _barTimer = Timer(duration, () {
-      if (mounted && !_options && !_drawer) _hideBar();
+      if (mounted && !_options && !_drawer && !_episodes) _hideBar();
     });
   }
 
@@ -430,6 +435,24 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void _closeDrawer() {
     setState(() => _drawer = false);
     _rootFocus.requestFocus();
+  }
+
+  /// Dizi (TV): ▲ ile bölüm şeridi; çubuk açık kalır.
+  bool _episodes = false;
+
+  void _openEpisodes() {
+    _barTimer?.cancel();
+    setState(() {
+      _episodes = true;
+      _bar = true;
+      _hints = false;
+    });
+  }
+
+  void _closeEpisodes() {
+    setState(() => _episodes = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _playFocus.requestFocus());
+    _restartBarTimer();
   }
 
   void _openOptions() {
@@ -480,6 +503,17 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   /// odak gezintisine bırakılır (çubuk, menü, liste düğmeleri).
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) return KeyEventResult.ignored;
+    // Bölüm şeridinde tuşlar şeridin (◄► gezinme, OK, ▼ kapatır).
+    if (_episodes) return KeyEventResult.ignored;
+    if (widget.mode == PlayerMode.series &&
+        _keys &&
+        !_options &&
+        !_drawer &&
+        event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _openEpisodes();
+      return KeyEventResult.handled;
+    }
     if (_bar && !_hints) _restartBarTimer();
     if (_options || _drawer || (_bar && !_hints)) return KeyEventResult.ignored;
     final key = event.logicalKey;
@@ -531,7 +565,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   /// Geri: en üstteki katmanı kapatır; hiçbiri yoksa oynatıcıdan çıkar.
   void _back() {
-    if (_options) {
+    if (_episodes) {
+      _closeEpisodes();
+    } else if (_options) {
       if (_optionsKey.currentState?.handleBack() ?? false) return;
       _closeOptions();
     } else if (_drawer) {
@@ -711,6 +747,33 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+              // TV film/dizi: duraklatınca solda afiş, ad ve özet; oynarken
+              // çubukla birlikte yalnız ad (B tasarımı).
+              if (_keys && _vod && s.status == PlaybackStatus.playing && (_bar || !e.playing)) ...[
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        stops: [0, 0.4, 0.7],
+                        colors: [Color(0xF00B0B20), Color(0xB30B0B20), Color(0x000B0B20)],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 36,
+                  top: 40,
+                  width: e.playing ? 420 : 480,
+                  child: VodInfo(
+                    channel: s.channel,
+                    series: widget.mode == PlayerMode.series,
+                    tmdb: widget.tmdb,
+                    full: !e.playing,
+                  ),
+                ),
+              ],
               if (_bar && _keys) ...[
                 Positioned(top: 16, right: 24, child: PlayerClock(widget.clock)),
                 Positioned(
@@ -739,6 +802,21 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                             child: PlayerHints(multiStream: s.streamCount > 1, previous: s.previousChannel != null),
                           ),
                           const SizedBox(height: 10),
+                        ],
+                        if (_episodes) ...[
+                          FocusScope(
+                            child: EpisodeStrip(
+                              episodes: s.channels,
+                              current: s.index,
+                              progress: widget.progress,
+                              onClose: _closeEpisodes,
+                              onSelect: (i) {
+                                _closeEpisodes();
+                                if (i != s.index) s.openAt(i);
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 14),
                         ],
                         if (_vod)
                           _vodBar(e, s)

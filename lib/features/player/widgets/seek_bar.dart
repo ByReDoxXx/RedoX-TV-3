@@ -9,7 +9,17 @@ import '../../../core/theme/redox_type.dart';
 /// yazısı sürükleneni gösterir, bırakınca sarılır. [onSeek] null ise yalnız
 /// gösterir (TV'de ◄► ile sarılırken).
 class SeekBar extends StatefulWidget {
-  const SeekBar({super.key, required this.position, required this.duration, this.onSeek, this.onDragging});
+  const SeekBar({
+    super.key,
+    required this.position,
+    required this.duration,
+    this.onSeek,
+    this.onDragging,
+    this.remaining = false,
+  });
+
+  /// Sağda toplam süre yerine kalan süre ("−1:18:28").
+  final bool remaining;
 
   final ValueListenable<Duration> position;
   final Duration duration;
@@ -76,7 +86,10 @@ class _SeekBarState extends State<SeekBar> {
                 ),
               ),
             ),
-            Text(SeekBar.format(widget.duration), style: style),
+            Text(
+              widget.remaining ? '−${SeekBar.format(widget.duration - shown)}' : SeekBar.format(widget.duration),
+              style: style,
+            ),
           ],
         );
       },
