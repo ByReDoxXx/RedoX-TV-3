@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
@@ -18,7 +17,9 @@ import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/ui/redox_icon.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
+import 'package:redox_tv/core/ui/story_avatar.dart';
 import 'package:redox_tv/features/home/widgets/hero_banner.dart';
+import 'package:redox_tv/features/home/widgets/resume_board.dart';
 
 import '../../support/render.dart';
 
@@ -56,8 +57,9 @@ void main() {
       // Vitrin: en son izlenen kanal (104) ve şimdiki programı.
       expect(find.descendant(of: find.byType(HeroBanner), matching: find.text('Çeyrek Final')), findsOneWidget);
       expect(find.text('SPOR 1 4K · Kanal 104'), findsOneWidget);
-      // Kısayol yuvası daraltıldı; en uzun etiket yine kesilmeden sığar.
-      expect(tester.renderObject<RenderParagraph>(find.text('Televizyon').first).didExceedMaxLines, isFalse);
+      // Saate göre selam; TV'de bölüm kısayolları yok (ray var).
+      expect(find.text('İyi akşamlar, Profil 1'), findsOneWidget);
+      expect(find.byType(StoryAvatar), findsNothing);
       await maybeSnapshot(tester, key, 'build/home/anasayfa-4k.png', pixelRatio: 4);
     }),
   );
@@ -95,17 +97,22 @@ void main() {
       await settleAssets(tester);
 
       expect(tester.takeException(), isNull);
-      expect(find.text('İzlemeye devam et'), findsOneWidget);
-      expect(find.text('Sezon 2 · Bölüm 5'), findsOneWidget);
+      // Kayıt varken vitrin yerine pano: en yeni kayıt büyük kart.
+      expect(find.text('Kaldığın yerden devam et'), findsOneWidget);
+      expect(find.byType(HeroBanner), findsNothing);
+      final large = find.byWidgetPredicate((w) => w is ResumeTile && w.large);
+      expect(find.descendant(of: large, matching: find.text('Kurtlar Vadisi')), findsOneWidget);
+      expect(find.text('Sezon 2 · Bölüm 5 · 1 sa 18 dk kaldı'), findsOneWidget);
       expect(find.text('Başlangıç'), findsOneWidget);
       expect(find.text('1 sa 48 dk kaldı'), findsOneWidget);
-      expect(find.text('Sıradaki bölümler'), findsOneWidget);
+      expect(find.text('SIRADAKİ'), findsOneWidget);
       expect(find.text('S1 · B9 bitti'), findsOneWidget);
+      expect(find.text('Şu an yayında'), findsOneWidget);
       await maybeSnapshot(tester, key, 'build/home/anasayfa-devam.png', pixelRatio: 2);
-      // Yeni kayıt rafları yeniler.
+      // Yeni kayıt panoyu yeniler.
       progress.remove('http://v/Adanalı S01E09');
       await tester.pump();
-      expect(find.text('Sıradaki bölümler'), findsNothing);
+      expect(find.text('SIRADAKİ'), findsNothing);
     }),
   );
 
@@ -123,7 +130,7 @@ void main() {
       await settleAssets(tester);
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Son izlenen kanallar'), findsOneWidget);
+      expect(find.text('Şu an yayında'), findsOneWidget);
       // Veri kaynağı olmayan raflar (dizi, film, radyo) gösterilmez.
       for (final title in ['İzlemeye devam et', 'Son dinlenen radyolar', 'Son izlenen filmler']) {
         expect(find.text(title), findsNothing, reason: title);
@@ -259,6 +266,71 @@ void main() {
     expect(tester.getSize(find.byType(HeroBanner)).width, tester.getSize(find.byType(AppHeader)).width);
   });
 
+  WatchProgress sample() {
+    LiveChannel item(String name) => LiveChannel(name: name, number: 0, category: 'X', streams: ['http://v/$name']);
+    return WatchProgress()
+      ..record(
+        item('Adanalı S01E09'),
+        position: const Duration(minutes: 44),
+        duration: const Duration(minutes: 45),
+        series: true,
+      )
+      ..record(
+        item('Başlangıç (2010)'),
+        position: const Duration(minutes: 40),
+        duration: const Duration(minutes: 148),
+        series: false,
+      )
+      ..record(
+        item('Kurtlar Vadisi S02E05'),
+        position: const Duration(minutes: 12),
+        duration: const Duration(minutes: 90),
+        series: true,
+      );
+  }
+
+  testWidgets('TV: pano 540 dp ilk ekrana sığar, açılışta büyük kart odakta', (tester) async {
+    await loadSora(tester);
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey();
+    await tester.pumpWidget(_app(key, progress: sample()));
+    await settleAssets(tester);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull);
+    final focused = FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<ResumeTile>();
+    expect(focused?.large, isTrue);
+    // Şeridin başlığı ilk ekranda görünür.
+    expect(tester.getRect(find.text('Şu an yayında')).bottom, lessThan(540));
+    await maybeSnapshot(tester, key, 'build/home/anasayfa-pano-tv.png', pixelRatio: 2);
+  });
+
+  testWidgets('telefon 360 dp: pano taşmasız (büyük kart üstte, küçükler altta)', (tester) async {
+    await loadSora(tester);
+    tester.view.physicalSize = const Size(360, 891);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: RedoxTheme.dark(formFactor: FormFactor.phone),
+          home: RootShell(tv: TvContent.preview, progress: sample()),
+        ),
+      ),
+    );
+    await settleAssets(tester);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull);
+    final large = tester.getRect(find.byWidgetPredicate((w) => w is ResumeTile && w.large));
+    final small = tester.getRect(find.byWidgetPredicate((w) => w is ResumeTile && !w.large).first);
+    expect(small.top, greaterThan(large.bottom));
+    await maybeSnapshot(tester, key, 'build/home/anasayfa-pano-telefon.png', pixelRatio: 3);
+  });
+
   testWidgets('D-pad: açılışta vitrin düğmesi odakta; sol seçili menü öğesine (Anasayfa) gider', (tester) async {
     await loadSora(tester);
     tester.view.physicalSize = const Size(960, 540);
@@ -292,9 +364,9 @@ void main() {
     // Ray içinde aşağı: yönlendirme yok, bir sonraki öğe.
     await press(LogicalKeyboardKey.arrowDown);
     expect(focusedRailLabel(), 'Televizyon');
-    // Sağ: odak içeriğe döner.
     await press(LogicalKeyboardKey.arrowRight);
-    expect(focusInside<RedoxNavRail>(), isFalse);
+    // Sağ: raydan önceki öğeye (vitrin düğmesi) döner.
+    expect(focusInside<PrimaryButton>(), isTrue);
     expect(FocusManager.instance.primaryFocus?.context, isNotNull);
   });
 }

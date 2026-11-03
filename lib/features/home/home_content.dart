@@ -113,6 +113,14 @@ class HomeContent {
   final String profileName;
   final String clock;
 
+  /// Saate göre selam (anasayfa başlığı), örn. "İyi akşamlar".
+  String get greeting => switch ((EpgProgram.parseClock(clock) ?? 12 * 60) ~/ 60) {
+    >= 5 && < 12 => 'Günaydın',
+    >= 12 && < 18 => 'İyi günler',
+    >= 18 && < 23 => 'İyi akşamlar',
+    _ => 'İyi geceler',
+  };
+
   /// Vitrin; kanal listesi boşsa null.
   final HomeHero? hero;
   final List<AppSection> shortcuts;

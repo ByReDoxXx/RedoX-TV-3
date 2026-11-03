@@ -15,7 +15,6 @@ import '../../core/ui/hiding_header.dart';
 import '../../core/ui/app_header.dart';
 import '../../core/ui/artwork_fallback.dart';
 import '../../core/ui/center_on_focus.dart';
-import '../../core/ui/channel_card.dart';
 import '../../core/ui/channel_logo.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/section_header.dart';
@@ -24,12 +23,15 @@ import '../../core/ui/story_avatar.dart';
 import 'home_content.dart';
 import 'widgets/continue_card.dart';
 import 'widgets/hero_banner.dart';
+import 'widgets/live_tile.dart';
+import 'widgets/resume_board.dart';
 
-/// Anasayfa: bölüm kısayolları, vitrin (şu an yayında olan kanal) ve son
-/// izlenen kanallar (geçmiş boşsa ulusal kanallar); kart ve vitrin görseli
-/// yayından alınan gerçek karedir (FrameStore). Vitrinin altında yarıda
-/// bırakılan film/bölümler ("İzlemeye devam et") ve bitmiş bölümlerin
-/// sıradakileri; uydurma içerik gösterilmez.
+/// Anasayfa, kişisel pano (B tasarımı): saate göre selam; yarıda bırakılan
+/// film/bölümler ve bitmiş bölümlerin sıradakileri panoda (en yeni büyük
+/// kart), kayıt yoksa vitrin (şu an yayında olan kanal); altında "Şu an
+/// yayında" şeridi (son izlenen kanallar, geçmiş boşsa ulusal kanallar).
+/// Görseller yayından alınan gerçek karedir (FrameStore); uydurma içerik
+/// gösterilmez. Bölüm kısayolları yalnız telefonda (TV/tablette ray var).
 /// TV tuvali 960×540 dp (Android TV tasarım ölçüsü); içerik dikey kayar.
 /// Ray, alt menü ve Geri kök kabuktadır (RootShell).
 class HomePage extends StatelessWidget {
@@ -117,19 +119,21 @@ class HomePage extends StatelessWidget {
     // Telefonda raf başına görünen kart: dört kart sığmaz, yazılar kesilir.
     final phone = metrics.formFactor == FormFactor.phone;
     final hero = content.hero;
-    final going = [
+    final t = Theme.of(context).textTheme;
+    // Yarıda kalanlar ve bitmiş dizi bölümleri (sıradaki); bitmiş film çıkar.
+    final board = [
       for (final e in resume)
-        if (!e.finished) e,
+        if (!e.finished || e.series) e,
     ];
-    final next = [
-      for (final e in resume)
-        if (e.finished && e.series) e,
-    ];
+    final more = board.skip(ResumeBoard.size).toList();
     return LayoutBuilder(
       builder: (context, box) {
         final padding = PageLayout.scrollPadding(context, metrics);
         final width = box.maxWidth - padding.horizontal;
         final card = _cardWidth(width, phone ? 2.3 : 4, gutter);
+        // Şerit kartları: TV'de üçü yan yana, telefonda biri ve bir ucu.
+        const stripGap = 16.0;
+        final tile = _cardWidth(width, phone ? 1.4 : 3, stripGap);
         final header = AppHeader(
           clock: content.clock,
           profileName: content.profileName,
@@ -150,31 +154,46 @@ class HomePage extends StatelessWidget {
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              child: Row(
-                // Üste hizalı: iki satırlı etiket halkayı kaydırmaz.
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final s in content.shortcuts)
-                    StoryAvatar(
-                      // Kısa ad: "Televizyon" halkanın altına sığmıyor ("TV").
-                      label: s.shortLabel,
-                      onPressed: () => onNavigate?.call(s),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ArtworkFallback(name: s.label, showInitials: false),
-                          Center(child: RedoxIcon(s.icon, size: 30, color: RedoxRoles.onSurface)),
-                        ],
+            if (phone) ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                child: Row(
+                  // Üste hizalı: iki satırlı etiket halkayı kaydırmaz.
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final s in content.shortcuts)
+                      StoryAvatar(
+                        // Kısa ad: "Televizyon" halkanın altına sığmıyor ("TV").
+                        label: s.shortLabel,
+                        onPressed: () => onNavigate?.call(s),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ArtworkFallback(name: s.label, showInitials: false),
+                            Center(child: RedoxIcon(s.icon, size: 30, color: RedoxRoles.onSurface)),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              '${content.greeting}, ${content.profileName}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.headlineMedium!.copyWith(color: RedoxRoles.onSurface),
             ),
-            const SizedBox(height: 8),
-            if (hero != null)
+            Text(
+              board.isEmpty ? 'Şu an yayında olanlara göz at' : 'Kaldığın yerden devam et',
+              style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
+            ),
+            const SizedBox(height: 16),
+            if (board.isNotEmpty)
+              ResumeBoard(entries: board, tmdb: tmdb, onResume: onResume, previewFocus: previewFocus)
+            else if (hero != null)
               _withFrames(
                 () => HeroBanner(
                   hero: hero,
@@ -184,27 +203,12 @@ class HomePage extends StatelessWidget {
                   onGuide: onGuide,
                 ),
               ),
-            for (final (title, subtitle, list) in [
-              ('İzlemeye devam et', 'Kaldığın yerden sürdür', going),
-              ('Sıradaki bölümler', 'İzlediğin dizilerin yeni bölümü', next),
-            ])
-              if (list.isNotEmpty) ...[
-                const SizedBox(height: 40),
-                Shelf(
-                  header: SectionHeader(title: title, subtitle: subtitle),
-                  children: [
-                    for (final e in list)
-                      CenterOnFocus(
-                        child: ContinueCard(entry: e, width: card, tmdb: tmdb, onPressed: () => onResume?.call(e)),
-                      ),
-                  ],
-                ),
-              ],
             if (content.channels.isNotEmpty) ...[
-              const SizedBox(height: 40),
+              const SizedBox(height: 28),
               Shelf(
+                gutter: stripGap,
                 header: content.fromHistory
-                    ? const SectionHeader(title: 'Son izlenen kanallar', subtitle: 'Şu an yayında olanlar')
+                    ? const SectionHeader(title: 'Şu an yayında', subtitle: 'Son izlediğin kanallar')
                     : const SectionHeader(
                         title: 'Ulusal kanallar',
                         subtitle: 'İzlediğin kanallar burada görünecek',
@@ -215,18 +219,28 @@ class HomePage extends StatelessWidget {
                     // D-pad odağında kart ortalanır: ekranın alt kenarında
                     // halkası kesiliyordu (gerçek TV'de görüldü).
                     CenterOnFocus(
-                      child: ChannelCard(
-                        width: card,
+                      child: LiveTile(
+                        width: tile,
                         channelName: c.name,
-                        number: c.number,
                         programTitle: c.programTitle ?? 'Yayın akışı bilgisi yok',
-                        timeRange: c.timeRange ?? c.category,
-                        genre: c.genre,
                         progress: c.progress ?? 0,
                         accent: c.accent,
-                        artwork: _artwork(c, card, dpr),
+                        artwork: _artwork(c, LiveTile.thumbWidth, dpr),
                         onPressed: () => onWatch?.call(c),
                       ),
+                    ),
+                ],
+              ),
+            ],
+            // Panoya sığmayan kayıtlar.
+            if (more.isNotEmpty) ...[
+              const SizedBox(height: 40),
+              Shelf(
+                header: const SectionHeader(title: 'İzlemeye devam et', subtitle: 'Diğer yarım kalanlar'),
+                children: [
+                  for (final e in more)
+                    CenterOnFocus(
+                      child: ContinueCard(entry: e, width: card, tmdb: tmdb, onPressed: () => onResume?.call(e)),
                     ),
                 ],
               ),

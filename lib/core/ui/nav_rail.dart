@@ -102,8 +102,23 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
   /// fare üstü yalnızca o öğeyi sağa açar (kullanıcı isteği, 2026-10-31).
   bool get _expanded => widget.expanded ?? _pinned;
 
+  /// Raya girmeden önce odakta olan içerik öğesi: ► oraya döner.
+  FocusNode? _outside;
+
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addListener(_track);
+  }
+
+  void _track() {
+    final f = FocusManager.instance.primaryFocus;
+    if (f != null && !_nodes.contains(f) && f is! FocusScopeNode) _outside = f;
+  }
+
   @override
   void dispose() {
+    FocusManager.instance.removeListener(_track);
     for (final n in _nodes) {
       n.dispose();
     }
@@ -132,8 +147,17 @@ class _RedoxNavRailState extends State<RedoxNavRail> {
   /// içeriğin üstüne açıldığından varsayılan yön araması yandaki içerik
   /// kutusunu daha yakın bulup oraya atlıyordu (Chromecast'te Ayarlar'dan
   /// yukarı → sayfadaki kutu). Uçlarda varsayılan gezinmeye bırakır.
+  /// ► raydan önce odakta olan içerik öğesine döner (sayfa değiştiyse
+  /// varsayılan arama): hizada odaklanabilir öğe yoksa yön araması rayın
+  /// başka öğesine ya da üstteki arama kutusuna gidiyordu.
   KeyEventResult _onRailKey(FocusNode _, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      final back = _outside;
+      if (back == null || back.context?.mounted != true || !back.canRequestFocus) return KeyEventResult.ignored;
+      back.requestFocus();
+      return KeyEventResult.handled;
+    }
     final step = switch (event.logicalKey) {
       LogicalKeyboardKey.arrowUp => -1,
       LogicalKeyboardKey.arrowDown => 1,

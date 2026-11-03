@@ -42,14 +42,26 @@ class ContinueCard extends StatelessWidget {
       progress: next ? 0 : entry.fraction,
       accent: next ? CardAccent.amber : (ep == null ? CardAccent.gold : CardAccent.crimson),
       badge: next ? const StatusBadge(label: 'SIRADAKİ', tone: BadgeTone.amber) : null,
-      artwork: _Backdrop(name: name, series: ep != null, poster: entry.poster, tmdb: tmdb, width: width),
+      artwork: ContinueBackdrop(name: name, series: ep != null, poster: entry.poster, tmdb: tmdb, width: width),
       onPressed: onPressed,
     );
   }
 }
 
-class _Backdrop extends StatelessWidget {
-  const _Backdrop({required this.name, required this.series, required this.width, this.poster, this.tmdb});
+/// Devam kartlarının görseli: TMDB arka planı, yoksa listedeki afiş.
+class ContinueBackdrop extends StatelessWidget {
+  const ContinueBackdrop({
+    super.key,
+    required this.name,
+    required this.series,
+    required this.width,
+    this.poster,
+    this.tmdb,
+    this.showInitials = true,
+  });
+
+  /// Görsel yokken baş harfler (panoda yazıların üstüne biniyordu: kapalı).
+  final bool showInitials;
 
   final String name;
   final bool series;
@@ -59,7 +71,7 @@ class _Backdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fallback = ArtworkFallback(name: name);
+    final fallback = ArtworkFallback(name: name, showInitials: showInitials);
     // Zayıf TV belleği: görsel kart boyunda çözülür.
     final cache = (width * MediaQuery.devicePixelRatioOf(context)).round();
     Widget image(String? src) => src == null

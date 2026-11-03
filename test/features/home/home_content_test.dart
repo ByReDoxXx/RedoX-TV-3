@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/watch_history.dart';
+import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/destinations.dart';
 import 'package:redox_tv/core/playback/frame_grabber.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
@@ -189,16 +190,17 @@ void main() {
   });
 
   group('Anasayfa düğmeleri', () {
-    Future<(WatchHistory, List<FakeEngine>)> open(WidgetTester tester) async {
+    Future<(WatchHistory, List<FakeEngine>)> open(WidgetTester tester, {bool phone = false}) async {
       await loadSora(tester);
-      tester.view.physicalSize = const Size(960, 540);
+      // Kısayol halkaları yalnız telefonda (TV/tablette ray var).
+      tester.view.physicalSize = phone ? const Size(411, 891) : const Size(960, 540);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final history = WatchHistory();
       final engines = <FakeEngine>[];
       await tester.pumpWidget(
         MaterialApp(
-          theme: RedoxTheme.dark(),
+          theme: RedoxTheme.dark(formFactor: phone ? FormFactor.phone : FormFactor.tv),
           home: RootShell(
             tv: const TvContent(channels: _channels),
             history: history,
@@ -274,8 +276,8 @@ void main() {
       expect(find.byType(EpgGrid), findsOneWidget);
     });
 
-    testWidgets('kısayol halkası bölüme gider', (tester) async {
-      await open(tester);
+    testWidgets('telefon: kısayol halkası bölüme gider', (tester) async {
+      await open(tester, phone: true);
       await tester.tap(find.ancestor(of: find.text('Radyo'), matching: find.byType(StoryAvatar)));
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.byType(SectionPlaceholder), findsOneWidget);
