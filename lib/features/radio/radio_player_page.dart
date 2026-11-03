@@ -15,14 +15,13 @@ import '../../core/ui/icon_action_button.dart';
 import '../../core/ui/key_hint.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/status_badge.dart';
-import 'widgets/radio_dial.dart';
 import 'widgets/radio_options.dart';
+import 'widgets/radio_wheel.dart';
 import 'widgets/sound_wave.dart';
-import 'widgets/station_avatar.dart';
 
-/// Tam ekran radyo: "Kadran" (eski uygulamada seçilen K2; tv-16 görüntüsünün
-/// bizim temaya uyarlaması). Üstte durum ve yayın, ortada büyük istasyon adı
-/// ve çalan şarkı, altında kadran, ses dalgası ve düğmeler.
+/// Tam ekran radyo, "Kadran tekerleği" (C tasarımı): üstte durum, büyük
+/// istasyon adı, çalan şarkı ve ses dalgası; altta yükselen tekerlekte
+/// istasyon logoları (ayarlı olan tepede), en altta düğmeler.
 ///
 /// Kumanda: ◄ ► kadranı çevirir, yeni istasyon [tuneDelay] sonra çalar (ses
 /// yeni yayın bağlanana kadar kesilmez); OK duraklat/sürdür; ▲ listeye dön;
@@ -163,7 +162,8 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
     };
     final info = [?tuned?.category, if (m > 0) 'yayın $n/$m'].join(' · ');
     final sleep = _radio.sleepLeft;
-    final dialHeight = (box.maxHeight * (phone ? 0.24 : 0.3)).clamp(120.0, 200.0);
+    // Tekerlek: telefonda dikey boşluk geniş, TV'de 540 dp'ye düğmelerle sığar.
+    final dialHeight = (box.maxHeight * (phone ? 0.28 : 0.36)).clamp(130.0, 280.0);
     final fav = tuned != null && (widget.favorites?.hasRadio(tuned.number) ?? false);
     final playing = status == RadioStatus.playing || status == RadioStatus.connecting;
     final pad = phone ? 16.0 : 40.0;
@@ -197,19 +197,6 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
             ],
           ),
           const Spacer(),
-          // Dokunmatik ekranda dikey boşluk geniş: istasyonun logosu büyük.
-          if (touch && tuned != null) ...[
-            AnimatedOpacity(
-              opacity: browsing ? 0.55 : 1,
-              duration: const Duration(milliseconds: 200),
-              child: StationAvatar(
-                station: tuned,
-                size: (box.maxHeight * 0.22).clamp(96.0, 200.0),
-                radius: RedoxRadius.xl,
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
           Wrap(
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -247,6 +234,11 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: phone ? 200 : 260,
+            child: SoundWave(active: status == RadioStatus.playing, bars: 24, height: 20),
+          ),
           const Spacer(),
           GestureDetector(
             // Telefonda kadran kaydırılır: her ~80 dp bir istasyon.
@@ -264,20 +256,18 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
               onFocusChange: (v) => setState(() => _dialFocused = v),
               child: Semantics(
                 label: 'Kadran: ${tuned?.name ?? ''}',
-                child: RadioDial(stations: _list, index: _tuned, active: _dialFocused, height: dialHeight),
+                child: RadioWheel(stations: _list, index: _tuned, active: _dialFocused, height: dialHeight),
               ),
             ),
           ),
           const SizedBox(height: 12),
           if (touch)
             Text(
-              'Kadranı kaydırarak istasyon değiştirin',
+              'Tekerleği kaydırarak istasyon değiştirin',
               style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
             )
           else
             const _Hints(),
-          const SizedBox(height: 12),
-          SoundWave(active: status == RadioStatus.playing, height: phone ? 32 : 28),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
