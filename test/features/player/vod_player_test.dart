@@ -131,6 +131,16 @@ void main() {
     expect(find.text('2010 · Bilim kurgu'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await maybeSnapshot(tester, key, 'build/oynatici/film-tv.png');
+    // Oynat'tan sağa: 10 sn ileri, sonra Seçenekler (odak köke kaçmaz).
+    for (var i = 0; i < 2; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Uyku zamanlayıcı'), findsWidgets, reason: 'Seçenekler paneli açıldı');
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.sendKeyEvent(LogicalKeyboardKey.channelUp);

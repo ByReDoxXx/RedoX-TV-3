@@ -132,7 +132,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     failover: AppSettings.instance.failover,
   );
 
-  final _rootFocus = FocusNode(debugLabel: 'oynatıcı');
+  /// Kumanda tuşlarını alan kök. Yön gezintisinde aday değildir: bütün
+  /// ekranı kapladığı için çubukta sağa basınca odak Seçenekler yerine köke
+  /// kaçıyordu (Chromecast: "seçeneklere gelemiyorum").
+  final _rootFocus = FocusNode(debugLabel: 'oynatıcı', skipTraversal: true);
   final _playFocus = FocusNode(debugLabel: 'oynat/duraklat');
   final _optionsKey = GlobalKey<PlayerOptionsState>();
 
@@ -515,6 +518,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       return KeyEventResult.handled;
     }
     if (_bar && !_hints) _restartBarTimer();
+    // Çubuk kendiliğinden açıkken (açılışta, bölüm değişince) odak kökte
+    // kalıyordu: tuşlar ne oynatıcıya ne çubuğa gidiyordu (Chromecast;
+    // kullanıcı: "seçeneklere gelemiyorum"). İlk basış odağı Oynat'a verir.
+    if (_keys && _bar && !_hints && !_options && !_drawer && node.hasPrimaryFocus && event is KeyDownEvent) {
+      _playFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
     if (_options || _drawer || (_bar && !_hints)) return KeyEventResult.ignored;
     final key = event.logicalKey;
     // Açılamadı: ◄► ve OK ekrandaki "Tekrar dene" / "Sonraki kanal"
