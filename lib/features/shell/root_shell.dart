@@ -8,6 +8,7 @@ import '../../core/content/watch_progress.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
+import '../../core/content/reminders.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/user_sources.dart';
 import '../../core/content/series_catalog.dart';
@@ -33,6 +34,7 @@ import '../../core/playback/stream_probe.dart';
 import '../tv/tv_content.dart';
 import '../tv/tv_guide_controller.dart';
 import '../favorites/favorites_page.dart';
+import 'reminder_prompt.dart';
 import '../radio/radio_page.dart';
 import '../remote/remote_page.dart';
 import '../radio/radio_player_page.dart';
@@ -164,6 +166,7 @@ class _RootShellState extends State<RootShell> {
     super.initState();
     widget.history?.addListener(_syncFrames);
     widget.homeRequests?.addListener(_remoteHome);
+    _reminderTimer = Timer.periodic(const Duration(seconds: 20), (_) => unawaited(_checkReminders()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncFrames();
       if (widget.openLastChannel) _openLast();
@@ -174,6 +177,7 @@ class _RootShellState extends State<RootShell> {
   void dispose() {
     widget.history?.removeListener(_syncFrames);
     widget.homeRequests?.removeListener(_remoteHome);
+    _reminderTimer?.cancel();
     _split.dispose();
     super.dispose();
   }
@@ -224,6 +228,27 @@ class _RootShellState extends State<RootShell> {
     // altındaki kapsamda; burada yok).
     if (channel == null || _locks.blocks(ContentLocks.channel(channel.number)) || !mounted) return;
     unawaited(_watch(context, channel));
+  }
+
+  /// Program hatırlatıcıları: vakti geleni sorar (oynatıcının üstünde de);
+  /// "İzle" açık oynatıcıyı kapatıp kanalı açar.
+  Timer? _reminderTimer;
+  bool _prompting = false;
+
+  Future<void> _checkReminders() async {
+    if (_prompting || !mounted) return;
+    for (final r in Reminders.instance.takeDue(DateTime.now())) {
+      final channel = _tv.channels.where((c) => c.number == r.channel).firstOrNull;
+      if (channel == null || !mounted) continue;
+      _prompting = true;
+      final watch = await showReminderPrompt(context, r);
+      _prompting = false;
+      if (!watch || !mounted) continue;
+      final shell = ModalRoute.of(context);
+      Navigator.of(context).popUntil((route) => route == shell || route.isFirst);
+      unawaited(_watch(context, channel));
+      return;
+    }
   }
 
   void _remoteHome() {

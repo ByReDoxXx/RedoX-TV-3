@@ -7,6 +7,7 @@ import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/reminders.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
@@ -302,7 +303,7 @@ class _TvPageState extends State<TvPage> {
               child: previewed == null
                   ? ChannelPreviewHint(touch: metrics.formFactor != FormFactor.tv)
                   : ListenableBuilder(
-                      listenable: widget.favorites ?? const _Silent(),
+                      listenable: Listenable.merge([widget.favorites, Reminders.instance]),
                       builder: (context, _) => ChannelPreview(
                         channel: previewed,
                         video: _previewVideo(previewed),
@@ -312,6 +313,8 @@ class _TvPageState extends State<TvPage> {
                             ? null
                             : () => widget.favorites!.toggleChannel(previewed.number),
                         onSplit: widget.onSplit == null ? null : () => widget.onSplit!(previewed),
+                        reminded: _reminded(previewed),
+                        onRemind: _nextOf(previewed) == null ? null : () => _toggleReminder(previewed),
                       ),
                     ),
             ),
@@ -319,6 +322,26 @@ class _TvPageState extends State<TvPage> {
         ],
       ),
     );
+  }
+
+  /// Kanalın sonraki programının hatırlatıcısı (saat okunamazsa null).
+  Reminder? _nextOf(LiveChannel c) => Reminder.nextOf(c, DateTime.now());
+
+  bool _reminded(LiveChannel c) {
+    final r = _nextOf(c);
+    return r != null && Reminders.instance.has(r);
+  }
+
+  void _toggleReminder(LiveChannel c) {
+    final r = _nextOf(c);
+    if (r == null) return;
+    final added = Reminders.instance.toggle(r);
+    final at = EpgProgram.formatClock(r.start.hour * 60 + r.start.minute);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(added ? '$at ${r.title}: başlarken hatırlatılacak' : 'Hatırlatıcı kaldırıldı')),
+      );
   }
 
   /// Paneldeki canlı görüntü: açılırken logo ve yükleniyor işareti,

@@ -15,7 +15,7 @@ import '../../../core/ui/status_badge.dart';
 import '../../locks/lock_scope.dart';
 
 /// Televizyon sayfasının sağ paneli (TV/tablet): OK'e basılan kanalın logosu,
-/// şimdiki ve sonraki program, tam ekran düğmesi (aynı kanalda ikinci OK de
+/// şimdiki ve sonraki program (hatırlatıcı düğmesiyle), tam ekran düğmesi (aynı kanalda ikinci OK de
 /// tam ekrana geçer). Kullanıcının
 /// Stitch referansından ("Canlı önizleme") esinlenildi; teknik bilgi
 /// (bit hızı, tampon) oynatıcı yazılana kadar gösterilmez.
@@ -28,7 +28,14 @@ class ChannelPreview extends StatelessWidget {
     this.favorite = false,
     this.onFavorite,
     this.onSplit,
+    this.reminded = false,
+    this.onRemind,
   });
+
+  /// Sonraki programın hatırlatıcısı kurulu mu; [onRemind] null ise düğme
+  /// yok (sonraki program bilinmiyor).
+  final bool reminded;
+  final VoidCallback? onRemind;
 
   final LiveChannel channel;
 
@@ -123,11 +130,31 @@ class ChannelPreview extends StatelessWidget {
             ],
             if (c.next != null) ...[
               const SizedBox(height: 8),
-              Text(
-                'Sonraki: ${c.next}',
-                style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant, fontFeatures: RedoxType.tabular),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              // Sonraki programın yanında hatırlatıcı (düğme satırı dolu:
+              // "Tam ekran" küçülüyordu).
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      reminded ? 'Sonraki: ${c.next} · hatırlatılacak' : 'Sonraki: ${c.next}',
+                      style: t.bodySmall!.copyWith(
+                        color: reminded ? RedoxRoles.tertiary : RedoxRoles.onSurfaceVariant,
+                        fontFeatures: RedoxType.tabular,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (onRemind != null) ...[
+                    const SizedBox(width: 8),
+                    GlassButton(
+                      label: reminded ? 'Hatırlatıcıyı kaldır' : 'Sonrakini hatırlat',
+                      icon: RedoxIcons.notifications,
+                      iconOnly: true,
+                      onPressed: onRemind,
+                    ),
+                  ],
+                ],
               ),
             ],
             const SizedBox(height: 12),

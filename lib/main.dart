@@ -16,6 +16,7 @@ import 'core/content/live_channel.dart';
 import 'core/content/favorites.dart';
 import 'core/content/profiles.dart';
 import 'core/content/radio_source.dart';
+import 'core/content/reminders.dart';
 import 'core/content/song_history.dart';
 import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
@@ -72,6 +73,8 @@ Future<void> main() async {
   // Film/dizide kaldığı yer (profil başına).
   final progress = await WatchProgress.load();
   final favorites = await Favorites.load();
+  // Yayın akışındaki program hatırlatıcıları.
+  Reminders.instance = await Reminders.load();
   // Kullanıcının M3U listeleri (Kaynaklar).
   final sources = await UserSources.load();
   // Radyo istasyonları da şifreli pakettir: uygulamadaki kopya hemen, güncel

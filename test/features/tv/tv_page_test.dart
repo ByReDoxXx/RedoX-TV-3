@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/content/reminders.dart';
+import 'package:redox_tv/features/shell/reminder_prompt.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/xmltv.dart';
@@ -96,8 +98,8 @@ void main() {
         of: find.byType(ChannelPreview),
         matching: find.byWidgetPredicate((w) => w is PrimaryButton || w is GlassButton),
       );
-      // Tam ekran, favori ve bölünmüş ekrana ekle.
-      expect(buttons, findsNWidgets(3));
+      // Tam ekran, favori, sonrakini hatırlat ve bölünmüş ekrana ekle.
+      expect(buttons, findsNWidgets(4));
       for (final rect in buttons.evaluate().map((e) => tester.getRect(find.byWidget(e.widget)))) {
         expect(rect.bottom, lessThanOrEqualTo(panel.bottom));
       }
@@ -355,5 +357,77 @@ void main() {
     await tester.tap(find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Favorilerden çıkar').first);
     await _settle(tester);
     expect(fav.hasChannel(first.number), isFalse);
+  });
+
+  testWidgets('TV: önizlemede "Sonrakini hatırlat" kurar ve kaldırır; vakti gelince kart "İzle" ile kanalı açar', (
+    tester,
+  ) async {
+    await loadSora(tester);
+    await _size(tester, const Size(960, 540));
+    Reminders.instance = Reminders();
+    addTearDown(() => Reminders.instance = Reminders());
+    final engines = <FakeEngine>[];
+    await tester.pumpWidget(_app(FormFactor.tv, engines: engines));
+    await _settle(tester);
+    final first = TvContent.preview.channels.first;
+    await tester.tap(find.byType(ChannelTile).first);
+    await _settle(tester);
+    Finder label(String l) => find.byTooltip(l);
+    await tester.tap(label('Sonrakini hatırlat'));
+    await _settle(tester);
+    expect(Reminders.instance.items.single.channel, first.number);
+    expect(find.textContaining('başlarken hatırlatılacak'), findsOneWidget);
+    expect(find.textContaining('hatırlatılacak'), findsWidgets);
+    await tester.tap(label('Hatırlatıcıyı kaldır'));
+    await _settle(tester);
+    expect(Reminders.instance.items, isEmpty);
+
+    // Vakti gelmiş hatırlatıcı (kabuk 20 sn'de bir bakar).
+    final r = Reminder(channel: first.number, channelName: first.name, title: 'Gece Haberleri', start: DateTime.now());
+    Reminders.instance.toggle(r);
+    await tester.pump(const Duration(seconds: 20));
+    await _settle(tester);
+    expect(find.byType(ReminderCard), findsOneWidget);
+    expect(find.text('Gece Haberleri başlıyor'), findsOneWidget);
+    await tester.tap(find.text('İzle'));
+    await _settle(tester);
+    await _settle(tester);
+    expect(find.byType(ReminderCard), findsNothing);
+    expect(
+      tester.widget<PlayerPage>(find.byType(PlayerPage)).channels[tester
+          .widget<PlayerPage>(find.byType(PlayerPage))
+          .initialIndex],
+      first,
+    );
+    expect(Reminders.instance.items, isEmpty);
+  });
+
+  testWidgets('hatırlatıcı kartı Kapat ile ve 30 sn sonra kendiliğinden kapanır', (tester) async {
+    await loadSora(tester);
+    await _size(tester, const Size(960, 540));
+    Reminders.instance = Reminders();
+    addTearDown(() => Reminders.instance = Reminders());
+    await tester.pumpWidget(_app(FormFactor.tv));
+    await _settle(tester);
+    final first = TvContent.preview.channels.first;
+    Reminders.instance.toggle(
+      Reminder(channel: first.number, channelName: first.name, title: 'A', start: DateTime.now()),
+    );
+    await tester.pump(const Duration(seconds: 20));
+    await _settle(tester);
+    await tester.tap(find.text('Kapat'));
+    await _settle(tester);
+    expect(find.byType(ReminderCard), findsNothing);
+    expect(find.byType(PlayerPage), findsNothing);
+
+    Reminders.instance.toggle(
+      Reminder(channel: first.number, channelName: first.name, title: 'B', start: DateTime.now()),
+    );
+    await tester.pump(const Duration(seconds: 20));
+    await _settle(tester);
+    expect(find.text('B başlıyor'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 30));
+    await _settle(tester);
+    expect(find.byType(ReminderCard), findsNothing);
   });
 }
