@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/content/app_settings.dart';
+import '../../core/content/channel_folder.dart';
 import '../../core/content/live_channel.dart';
+import '../../core/content/watch_progress.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/device_controls.dart';
 import '../../core/theme/redox_metrics.dart';
@@ -19,6 +21,7 @@ import 'widgets/player_options.dart';
 import 'widgets/player_overlays.dart';
 import 'widgets/seek_bar.dart';
 import 'widgets/touch_controls.dart';
+import 'widgets/vod_title.dart';
 
 /// Tam ekran oynatıcı (eski sürümün özellikleriyle). Kumanda:
 /// - OK: alt çubuğu açar, odak oynat/duraklatta.
@@ -28,6 +31,10 @@ import 'widgets/touch_controls.dart';
 /// - Geri: açık menüyü, listeyi, çubuğu kapatır; hiçbiri açık değilse çıkar.
 /// Kanal değişince çubuk ve ipuçları 3,8 sn görünür (eski sürümdeki gibi).
 /// Dokunmatikte videoya dokunmak çubuğu açıp kapatır.
+/// Oynatılan içerik: canlı yayın, film ya da dizi bölümü (film ve dizide
+/// oynatıcı tasarımı farklıdır ve izlenen yer saklanır).
+enum PlayerMode { live, film, series }
+
 class PlayerPage extends StatefulWidget {
   const PlayerPage({
     super.key,
@@ -38,7 +45,14 @@ class PlayerPage extends StatefulWidget {
     this.rank,
     this.onWatched,
     this.resolve,
+    this.mode = PlayerMode.live,
+    this.progress,
   });
+
+  final PlayerMode mode;
+
+  /// Film/dizi: kaldığı yerden devam (yazılır ve okunur); null ise yok.
+  final WatchProgress? progress;
 
   final List<LiveChannel> channels;
   final int initialIndex;
@@ -65,6 +79,8 @@ class PlayerPage extends StatefulWidget {
     StreamRanker? rank,
     ValueChanged<LiveChannel>? onWatched,
     Future<String> Function(String url)? resolve,
+    PlayerMode mode = PlayerMode.live,
+    WatchProgress? progress,
   }) => MaterialPageRoute(
     builder: (_) => PlayerPage(
       channels: channels,
@@ -74,6 +90,8 @@ class PlayerPage extends StatefulWidget {
       rank: rank,
       onWatched: onWatched,
       resolve: resolve,
+      mode: mode,
+      progress: progress,
     ),
   );
 
@@ -135,6 +153,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (_vod) {
+      _engine.state.addListener(_resume);
+      _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
+    }
     // Ayarlar › Telefonda yatay oynatıcı: telefon çevrilince görüntü yüzeyi
     // yeniden kurulup donuyordu (Pixel'de görüldü); oynatıcı yatayda kalır.
     if (_landscape) {
@@ -155,6 +177,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     // (değişmediyse etkisiz; dispose'da tema okunamaz, biçime bakılmaz).
     unawaited(DeviceControls.setBrightness(null));
     WidgetsBinding.instance.removeObserver(this);
+    if (_vod) {
+      _saveProgress();
+      _progressTimer?.cancel();
+      _engine.state.removeListener(_resume);
+    }
     if (_landscape) unawaited(SystemChrome.setPreferredOrientations(const []));
     _barTimer?.cancel();
     _digitTimer?.cancel();
@@ -185,6 +212,108 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       default:
         break;
     }
+  }
+
+  bool get _vod => widget.mode != PlayerMode.live;
+
+  /// Kaldığı yerden devam: kanalın süresi ilk gelince bir kez sarılır.
+  int? _resumedIndex;
+  Timer? _progressTimer;
+
+  /// İlerlemenin yazılacağı kanal ve son bilinen yeri (kanal değişince eski
+  /// kanalınki kaybolmasın).
+  LiveChannel? _progressOf;
+
+  void _resume() {
+    final e = _engine.state.value;
+    if (!e.seekable || _resumedIndex == _session.index) return;
+    _saveProgress();
+    _resumedIndex = _session.index;
+    _progressOf = _session.channel;
+    final url = _session.channel.streams.firstOrNull;
+    final at = url == null ? null : widget.progress?.resumeAt(url);
+    if (at == null) return;
+    unawaited(_engine.seek(at));
+    _notify('Kaldığın yerden: ${SeekBar.format(at)}');
+  }
+
+  /// İzlenen yeri yazar (10 sn'de bir, kanal değişince ve çıkarken).
+  void _saveProgress() {
+    final c = _progressOf;
+    final e = _engine.state.value;
+    if (c == null || !e.seekable) return;
+    widget.progress?.record(
+      c,
+      position: _engine.position.value,
+      duration: e.duration,
+      series: widget.mode == PlayerMode.series,
+    );
+  }
+
+  /// Baştan izle (Seçenekler).
+  void _restart() {
+    unawaited(_engine.seek(Duration.zero));
+    _notify('Baştan başlatıldı');
+  }
+
+  /// Dizide sıradaki bölümün kısa adı ("S2 · B4"); filmde ya da son bölümde null.
+  String? _nextLabel(PlaybackSession s) {
+    if (widget.mode != PlayerMode.series || s.index + 1 >= s.channels.length) return null;
+    final next = s.channels[s.index + 1];
+    final e = ChannelFolder.parseEpisode(next.name);
+    return e == null ? next.name : 'S${e.season} · B${e.episode}';
+  }
+
+  Widget? _vodSeekBar(EngineState e) => e.seekable
+      ? SeekBar(
+          position: _engine.position,
+          duration: e.duration,
+          onSeek: (to) {
+            _restartBarTimer();
+            unawaited(_engine.seek(to));
+          },
+          onDragging: (dragging) => dragging ? _barTimer?.cancel() : _restartBarTimer(),
+        )
+      : null;
+
+  Widget _vodTouch(EngineState e, PlaybackSession s) {
+    final t = vodTitle(s.channel, series: widget.mode == PlayerMode.series);
+    return VodTouchControls(
+      title: t.title,
+      subtitle: t.subtitle,
+      playing: e.playing,
+      showCenter: s.status == PlaybackStatus.playing,
+      seekBar: _vodSeekBar(e),
+      scaleLabel: _scale.label,
+      resolution: e.hasVideo ? '${e.height}p' : null,
+      nextLabel: _nextLabel(s),
+      onClose: () => Navigator.of(context).pop(),
+      onPlayPause: () {
+        _restartBarTimer();
+        unawaited(_engine.playOrPause());
+      },
+      onSeekBy: e.seekable ? _seekBy : null,
+      onNext: () => s.zap(1),
+      onScale: () => _setScale(VideoScale.values[(_scale.index + 1) % VideoScale.values.length]),
+      onOptions: _openOptions,
+    );
+  }
+
+  Widget _vodBar(EngineState e, PlaybackSession s) {
+    final t = vodTitle(s.channel, series: widget.mode == PlayerMode.series);
+    return VodBar(
+      title: t.title,
+      subtitle: t.subtitle,
+      playing: e.playing,
+      seekBar: e.seekable ? SeekBar(position: _engine.position, duration: e.duration) : null,
+      playFocusNode: _playFocus,
+      resolution: e.hasVideo ? '${e.height}p' : null,
+      nextLabel: _nextLabel(s),
+      onPlayPause: () => unawaited(_engine.playOrPause()),
+      onSeekBy: e.seekable ? _seekBy : null,
+      onNext: () => s.zap(1),
+      onOptions: _openOptions,
+    );
   }
 
   /// Film/dizi: 10 sn ileri (+1) ya da geri (-1) sar.
@@ -219,7 +348,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       if (!_options && !_drawer) {
         setState(() {
           _bar = true;
-          _hints = _keys;
+          _hints = _keys && !_vod;
         });
         _restartBarTimer(PlayerPage.announceDuration);
       }
@@ -325,6 +454,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         key == LogicalKeyboardKey.arrowDown ||
         key == LogicalKeyboardKey.channelUp ||
         key == LogicalKeyboardKey.channelDown;
+    // Filmde kanal değiştirme yok (▲▼ ve rakamlar başka filme atlamasın).
+    if (widget.mode == PlayerMode.film && zapKey) return KeyEventResult.handled;
     if (_session.status == PlaybackStatus.failed && !zapKey) return KeyEventResult.ignored;
     if (event is KeyRepeatEvent && key != LogicalKeyboardKey.arrowUp && key != LogicalKeyboardKey.arrowDown) {
       return KeyEventResult.handled;
@@ -395,7 +526,14 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       onVideoTrack: (id) => unawaited(_engine.selectVideoTrack(id)),
       onAudioTrack: (id) => unawaited(_engine.selectAudioTrack(id)),
       onSubtitleTrack: (id) => unawaited(_engine.selectSubtitleTrack(id)),
-      previousChannelName: s.previousChannel?.name,
+      // Film/dizide "Önceki kanal" yerine "Baştan başla".
+      previousChannelName: _vod ? null : s.previousChannel?.name,
+      onRestart: _vod
+          ? () {
+              _closeOptions();
+              _restart();
+            }
+          : null,
       onPreviousChannel: () {
         _closeOptions();
         s.openPrevious();
@@ -441,14 +579,15 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                       onPinch: !_gestures
                           ? null
                           : (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
-                      onZap: _gestures ? s.zap : null,
+                      onZap: _gestures && widget.mode != PlayerMode.film ? s.zap : null,
                       adjust: _gestures,
                       // Film/dizi: sağa/sola çift dokunma ±10 sn.
                       onSeekSide: _gestures && e.seekable ? _seekBy : null,
                       child: _engine.view(fit: _scale.fit),
                     ),
                   if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
-                  if (_bar && !_keys)
+                  if (_bar && !_keys && _vod) _vodTouch(e, s),
+                  if (_bar && !_keys && !_vod)
                     TouchControls(
                       channel: s.channel,
                       playing: e.playing,
@@ -548,24 +687,28 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                               ),
                               const SizedBox(height: 10),
                             ],
-                            if (e.seekable) ...[
-                              SeekBar(position: _engine.position, duration: e.duration),
-                              const SizedBox(height: 8),
+                            if (_vod)
+                              _vodBar(e, s)
+                            else ...[
+                              if (e.seekable) ...[
+                                SeekBar(position: _engine.position, duration: e.duration),
+                                const SizedBox(height: 8),
+                              ],
+                              PlayerBar(
+                                channel: s.channel,
+                                playing: e.playing,
+                                resolution: e.hasVideo ? '${e.height}p' : null,
+                                streamIndex: s.streamIndex,
+                                streamCount: s.streamCount,
+                                playFocusNode: _playFocus,
+                                onPlayPause: () => unawaited(_engine.playOrPause()),
+                                onPreviousChannel: () => s.zap(-1),
+                                onNextChannel: () => s.zap(1),
+                                onChannelList: _openDrawer,
+                                onNextStream: s.nextStream,
+                                onOptions: _openOptions,
+                              ),
                             ],
-                            PlayerBar(
-                              channel: s.channel,
-                              playing: e.playing,
-                              resolution: e.hasVideo ? '${e.height}p' : null,
-                              streamIndex: s.streamIndex,
-                              streamCount: s.streamCount,
-                              playFocusNode: _playFocus,
-                              onPlayPause: () => unawaited(_engine.playOrPause()),
-                              onPreviousChannel: () => s.zap(-1),
-                              onNextChannel: () => s.zap(1),
-                              onChannelList: _openDrawer,
-                              onNextStream: s.nextStream,
-                              onOptions: _openOptions,
-                            ),
                           ],
                         ),
                       ),

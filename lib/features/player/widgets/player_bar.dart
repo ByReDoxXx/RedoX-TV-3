@@ -120,6 +120,125 @@ class PlayerBar extends StatelessWidget {
   }
 }
 
+/// TV'de film ve dizi çubuğu (canlı yayının kanal çubuğu yerine): büyük
+/// başlık ve sezon/bölüm satırı, tam genişlik sarma çubuğu, altında 10 sn
+/// geri · oynat/duraklat · 10 sn ileri ve sağda (dizide) sonraki bölüm,
+/// Seçenekler. ◄► çubuk kapalıyken de sarar.
+class VodBar extends StatelessWidget {
+  const VodBar({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.playing,
+    required this.seekBar,
+    required this.playFocusNode,
+    this.resolution,
+    this.nextLabel,
+    this.onPlayPause,
+    this.onSeekBy,
+    this.onNext,
+    this.onOptions,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool playing;
+  final Widget? seekBar;
+  final FocusNode playFocusNode;
+  final String? resolution;
+  final String? nextLabel;
+  final VoidCallback? onPlayPause;
+  final ValueChanged<int>? onSeekBy;
+  final VoidCallback? onNext;
+  final VoidCallback? onOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(RedoxRadius.xl),
+        border: Border.fromBorderSide(RedoxElevation.restingBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.titleLarge!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                      ),
+                      if (subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.titleSmall!.copyWith(color: RedoxRoles.tertiary),
+                        ),
+                    ],
+                  ),
+                ),
+                if (resolution case final r?)
+                  Text(r, style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant)),
+              ],
+            ),
+            if (seekBar case final bar?) ...[const SizedBox(height: 6), bar],
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Spacer(),
+                _BarButton(
+                  icon: RedoxIcons.replay10,
+                  label: '10 sn geri',
+                  onPressed: onSeekBy == null ? null : () => onSeekBy!(-1),
+                ),
+                const SizedBox(width: 10),
+                _BarButton(
+                  icon: playing ? RedoxIcons.pause : RedoxIcons.play,
+                  label: playing ? 'Duraklat' : 'Oynat',
+                  onPressed: onPlayPause,
+                  focusNode: playFocusNode,
+                  primary: true,
+                ),
+                const SizedBox(width: 10),
+                _BarButton(
+                  icon: RedoxIcons.forward10,
+                  label: '10 sn ileri',
+                  onPressed: onSeekBy == null ? null : () => onSeekBy!(1),
+                ),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (nextLabel case final next?) ...[
+                        _BarButton(icon: RedoxIcons.next, label: 'Sonraki bölüm · $next', onPressed: onNext),
+                        const SizedBox(width: 10),
+                      ],
+                      _BarButton(icon: RedoxIcons.moreHorizontal, label: 'Seçenekler', onPressed: onOptions),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Identity extends StatelessWidget {
   const _Identity({
     required this.channel,

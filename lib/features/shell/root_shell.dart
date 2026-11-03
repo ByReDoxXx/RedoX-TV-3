@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/remote/remote_host.dart';
 import '../../core/content/tmdb.dart';
+import '../../core/content/watch_progress.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/epg_program.dart';
 import '../../core/content/favorites.dart';
@@ -68,6 +69,7 @@ class RootShell extends StatefulWidget {
     this.remote,
     this.guide,
     this.openLastChannel = false,
+    this.progress,
   });
 
   /// TV: telefon kumandası sunucusu (Ayarlar › Telefon kumandası).
@@ -75,6 +77,9 @@ class RootShell extends StatefulWidget {
 
   /// Kanal listesi ve yayın akışı denetleyicisi (Ayarlar › Hakkında).
   final TvGuideController? guide;
+
+  /// Film/dizide kaldığı yer (oynatıcı ve Anasayfa "İzlemeye devam et").
+  final WatchProgress? progress;
 
   /// Açılışta son izlenen kanal oynatılır (Ayarlar › Açılış).
   final bool openLastChannel;
@@ -289,7 +294,12 @@ class _RootShellState extends State<RootShell> {
   /// [from]: kanalın listesi (Kaynaklar'daki klasör); null ise TV kanalları.
   /// Klasör kanalları izleme geçmişine yazılmaz (numaraları ana listeyle
   /// çakışır).
-  Future<void> _watch(BuildContext context, LiveChannel c, {List<LiveChannel>? from}) async {
+  Future<void> _watch(
+    BuildContext context,
+    LiveChannel c, {
+    List<LiveChannel>? from,
+    PlayerMode mode = PlayerMode.live,
+  }) async {
     // Kilitli kanal PIN ister; oynatıcıda ▲▼ açılmamış kilitli kanallara
     // girmez (listeden çıkar).
     String lockOf(LiveChannel x) =>
@@ -316,6 +326,8 @@ class _RootShellState extends State<RootShell> {
           onWatched: from == null ? (watched) => widget.history?.record(watched.number) : null,
           // Klasör kanalları: STB portalının bağlantıları oynatma anında çözülür.
           resolve: from == null ? null : widget.sources?.resolve,
+          mode: mode,
+          progress: mode == PlayerMode.live ? null : widget.progress,
         ),
       );
     } finally {
@@ -423,7 +435,8 @@ class _RootShellState extends State<RootShell> {
       tmdb: Tmdb.shared,
       clock: _clock,
       profileName: _home.profileName,
-      onWatch: (list, i) => _watch(context, list[i], from: list),
+      onWatch: (list, i) =>
+          _watch(context, list[i], from: list, mode: _section == AppSection.film ? PlayerMode.film : PlayerMode.series),
       onAdd: _openAddSource,
       onHome: () => _go(AppSection.home),
       onMore: () => _showMore(context),

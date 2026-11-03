@@ -211,6 +211,153 @@ class TouchControls extends StatelessWidget {
   }
 }
 
+/// Film ve dizi oynatıcısı (dokunmatik; kullanıcı isteği: "Film ve Dizi
+/// kısmında oynatıcı tasarımı farklı olsun"): sinema düzeni. Üstte kapat,
+/// büyük başlık ve sezon/bölüm satırı, Seçenekler; ortada 10 sn geri ·
+/// oynat/duraklat · 10 sn ileri; altta tam genişlik sarma çubuğu, altında
+/// çözünürlük, (dizide) sonraki bölüm ve ölçek. Kanal numarası, CANLI ve
+/// kanal listesi yok.
+class VodTouchControls extends StatelessWidget {
+  const VodTouchControls({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.playing,
+    required this.showCenter,
+    required this.seekBar,
+    required this.scaleLabel,
+    this.resolution,
+    this.poster,
+    this.nextLabel,
+    this.onClose,
+    this.onPlayPause,
+    this.onSeekBy,
+    this.onNext,
+    this.onScale,
+    this.onOptions,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool playing;
+  final bool showCenter;
+  final Widget? seekBar;
+  final String scaleLabel;
+  final String? resolution;
+  final String? poster;
+
+  /// Dizide sonraki bölümün kısa adı ("S2 · B4"); yoksa düğme yok.
+  final String? nextLabel;
+  final VoidCallback? onClose;
+  final VoidCallback? onPlayPause;
+  final ValueChanged<int>? onSeekBy;
+  final VoidCallback? onNext;
+  final VoidCallback? onScale;
+  final VoidCallback? onOptions;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xCC000000), Color(0x22000000), Color(0x22000000), Color(0xE6000000)],
+                stops: [0, 0.32, 0.6, 1],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GlassCircle(icon: RedoxIcons.back, label: 'Kapat', onPressed: onClose),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.headlineSmall!.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
+                          if (subtitle.isNotEmpty)
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.titleSmall!.copyWith(color: RedoxRoles.tertiary),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GlassCircle(icon: RedoxIcons.more, label: 'Seçenekler', onPressed: onOptions),
+                  ],
+                ),
+                const Spacer(),
+                if (showCenter)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GlassCircle(
+                        icon: RedoxIcons.replay10,
+                        label: '10 sn geri',
+                        size: 60,
+                        onPressed: onSeekBy == null ? null : () => onSeekBy!(-1),
+                      ),
+                      const SizedBox(width: 40),
+                      GlassCircle(
+                        icon: playing ? RedoxIcons.pause : RedoxIcons.play,
+                        label: playing ? 'Duraklat' : 'Oynat',
+                        size: 84,
+                        solid: true,
+                        onPressed: onPlayPause,
+                      ),
+                      const SizedBox(width: 40),
+                      GlassCircle(
+                        icon: RedoxIcons.forward10,
+                        label: '10 sn ileri',
+                        size: 60,
+                        onPressed: onSeekBy == null ? null : () => onSeekBy!(1),
+                      ),
+                    ],
+                  ),
+                const Spacer(),
+                ?seekBar,
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    if (resolution case final r?) _Chip(label: r),
+                    const Spacer(),
+                    if (nextLabel case final next?) ...[
+                      _Chip(label: 'Sonraki: $next', icon: RedoxIcons.next, onPressed: onNext),
+                      const SizedBox(width: 8),
+                    ],
+                    _Chip(label: scaleLabel, icon: RedoxIcons.aspectRatio, onPressed: onScale),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Cam daire düğme: yarı saydam beyaz zemin, beyaz ikon. [solid]: kızıl dolu,
 /// koyu kırmızı 4 dp kenarlı, beyaz ikon (oynat/duraklat; kullanıcı isteği:
 /// TV'deki gibi kırmızı, kenarı daha kırmızı).

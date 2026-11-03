@@ -10,6 +10,7 @@ import 'core/content/profiles.dart';
 import 'core/content/favorites.dart';
 import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
+import 'core/content/watch_progress.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/playback/stream_probe.dart';
@@ -31,6 +32,7 @@ class RedoxApp extends StatefulWidget {
     required this.tv,
     this.profiles,
     this.history,
+    this.progress,
     this.favorites,
     this.locks,
     this.sources,
@@ -50,6 +52,9 @@ class RedoxApp extends StatefulWidget {
 
   /// Profilin izleme geçmişi (Anasayfa "Son izlenen kanallar").
   final WatchHistory Function(String profileId)? history;
+
+  /// Profilin film/dizide kaldığı yerler.
+  final WatchProgress Function(String profileId)? progress;
 
   /// Profilin favorileri (kanal ve radyo).
   final Favorites Function(String profileId)? favorites;
@@ -166,6 +171,7 @@ class _RedoxAppState extends State<RedoxApp> {
         tv: tv,
         profile: profile,
         history: widget.history?.call(profile?.id ?? ProfileStore.defaults.first.id),
+        progress: widget.progress?.call(profile?.id ?? ProfileStore.defaults.first.id),
         favorites: widget.favorites?.call(profile?.id ?? ProfileStore.defaults.first.id),
         radio: widget.radio,
         locks: widget.locks,

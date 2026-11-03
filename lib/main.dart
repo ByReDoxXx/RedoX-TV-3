@@ -19,6 +19,7 @@ import 'core/content/radio_source.dart';
 import 'core/content/song_history.dart';
 import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
+import 'core/content/watch_progress.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/layout/form_factor.dart';
@@ -68,6 +69,8 @@ Future<void> main() async {
   // Ayarlar (oynatıcı, açılış): oynatma katmanı da okur.
   AppSettings.instance = await AppSettings.load();
   final history = await WatchHistory.load();
+  // Film/dizide kaldığı yer (profil başına).
+  final progress = await WatchProgress.load();
   final favorites = await Favorites.load();
   // Kullanıcının M3U listeleri (Kaynaklar).
   final sources = await UserSources.load();
@@ -104,6 +107,7 @@ Future<void> main() async {
       tv: tv,
       profiles: profiles,
       history: history,
+      progress: progress,
       favorites: favorites,
       locks: await ContentLocks.load(),
       sources: sources,

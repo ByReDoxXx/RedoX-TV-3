@@ -39,6 +39,7 @@ class PlayerOptions extends StatefulWidget {
     this.onPreviousChannel,
     this.onExit,
     this.onClose,
+    this.onRestart,
   });
 
   final EngineState engine;
@@ -52,6 +53,9 @@ class PlayerOptions extends StatefulWidget {
   final String? previousChannelName;
   final VoidCallback? onPreviousChannel;
   final VoidCallback? onExit;
+
+  /// Film/dizi: "Baştan başla" (kaldığı yerden açılınca).
+  final VoidCallback? onRestart;
 
   /// Menüyü kapatır; verilirse ana listenin başında "Kapat" satırı olur
   /// (dokunmatik: kumandadaki Geri'nin karşılığı).
@@ -189,6 +193,8 @@ class PlayerOptionsState extends State<PlayerOptions> {
       value: widget.scale.label,
       onPressed: () => setState(() => _open = _Menu.scale),
     ),
+    if (widget.onRestart case final restart?)
+      _Row(icon: RedoxIcons.replay10, label: 'Baştan başla', onPressed: restart),
     if (widget.previousChannelName != null)
       _Row(
         icon: RedoxIcons.previous,
