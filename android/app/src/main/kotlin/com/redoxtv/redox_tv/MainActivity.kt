@@ -1,11 +1,16 @@
 package com.redoxtv.redox_tv
 
 import android.app.AlertDialog
+import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.media.AudioManager
+import android.os.Build
 import android.provider.Settings
 import android.text.InputFilter
 import android.text.InputType
+import android.util.Rational
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -15,8 +20,32 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    /** Oynatıcı açık (telefon/tablet): Ana ekrana çıkınca küçük pencere. */
+    private var pipEnabled = false
+    private var pipChannel: MethodChannel? = null
+
+    private val pipSupported: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Resim içinde resim: oynatıcı "etkin" der; Android 12+ kendiliğinden
+        // girer (setAutoEnterEnabled), öncesinde onUserLeaveHint'te girilir.
+        // Pencere kipi değişince Dart'a "kip" (oynatıcı denetimleri gizler).
+        pipChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "redox/pip").apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "destek" -> result.success(pipSupported)
+                    "etkin" -> {
+                        pipEnabled = (call.arguments as Boolean) && pipSupported
+                        if (pipSupported) setPictureInPictureParams(pipParams())
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "redox/metin").setMethodCallHandler { call, result ->
             if (call.method == "gir") {
                 showInput(
@@ -61,6 +90,24 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun pipParams(): PictureInPictureParams {
+        val b = PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) b.setAutoEnterEnabled(pipEnabled)
+        return b.build()
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            enterPictureInPictureMode(pipParams())
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pipChannel?.invokeMethod("kip", isInPictureInPictureMode)
     }
 
     /**

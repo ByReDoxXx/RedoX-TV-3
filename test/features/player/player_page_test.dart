@@ -5,6 +5,7 @@ import 'package:redox_tv/core/theme/redox_colors.dart';
 import 'package:redox_tv/core/content/app_settings.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/platform/device_controls.dart';
+import 'package:redox_tv/core/platform/picture_in_picture.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/playback/playback_session.dart';
 import 'package:redox_tv/features/player/player_page.dart';
@@ -212,6 +213,38 @@ void main() {
     await tester.tap(find.text('Yayın bilgisi'));
     await _settle(tester);
     expect(find.byType(PlayerStats), findsNothing);
+  });
+
+  testWidgets('resim içinde resim: oynatıcı açılınca etkin, kapanınca değil; küçük pencerede yalnız görüntü', (
+    tester,
+  ) async {
+    final calls = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('redox/pip'), (call) async {
+      calls.add('${call.method}:${call.arguments}');
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('redox/pip'), null),
+    );
+    await _open(tester);
+    // Testte biçim (platform) telefondur: TV sürümünde kapalı.
+    expect(calls, ['etkin:true']);
+    expect(find.byType(PlayerBar), findsOneWidget);
+
+    PictureInPicture.active.value = true;
+    await tester.pump();
+    expect(find.byType(PlayerBar), findsNothing);
+    expect(find.byType(PlayerHints), findsNothing);
+    PictureInPicture.active.value = false;
+    await tester.pump();
+    expect(find.byType(PlayerBar), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await _settle(tester, const Duration(seconds: 1));
+    await tester.binding.handlePopRoute();
+    await _settle(tester, const Duration(seconds: 1));
+    expect(find.byType(PlayerPage), findsNothing);
+    expect(calls.last, 'etkin:false');
   });
 
   testWidgets('kanal değişince ipuçlarında "0 Önceki kanal"', (tester) async {
