@@ -1,11 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
+import 'package:redox_tv/core/content/series_catalog.dart';
+import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/navigation/search_scope.dart';
 import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/core/ui/header_search.dart';
+import 'package:redox_tv/features/search/library_search.dart';
 import 'package:redox_tv/features/search/search_page.dart';
 
 const _channels = [
@@ -86,5 +91,51 @@ void main() {
     await tester.pump();
     expect(values, ['', 'trt'], reason: 'ikinci açılışta yazılan metinle');
     expect(find.text('Kanallar (1)'), findsOneWidget);
+  });
+
+  testWidgets('Film ve Dizi sonuçları listelenir; filme basınca film, diziye basınca dizi açılır', (tester) async {
+    final sources = (await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('redox-arama-');
+      addTearDown(() => dir.delete(recursive: true));
+      final s = await UserSources.open(dir);
+      await s.addText(
+        'Filmler',
+        '#EXTM3U\n#EXTINF:-1 group-title="Aksiyon",The Flash (2023)\nhttp://o/f.mkv\n',
+        origin: SourceOrigin.file,
+        kind: SourceKind.film,
+      );
+      await s.addText(
+        'Diziler',
+        '#EXTM3U\n#EXTINF:-1,The Flash S01E01\nhttp://o/d.mkv\n',
+        origin: SourceOrigin.file,
+        kind: SourceKind.series,
+      );
+      return s;
+    }))!;
+    final library = (await tester.runAsync(() => LibrarySearch.load(sources)))!;
+    LiveChannel? film;
+    Series? series;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.phone),
+        home: SearchPage(
+          channels: _channels,
+          initialQuery: 'flash',
+          library: Future.value(library),
+          onFilm: (f, _) => film = f,
+          onSeries: (s) => series = s,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Filmler (1)'), findsOneWidget);
+    expect(find.text('Diziler (1)'), findsOneWidget);
+    expect(find.text('The Flash (2023)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('The Flash (2023)'));
+    expect(film?.streams.single, 'http://o/f.mkv');
+    await tester.tap(find.text('The Flash'));
+    expect(series?.name, 'The Flash');
   });
 }

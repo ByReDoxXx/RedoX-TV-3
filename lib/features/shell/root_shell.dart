@@ -26,7 +26,9 @@ import '../../core/ui/redox_icon.dart';
 import '../home/home_content.dart';
 import '../locks/lock_scope.dart';
 import '../home/home_page.dart';
+import '../library/film_detail_page.dart';
 import '../library/library_page.dart';
+import '../library/series_detail_page.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../player/player_page.dart';
 import '../../core/playback/radio_controller.dart';
@@ -38,6 +40,7 @@ import 'reminder_prompt.dart';
 import '../radio/radio_page.dart';
 import '../remote/remote_page.dart';
 import '../radio/radio_player_page.dart';
+import '../search/library_search.dart';
 import '../search/search_page.dart';
 import '../../core/navigation/search_scope.dart';
 import '../settings/settings_page.dart';
@@ -402,7 +405,51 @@ class _RootShellState extends State<RootShell> {
     }
   }
 
-  /// Başlıktaki aramanın sayfası: kanallar ve (çocuk profili dışında) radyolar.
+  /// Aramanın Film/Dizi verisi; Film ya da Dizi kaynakları değişmedikçe
+  /// yeniden yüklenmez (büyük listede sadeleştirme saniyeler sürer).
+  Future<LibrarySearch>? _librarySearch;
+  String? _librarySearchKey;
+
+  Future<LibrarySearch>? _library() {
+    final sources = widget.sources;
+    if (sources == null || _kids) return null;
+    final key = [
+      for (final s in sources.items)
+        if (s.kind != SourceKind.live) '${s.id}:${s.updated.millisecondsSinceEpoch}',
+    ].join(',');
+    if (key.isEmpty) return null;
+    if (key != _librarySearchKey) {
+      _librarySearchKey = key;
+      final load = _librarySearch = LibrarySearch.load(sources);
+      // Okunamazsa sonraki aramada yeniden denenir.
+      load.then<void>(
+        (_) {},
+        onError: (Object _) {
+          if (identical(_librarySearch, load)) _librarySearchKey = null;
+        },
+      );
+    }
+    return _librarySearch;
+  }
+
+  /// Aramadan film: TMDB varsa ayrıntı sayfası (Film bölümündeki gibi), yoksa
+  /// doğrudan oynar.
+  void _openFilm(BuildContext context, LiveChannel film, List<LiveChannel> films) {
+    void watch(LiveChannel f) => unawaited(_watch(context, f, from: [f], mode: PlayerMode.film));
+    final tmdb = Tmdb.shared;
+    if (tmdb == null) return watch(film);
+    Route<void> detail(LiveChannel f) => FilmDetailPage.route(
+      film: f,
+      tmdb: tmdb,
+      onWatch: () => watch(f),
+      library: films,
+      onSimilar: (c) => unawaited(Navigator.of(context).pushReplacement(detail(c))),
+    );
+    unawaited(Navigator.of(context).push(detail(film)));
+  }
+
+  /// Başlıktaki aramanın sayfası: kanallar ve (çocuk profili dışında)
+  /// radyolar, filmler ve diziler.
   void _search(BuildContext context, String query) {
     final radio = _kids ? null : widget.radio;
     unawaited(
@@ -412,6 +459,17 @@ class _RootShellState extends State<RootShell> {
           radios: radio?.stations ?? const [],
           query: query,
           onChannel: (c) => _watch(context, c),
+          library: _library(),
+          onFilm: (f, films) => _openFilm(context, f, films),
+          onSeries: (s) => unawaited(
+            SeriesDetailPage.open(
+              context,
+              s,
+              tmdb: Tmdb.shared,
+              favorites: widget.favorites,
+              onWatch: (list, i) => _watch(context, list[i], from: list, mode: PlayerMode.series),
+            ),
+          ),
           onRadio: radio == null
               ? null
               : (s) {

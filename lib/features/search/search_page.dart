@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/content/live_channel.dart';
+import '../../core/content/series_catalog.dart';
+import '../../core/content/tmdb.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/system_text_input.dart';
 import '../../core/theme/redox_colors.dart';
@@ -12,11 +14,14 @@ import '../../core/ui/channel_logo.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/icon_action_button.dart';
 import '../../core/ui/redox_icon.dart';
+import '../library/widgets/tmdb_poster.dart';
 import '../radio/widgets/station_avatar.dart';
+import 'library_search.dart';
 
-/// Arama: kanal adı, şu an yayındaki program ve radyo adı içinde arar
-/// (Türkçe harfler sadeleşir: "trt cocuk" = "TRT Çocuk"). Başlıktaki aramadan
-/// açılır (SearchScope); sonuca OK/dokunma kanalı ya da radyoyu açar.
+/// Arama: kanal adı, şu an yayındaki program, radyo, film ve dizi adı içinde
+/// arar (Türkçe harfler sadeleşir: "trt cocuk" = "TRT Çocuk"). Başlıktaki
+/// aramadan açılır (SearchScope); sonuca OK/dokunma kanalı, radyoyu, filmi
+/// ya da dizinin sayfasını açar. Film ve diziler [library] yüklenince gelir.
 class SearchPage extends StatefulWidget {
   const SearchPage({
     super.key,
@@ -25,7 +30,17 @@ class SearchPage extends StatefulWidget {
     this.initialQuery = '',
     this.onChannel,
     this.onRadio,
+    this.library,
+    this.onFilm,
+    this.onSeries,
   });
+
+  /// Film ve Dizi kaynakları (adları sadeleştirilmiş); null ise aranmaz.
+  final Future<LibrarySearch>? library;
+
+  /// Film sonucu: film ve bütün filmler (benzerleri için).
+  final void Function(LiveChannel film, List<LiveChannel> films)? onFilm;
+  final void Function(Series series)? onSeries;
 
   final List<LiveChannel> channels;
   final List<LiveChannel> radios;
@@ -42,9 +57,20 @@ class SearchPage extends StatefulWidget {
     String query = '',
     void Function(LiveChannel channel)? onChannel,
     void Function(LiveChannel station)? onRadio,
+    Future<LibrarySearch>? library,
+    void Function(LiveChannel film, List<LiveChannel> films)? onFilm,
+    void Function(Series series)? onSeries,
   }) => MaterialPageRoute(
-    builder: (_) =>
-        SearchPage(channels: channels, radios: radios, initialQuery: query, onChannel: onChannel, onRadio: onRadio),
+    builder: (_) => SearchPage(
+      channels: channels,
+      radios: radios,
+      initialQuery: query,
+      onChannel: onChannel,
+      onRadio: onRadio,
+      library: library,
+      onFilm: onFilm,
+      onSeries: onSeries,
+    ),
   );
 
   /// Karşılaştırma için sadeleştirme: küçük harf, Türkçe harfler Latin.
@@ -159,33 +185,71 @@ class _SearchPageState extends State<SearchPage> {
               ),
             ),
             Expanded(
-              child: q.trim().isEmpty
-                  ? const SizedBox.shrink()
-                  : channels.isEmpty && radios.isEmpty
-                  ? Center(
+              child: FutureBuilder(
+                future: widget.library,
+                builder: (context, snap) {
+                  final library = snap.data ?? LibrarySearch.empty;
+                  final loading = widget.library != null && !snap.hasData && !snap.hasError;
+                  final films = library.matchFilms(q);
+                  final series = library.matchSeries(q);
+                  if (q.trim().isEmpty) return const SizedBox.shrink();
+                  final none = channels.isEmpty && radios.isEmpty && films.isEmpty && series.isEmpty;
+                  if (none && !loading) {
+                    return Center(
                       child: Text('Sonuç yok', style: t.titleMedium!.copyWith(color: RedoxRoles.onSurfaceVariant)),
-                    )
-                  : ListView(
-                      padding: EdgeInsets.fromLTRB(pad, 8, pad, 24),
-                      children: [
-                        if (channels.isNotEmpty) _Group('Kanallar (${channels.length})'),
-                        for (final c in channels)
-                          _Result(
-                            title: c.name,
-                            subtitle: c.programTitle ?? '${c.number} · ${c.category}',
-                            leading: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 0.8),
-                            onPressed: widget.onChannel == null ? null : () => widget.onChannel!(c),
+                    );
+                  }
+                  return ListView(
+                    padding: EdgeInsets.fromLTRB(pad, 8, pad, 24),
+                    children: [
+                      if (channels.isNotEmpty) _Group('Kanallar (${channels.length})'),
+                      for (final c in channels)
+                        _Result(
+                          title: c.name,
+                          subtitle: c.programTitle ?? '${c.number} · ${c.category}',
+                          leading: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 0.8),
+                          onPressed: widget.onChannel == null ? null : () => widget.onChannel!(c),
+                        ),
+                      if (films.isNotEmpty) _Group('Filmler (${films.length})'),
+                      for (final f in films)
+                        _Result(
+                          title: switch (Tmdb.cleanName(f.name)) {
+                            ('', _) => f.name,
+                            (final name, final year?) => '$name ($year)',
+                            (final name, null) => name,
+                          },
+                          subtitle: f.category,
+                          leading: _Poster(name: f.name, url: f.logoUrl),
+                          onPressed: widget.onFilm == null ? null : () => widget.onFilm!(f, library.films),
+                        ),
+                      if (series.isNotEmpty) _Group('Diziler (${series.length})'),
+                      for (final d in series)
+                        _Result(
+                          title: d.name,
+                          subtitle: '${d.summary} · ${d.category}',
+                          leading: _Poster(name: d.name, url: d.poster),
+                          onPressed: widget.onSeries == null ? null : () => widget.onSeries!(d),
+                        ),
+                      if (radios.isNotEmpty) _Group('Radyolar (${radios.length})'),
+                      for (final r in radios)
+                        _Result(
+                          title: r.name,
+                          subtitle: r.category,
+                          leading: StationAvatar(station: r, size: 48),
+                          onPressed: widget.onRadio == null ? null : () => widget.onRadio!(r),
+                        ),
+                      if (loading)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Text(
+                            'Film ve diziler yükleniyor…',
+                            style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
                           ),
-                        if (radios.isNotEmpty) _Group('Radyolar (${radios.length})'),
-                        for (final r in radios)
-                          _Result(
-                            title: r.name,
-                            subtitle: r.category,
-                            leading: StationAvatar(station: r, size: 48),
-                            onPressed: widget.onRadio == null ? null : () => widget.onRadio!(r),
-                          ),
-                      ],
-                    ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -320,4 +384,22 @@ class _QueryButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Film/dizi sonucunun küçük afişi (listedeki görsel; TMDB'ye sorulmaz).
+class _Poster extends StatelessWidget {
+  const _Poster({required this.name, this.url});
+
+  final String name;
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(RedoxRadius.sm),
+    child: SizedBox(
+      width: 48,
+      height: 64,
+      child: TmdbPoster(name: name, url: url),
+    ),
+  );
 }

@@ -36,6 +36,30 @@ class SeriesDetailPage extends StatefulWidget {
   /// Dizinin kilit anahtarı (kaynak klasörü: dizi adı).
   static String lockKey(Series s) => ContentLocks.folder(s.sourceId, [s.name]);
 
+  /// Dizi sayfasını açar; kaynak ya da dizi kilitliyse önce PIN (Dizi
+  /// bölümü ve arama).
+  static Future<void> open(
+    BuildContext context,
+    Series series, {
+    Tmdb? tmdb,
+    Favorites? favorites,
+    Future<void> Function(List<LiveChannel> list, int index)? onWatch,
+  }) async {
+    final gate = LockScope.maybeOf(context);
+    final source = ContentLocks.folder(series.sourceId, const []);
+    for (final k in [source, lockKey(series)]) {
+      if (gate != null && gate.locks.blocks(k) && !await gate.pass(context, k)) return;
+    }
+    if (!context.mounted) return;
+    final page = SeriesDetailPage(series: series, tmdb: tmdb, favorites: favorites, onWatch: onWatch);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        // Yeni rota kabuğun altında değil: kilit kapsamı taşınır.
+        builder: (_) => gate == null ? page : LockScope(locks: gate.locks, profiles: gate.profiles, child: page),
+      ),
+    );
+  }
+
   @override
   State<SeriesDetailPage> createState() => _SeriesDetailPageState();
 }

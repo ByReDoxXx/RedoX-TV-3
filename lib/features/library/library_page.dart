@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../core/content/content_locks.dart';
 import '../../core/content/diagnostics.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/library_filter.dart';
@@ -20,7 +19,6 @@ import '../../core/ui/center_on_focus.dart';
 import '../../core/ui/media_card.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
-import '../locks/lock_scope.dart';
 import 'film_detail_page.dart';
 import 'series_detail_page.dart';
 import 'widgets/library_filter_bar.dart';
@@ -361,27 +359,8 @@ class _LibraryPageState extends State<LibraryPage> {
   List<Series> _series = const [];
 
   /// Dizi sayfası; dizi kilitliyse önce PIN.
-  Future<void> _openSeries(Series series) async {
-    final gate = LockScope.maybeOf(context);
-    final key = SeriesDetailPage.lockKey(series);
-    final source = ContentLocks.folder(series.sourceId, const []);
-    for (final k in [source, key]) {
-      if (gate != null && gate.locks.blocks(k) && !await gate.pass(context, k)) return;
-    }
-    if (!mounted) return;
-    final page = SeriesDetailPage(
-      series: series,
-      tmdb: widget.tmdb,
-      favorites: widget.favorites,
-      onWatch: widget.onWatch,
-    );
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        // Yeni rota kabuğun altında değil: kilit kapsamı taşınır.
-        builder: (_) => gate == null ? page : LockScope(locks: gate.locks, profiles: gate.profiles, child: page),
-      ),
-    );
-  }
+  Future<void> _openSeries(Series series) =>
+      SeriesDetailPage.open(context, series, tmdb: widget.tmdb, favorites: widget.favorites, onWatch: widget.onWatch);
 }
 
 /// Afişin köşesinde koyu hap ("2 sezon · 3 bölüm").
