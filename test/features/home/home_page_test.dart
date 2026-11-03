@@ -20,6 +20,7 @@ import 'package:redox_tv/features/tv/tv_content.dart';
 import 'package:redox_tv/core/ui/story_avatar.dart';
 import 'package:redox_tv/features/home/widgets/live_board.dart';
 import 'package:redox_tv/features/home/widgets/resume_board.dart';
+import 'package:redox_tv/features/tutorial/tutorial_stories.dart';
 
 import '../../support/render.dart';
 
@@ -60,9 +61,9 @@ void main() {
       expect(find.text('SPOR 1 4K · Kanal 104'), findsOneWidget);
       expect(find.byType(LiveBoardTile), findsNWidgets(2));
       expect(tester.getRect(find.byType(LiveBoard)).bottom, lessThan(540));
-      // Saate göre selam; TV'de bölüm kısayolları yok (ray var).
+      // Saate göre selam; üstte öğretici hikâyeler (her bölüm).
       expect(find.text('İyi akşamlar, Profil 1'), findsOneWidget);
-      expect(find.byType(StoryAvatar), findsNothing);
+      expect(find.byType(StoryAvatar), findsNWidgets(TutorialStories.all.length));
       await maybeSnapshot(tester, key, 'build/home/anasayfa-4k.png', pixelRatio: 4);
     }),
   );

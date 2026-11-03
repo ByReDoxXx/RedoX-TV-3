@@ -49,6 +49,11 @@ flutter:
     - assets/channels/channels.bin
     - assets/radios/radios.bin
     - assets/sounds/radyo_cizirti.wav
+    # Öğretici hikâyeler: cihaz başına ekran görüntüleri ve vurgu dikdörtgenleri
+    # (test/tutorial/tutorial_shots_test.dart + tools/egitim/webp.py).
+    - assets/tutorial/tv/
+    - assets/tutorial/tablet/
+    - assets/tutorial/telefon/
 
   fonts:
     # Değişken yazı tipi (OFL), tek eksen: wght 100–800. FontWeight -> wght.

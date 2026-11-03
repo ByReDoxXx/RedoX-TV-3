@@ -13,15 +13,13 @@ import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/hiding_header.dart';
 import '../../core/ui/app_header.dart';
-import '../../core/ui/artwork_fallback.dart';
 import '../../core/ui/center_on_focus.dart';
 import '../../core/ui/channel_logo.dart';
-import '../../core/ui/redox_icon.dart';
 import '../../core/ui/section_header.dart';
 import '../../core/ui/shelf.dart';
-import '../../core/ui/story_avatar.dart';
 import 'home_content.dart';
 import 'widgets/continue_card.dart';
+import '../tutorial/tutorial_row.dart';
 import 'widgets/live_board.dart';
 import 'widgets/live_tile.dart';
 import 'widgets/resume_board.dart';
@@ -167,32 +165,10 @@ class HomePage extends StatelessWidget {
         final body = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (phone) ...[
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                child: Row(
-                  // Üste hizalı: iki satırlı etiket halkayı kaydırmaz.
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final s in content.shortcuts)
-                      StoryAvatar(
-                        // Kısa ad: "Televizyon" halkanın altına sığmıyor ("TV").
-                        label: s.shortLabel,
-                        onPressed: () => onNavigate?.call(s),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            ArtworkFallback(name: s.label, showInitials: false),
-                            Center(child: RedoxIcon(s.icon, size: 30, color: RedoxRoles.onSurface)),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
+            // Öğretici hikâyeler (kullanıcı isteği: "giren birisi uygulamayı
+            // öğrensin"): her cihazda, o cihazın ekran görüntüleriyle.
+            TutorialRow(kids: kids, onGo: onNavigate),
+            if (phone) const SizedBox(height: 12),
             Text(
               '${content.greeting}, ${content.profileName}',
               maxLines: 1,
@@ -216,7 +192,8 @@ class HomePage extends StatelessWidget {
                 onGuide: onGuide,
               ),
             if (strip.isNotEmpty) ...[
-              const SizedBox(height: 28),
+              // TV'de hikâye satırıyla 540 dp'ye sığsın.
+              SizedBox(height: phone ? 28 : 18),
               Shelf(
                 gutter: stripGap,
                 header: content.fromHistory

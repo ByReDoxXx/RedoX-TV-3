@@ -14,6 +14,7 @@ import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/shell/root_shell.dart';
 import 'package:redox_tv/features/shell/section_placeholder.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
+import 'package:redox_tv/features/tutorial/tutorial_viewer.dart';
 import 'package:redox_tv/features/tv/widgets/epg_grid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -279,10 +280,18 @@ void main() {
       expect(find.byType(EpgGrid), findsOneWidget);
     });
 
-    testWidgets('telefon: kısayol halkası bölüme gider', (tester) async {
+    testWidgets('telefon: hikâye halkası öğretici hikâyeyi açar; "bölümüne git" bölüme gider', (tester) async {
       await open(tester, phone: true);
       await tester.tap(find.ancestor(of: find.text('Radyo'), matching: find.byType(StoryAvatar)));
+      // Dokunma zamanlayıcısı, sonra yeni sayfanın çizimi.
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(TutorialViewer), findsOneWidget);
+      expect(find.text('RADYO'), findsOneWidget);
+      await tester.tap(find.text('Radyo bölümüne git'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(TutorialViewer), findsNothing);
       expect(find.byType(SectionPlaceholder), findsOneWidget);
     });
   });
