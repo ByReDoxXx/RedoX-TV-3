@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/content/content_locks.dart';
 import '../../core/content/diagnostics.dart';
 import '../../core/content/favorites.dart';
+import '../../core/content/library_filter.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/series_catalog.dart';
 import '../../core/content/tmdb.dart';
@@ -14,24 +15,23 @@ import '../../core/layout/page_layout.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/ui/app_header.dart';
-import '../../core/ui/category_chip.dart';
 import '../../core/ui/hiding_header.dart';
 import '../../core/ui/center_on_focus.dart';
 import '../../core/ui/media_card.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
-import '../../core/ui/scroll_hint_row.dart';
 import '../locks/lock_scope.dart';
 import 'film_detail_page.dart';
 import 'series_detail_page.dart';
+import 'widgets/library_filter_bar.dart';
 import 'widgets/tmdb_poster.dart';
 
 /// Film ve Dizi bölümleri: Ayarlar › Kaynak ekle'de Film ya da Dizi olarak
 /// eklenen listeler (kullanıcı isteği). **Film:** bütün film kaynaklarının
-/// kayıtları afiş ızgarasında, kategori çipleriyle. **Dizi:** kayıtlar dizi ›
+/// kayıtları afiş ızgarasında (Kategori, Tür, Yıl süzgeçleri). **Dizi:** dizi ›
 /// sezon › bölüm klasörlerinde ("S01E02" ve "1. Sezon 2. Bölüm" adlardan,
 /// yoksa grup adı ve "/"); birden çok kaynak varsa en üstte kaynak klasörleri.
-/// OK/dokunma oynatır (kategori ya da klasörün kayıtlarıyla).
+/// OK/dokunma oynatır (süzülmüş listeyle ya da klasörün kayıtlarıyla).
 class LibraryPage extends StatefulWidget {
   const LibraryPage({
     super.key,
@@ -71,7 +71,6 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   /// Kaynak listesi değişince yeniden yüklenir.
   late Future<List<(UserSource, List<LiveChannel>)>> _loaded = _load();
-  String? _category;
 
   Future<List<(UserSource, List<LiveChannel>)>> _load() async {
     try {
@@ -148,6 +147,7 @@ class _LibraryPageState extends State<LibraryPage> {
           return _posterGrid<LiveChannel>(
             items: all,
             categoryOf: (c) => c.category,
+            nameOf: (c) => c.name,
             // Afişte temiz ad: "|MULTI| Ad (2023) [4K]" etiketleri kartı dolduruyordu.
             titleOf: (c) => switch (Tmdb.cleanName(c.name).$1) {
               '' => c.name,
@@ -162,6 +162,7 @@ class _LibraryPageState extends State<LibraryPage> {
         return _posterGrid<Series>(
           items: _catalog(loaded),
           categoryOf: (s) => s.category,
+          nameOf: (s) => s.name,
           titleOf: (s) => s.name,
           badgeOf: (s) => s.shortSummary,
           artworkOf: (s) => TmdbPoster(name: s.name, url: s.poster, tmdb: widget.tmdb, series: true),
@@ -209,15 +210,24 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  /// Izgara listesinin kategorilere ayrılmışı (liste değişince yeniden).
-  Object? _groupedOf;
-  Map<String, List<Object?>> _groups = const {};
+  /// Izgara listesinin süzgeç dizini (liste değişince yeniden kurulur) ve
+  /// süzülmüş listesi (süzgeç değişince yeniden).
+  Object? _indexOf;
+  FilterIndex<Object?>? _index;
+  List<Object?>? _shown;
+  LibraryFilter _filter = const LibraryFilter();
 
-  /// Afiş ızgarası (Film: filmler; Dizi: diziler) ve üstte kategori
-  /// çipleri (birden çok kategori varsa).
+  void _setFilter(LibraryFilter f) => setState(() {
+    _filter = f;
+    _shown = null;
+  });
+
+  /// Afiş ızgarası (Film: filmler; Dizi: diziler) ve üstte süzgeç satırı
+  /// (Kategori, Tür, Yıl).
   Widget _posterGrid<T>({
     required List<T> items,
     required String Function(T) categoryOf,
+    required String Function(T) nameOf,
     required String Function(T) titleOf,
     String? Function(T)? badgeOf,
     required Widget Function(T) artworkOf,
@@ -225,79 +235,83 @@ class _LibraryPageState extends State<LibraryPage> {
     required EdgeInsets padding,
     required bool phone,
   }) {
-    // Kategoriler ve sayıları liste başına bir kez (145 bin filmde her
-    // yeniden çizimde baştan saymak Chromecast'i donduruyordu).
-    if (!identical(items, _groupedOf)) {
-      _groupedOf = items;
-      final groups = <String, List<Object?>>{};
-      for (final x in items) {
-        groups.putIfAbsent(categoryOf(x), () => []).add(x);
-      }
-      _groups = groups;
+    // Dizin liste başına bir kez (145 bin filmde her yeniden çizimde baştan
+    // saymak Chromecast'i donduruyordu); kurulana dek liste süzülmeden görünür.
+    if (!identical(items, _indexOf)) {
+      _indexOf = items;
+      _index = null;
+      _shown = null;
+      unawaited(
+        FilterIndex.build(items, categoryOf: categoryOf, nameOf: nameOf).then((index) {
+          if (mounted && identical(items, _indexOf)) {
+            setState(() {
+              _index = index;
+              _shown = null;
+            });
+          }
+        }),
+      );
     }
-    final groups = _groups;
-    final categories = groups.keys.toList();
-    final list = _category == null ? items : [...?groups[_category]?.cast<T>()];
+    final index = _index as FilterIndex<T>?;
+    final list = index == null ? items : (_shown ??= index.apply(_filter)) as List<T>;
+    final t = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (categories.length > 1)
+        if (index != null)
           Padding(
             padding: EdgeInsets.only(left: padding.left - 12),
-            child: ScrollHintRow(
+            child: LibraryFilterBar<T>(
+              index: index,
+              filter: _filter,
+              count: list.length,
+              onChanged: _setFilter,
               padding: const EdgeInsets.fromLTRB(12, 16, 12, 6),
-              child: Row(
-                children: [
-                  for (final (i, (c, label, count)) in [
-                    (null, 'Tümü', items.length),
-                    for (final c in categories) (c, c, groups[c]!.length),
-                  ].indexed) ...[
-                    if (i > 0) const SizedBox(width: 12),
-                    CategoryChip(
-                      label: label,
-                      count: count,
-                      selected: c == _category,
-                      onPressed: () => setState(() => _category = c),
-                    ),
-                  ],
-                ],
+            ),
+          ),
+        if (list.isEmpty)
+          Padding(
+            padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 0),
+            child: Text(
+              'Bu süzgeçle eşleşen kayıt yok.',
+              style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+            ),
+          )
+        else
+          Expanded(
+            child: GridView.builder(
+              // Üstte/altta odak payı: büyüyen (1.08) afiş ve halkası ilk ve
+              // son satırda ızgaranın kenarında kesilmesin.
+              padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, phone ? padding.bottom : 24),
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: phone ? 130 : 150,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 2 / 3,
               ),
-            ),
-          ),
-        Expanded(
-          child: GridView.builder(
-            // Üstte/altta odak payı: büyüyen (1.08) afiş ve halkası ilk ve
-            // son satırda ızgaranın kenarında kesilmesin.
-            padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, phone ? padding.bottom : 24),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: phone ? 130 : 150,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 2 / 3,
-            ),
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final x = list[i];
-              // D-pad odağında afiş ortalanır: kenara yaslanınca büyüyen kart
-              // ızgaranın altında/üstünde kesiliyordu (TV'de görüldü).
-              return LayoutBuilder(
-                builder: (context, box) => CenterOnFocus(
-                  child: MediaCard(
-                    title: titleOf(x),
-                    badge: switch (badgeOf?.call(x)) {
-                      final text? => _Badge(text),
-                      null => null,
-                    },
-                    width: box.maxWidth,
-                    focused: null,
-                    artwork: artworkOf(x),
-                    onPressed: onOpen == null ? null : () => onOpen(list, i),
+              itemCount: list.length,
+              itemBuilder: (context, i) {
+                final x = list[i];
+                // D-pad odağında afiş ortalanır: kenara yaslanınca büyüyen kart
+                // ızgaranın altında/üstünde kesiliyordu (TV'de görüldü).
+                return LayoutBuilder(
+                  builder: (context, box) => CenterOnFocus(
+                    child: MediaCard(
+                      title: titleOf(x),
+                      badge: switch (badgeOf?.call(x)) {
+                        final text? => _Badge(text),
+                        null => null,
+                      },
+                      width: box.maxWidth,
+                      focused: null,
+                      artwork: artworkOf(x),
+                      onPressed: onOpen == null ? null : () => onOpen(list, i),
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
@@ -310,7 +324,7 @@ class _LibraryPageState extends State<LibraryPage> {
     unawaited(Navigator.of(context).push(_detail(tmdb, list, i)));
   }
 
-  /// Film sayfası; "Benzerleri" bütün filmlerde aranır (kategori süzgecinden
+  /// Film sayfası; "Benzerleri" bütün filmlerde aranır (süzgeçten
   /// bağımsız), seçilen film aynı sayfanın yerine açılır (Geri listeye döner).
   Route<void> _detail(Tmdb tmdb, List<LiveChannel> list, int i) => FilmDetailPage.route(
     film: list[i],
@@ -321,7 +335,7 @@ class _LibraryPageState extends State<LibraryPage> {
   );
 
   /// Film listelerinin kayıtları tek listede; yüklenen liste değişmedikçe
-  /// aynı nesne (ızgaranın kategori önbelleği ona bağlı).
+  /// aynı nesne (ızgaranın süzgeç dizini ona bağlı).
   List<LiveChannel> _films(List<(UserSource, List<LiveChannel>)> loaded) {
     if (!identical(loaded, _filmsOf)) {
       _filmsOf = loaded;

@@ -139,7 +139,7 @@ void main() {
   });
 
   for (final (f, size) in const [(FormFactor.tv, Size(960, 540)), (FormFactor.phone, Size(390, 844))]) {
-    testWidgets('${f.name}: Film afiş ızgarası, kategori çipi süzer, film kategori listesiyle açılır', (tester) async {
+    testWidgets('${f.name}: Film afiş ızgarası, Kategori süzgeci süzer, film süzülmüş listeyle açılır', (tester) async {
       await _size(tester, size);
       final sources = await _sources(tester);
       (List<LiveChannel>, int)? watched;
@@ -164,9 +164,15 @@ void main() {
       expect(find.byType(MediaCard), findsNWidgets(2));
       expect(find.text('Canlı Kanal'), findsNothing);
       await maybeSnapshot(tester, key, 'build/kutuphane/film-${f.name}.png', pixelRatio: 2);
+      expect(find.text('2 kayıt'), findsOneWidget);
+      await tester.tap(find.text('Kategori'));
+      await tester.pumpAndSettle();
+      await maybeSnapshot(tester, key, 'build/kutuphane/film-suzgec-${f.name}.png', pixelRatio: 2);
       await tester.tap(find.text('Komedi'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.byType(MediaCard), findsOneWidget);
+      expect(find.text('Kategori: Komedi'), findsOneWidget);
+      expect(find.text('1 kayıt'), findsOneWidget);
       await tester.tap(find.byType(MediaCard));
       expect(watched!.$1.single.streams.single, 'http://ornek/fb.mp4');
     });
@@ -421,8 +427,10 @@ void main() {
       ),
     );
     await _settle(tester);
+    await tester.tap(find.text('Kategori'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Komedi'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(MediaCard));
     await _settle(tester);
     await tester.pumpAndSettle();

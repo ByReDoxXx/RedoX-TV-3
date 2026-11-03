@@ -16,7 +16,10 @@ class CategoryChip extends StatelessWidget {
     this.onPressed,
     this.focused,
     this.count,
+    this.autofocus = false,
   });
+
+  final bool autofocus;
 
   /// Öğe sayısı: etiketin yanında küçük hap ("Spor 4").
   final int? count;
@@ -38,13 +41,12 @@ class CategoryChip extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             color: selected ? null : RedoxRoles.surfaceContainerHigh,
-            gradient: selected
-                ? const LinearGradient(colors: [RedoxSeeds.crimson, RedoxAccent.ember])
-                : null,
+            gradient: selected ? const LinearGradient(colors: [RedoxSeeds.crimson, RedoxAccent.ember]) : null,
             borderRadius: radius,
           ),
           child: InkWell(
             onTap: onPressed,
+            autofocus: autofocus,
             borderRadius: radius,
             focusColor: Colors.transparent,
             hoverColor: Colors.transparent,
@@ -53,12 +55,7 @@ class CategoryChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    label,
-                    style: style.copyWith(
-                      color: selected ? Colors.white : RedoxRoles.onSurfaceVariant,
-                    ),
-                  ),
+                  Text(label, style: style.copyWith(color: selected ? Colors.white : RedoxRoles.onSurfaceVariant)),
                   if (count != null) ...[
                     const SizedBox(width: 8),
                     // Sayı hapı: seçiliyken koyu perde, değilken bir ton yüksek kap.
