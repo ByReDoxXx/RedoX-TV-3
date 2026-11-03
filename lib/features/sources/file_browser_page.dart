@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/content/local_videos.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/storage_access.dart';
 import '../../core/theme/redox_colors.dart';
@@ -18,16 +19,24 @@ import '../../core/ui/redox_icon.dart';
 /// (dahili depolama, USB/SD, sürücüler), klasörler ve yalnız eklenebilen
 /// dosyalar (M3U, M3U8, JSON, TXT, HTML). OK klasöre girer ya da dosyayı
 /// seçer; Geri üst klasöre, köklerde sayfadan çıkar. Döner: dosyanın yolu.
+///
+/// [folder] kipinde (Kaynak ekle › Klasörden) klasör seçilir: klasörler ve
+/// içlerindeki videolar listelenir (videolar seçilmez), üstteki "Bu klasörü
+/// ekle" açık klasörü döner.
 class FileBrowserPage extends StatefulWidget {
-  const FileBrowserPage({super.key, this.roots});
+  const FileBrowserPage({super.key, this.roots, this.folder = false});
 
   /// Kökler (ad, yol); null ise cihazınkiler (StorageAccess.roots).
   final List<(String, String)>? roots;
 
+  /// Klasör seçme kipi.
+  final bool folder;
+
   static const extensions = {'m3u', 'm3u8', 'json', 'txt', 'html', 'htm'};
 
-  static Route<String> route({List<(String, String)>? roots}) =>
-      MaterialPageRoute(builder: (_) => FileBrowserPage(roots: roots));
+  static Route<String> route({List<(String, String)>? roots, bool folder = false}) => MaterialPageRoute(
+    builder: (_) => FileBrowserPage(roots: roots, folder: folder),
+  );
 
   @override
   State<FileBrowserPage> createState() => _FileBrowserPageState();
@@ -94,7 +103,8 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
 
   static String _name(String path) => path.split(RegExp(r'[/\\]')).where((p) => p.isNotEmpty).lastOrNull ?? path;
 
-  static bool _addable(String path) {
+  bool _addable(String path) {
+    if (widget.folder) return LocalVideos.isVideo(path);
     final dot = path.lastIndexOf('.');
     return dot > 0 && FileBrowserPage.extensions.contains(path.substring(dot + 1).toLowerCase());
   }
@@ -148,9 +158,15 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Dosya seç', style: t.headlineSmall!.copyWith(color: RedoxRoles.onSurface)),
                           Text(
-                            _dir ?? 'M3U, M3U8, JSON, TXT ya da HTML listesi',
+                            widget.folder ? 'Klasör seç' : 'Dosya seç',
+                            style: t.headlineSmall!.copyWith(color: RedoxRoles.onSurface),
+                          ),
+                          Text(
+                            _dir ??
+                                (widget.folder
+                                    ? 'Film ya da dizi klasörü (SSD, USB bellek, SD kart)'
+                                    : 'M3U, M3U8, JSON, TXT ya da HTML listesi'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
@@ -158,7 +174,8 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
                         ],
                       ),
                     ),
-                    if (!tv) GlassButton(label: 'Sistem seçicisi', icon: RedoxIcons.uploadFile, onPressed: _system),
+                    if (!tv && !widget.folder)
+                      GlassButton(label: 'Sistem seçicisi', icon: RedoxIcons.uploadFile, onPressed: _system),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -216,12 +233,21 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
           autofocus: true,
           onPressed: () => _open(_parent),
         ),
+        if (widget.folder)
+          _Row(
+            icon: RedoxIcons.add,
+            name: 'Bu klasörü ekle',
+            detail: 'Alt klasörlerdeki videolar da eklenir',
+            onPressed: () => Navigator.of(context).pop(dir),
+          ),
         for (final e in _entries)
           _Row(
-            icon: e is Directory ? RedoxIcons.folder : RedoxIcons.uploadFile,
+            icon: e is Directory ? RedoxIcons.folder : (widget.folder ? RedoxIcons.film : RedoxIcons.uploadFile),
             name: _name(e.path),
-            detail: e is Directory ? 'Klasör' : 'Liste dosyası',
-            onPressed: e is Directory ? () => _open(e.path) : () => Navigator.of(context).pop(e.path),
+            detail: e is Directory ? 'Klasör' : (widget.folder ? 'Video' : 'Liste dosyası'),
+            onPressed: e is Directory
+                ? () => _open(e.path)
+                : (widget.folder ? null : () => Navigator.of(context).pop(e.path)),
           ),
       ],
     ];
@@ -233,7 +259,8 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(
-              _error ?? 'Bu klasörde eklenebilecek dosya yok.',
+              _error ??
+                  (widget.folder ? 'Bu klasörde alt klasör ya da video yok.' : 'Bu klasörde eklenebilecek dosya yok.'),
               style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
             ),
           ),
@@ -254,7 +281,7 @@ class _Row extends StatelessWidget {
   final RedoxIcons icon;
   final String name;
   final String detail;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool autofocus;
 
   @override

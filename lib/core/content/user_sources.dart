@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'live_channel.dart';
+import 'local_videos.dart';
 import 'm3u_parser.dart';
 import 'remote_file.dart';
 import 'source_formats.dart';
@@ -23,7 +24,10 @@ enum SourceOrigin {
   portal('Portal'),
   bulk('GitHub'),
   file('Dosya'),
-  phone('Telefon');
+  phone('Telefon'),
+
+  /// Cihazdaki klasörün videoları (SSD, USB, SD kart; [LocalVideos]).
+  folder('Klasör');
 
   const SourceOrigin(this.label);
 
@@ -81,13 +85,14 @@ class UserSource {
   final String? url;
 
   /// Yenileme bilgisi: Xtream (server, username, password), portal (portal,
-  /// mac). Cihazda, uygulama klasöründe durur.
+  /// mac), klasör (folder: yol). Cihazda, uygulama klasöründe durur.
   final Map<String, String> config;
 
   /// İçerik: hangi bölümde listelendiği.
   final SourceKind kind;
 
-  bool get refreshable => url != null || origin == SourceOrigin.xtream || origin == SourceOrigin.portal;
+  bool get refreshable =>
+      url != null || origin == SourceOrigin.xtream || origin == SourceOrigin.portal || origin == SourceOrigin.folder;
 
   UserSource _with({required int count}) => UserSource(
     id: id,
@@ -266,6 +271,20 @@ class UserSources extends ChangeNotifier {
     );
   }
 
+  /// Cihazdaki klasörün videoları (takılı SSD, USB bellek, SD kart): alt
+  /// klasörleriyle taranır; yenileyince yeni eklenen dosyalar da gelir. Ad
+  /// boşsa klasörün adı.
+  Future<UserSource> addFolder(String name, String path, {SourceKind kind = SourceKind.film}) async {
+    final folder = path.split(RegExp(r'[/\\]')).lastWhere((p) => p.isNotEmpty, orElse: () => 'Klasör');
+    return _store(
+      name.trim().isEmpty ? folder : name,
+      await LocalVideos.scan(path, kind),
+      origin: SourceOrigin.folder,
+      config: {'folder': path},
+      kind: kind,
+    );
+  }
+
   /// MAC/STB portalının canlı kanalları (adresler oynatma anında çözülür).
   Future<UserSource> addPortal(
     String name, {
@@ -359,6 +378,8 @@ class UserSources extends ChangeNotifier {
         final client = StalkerClient(portal: c['portal']!, mac: c['mac']!, fetch: _fetch);
         channels = await client.liveChannels(s.id);
         _portals[s.id] = client;
+      case SourceOrigin.folder:
+        channels = await LocalVideos.scan(c['folder']!, s.kind);
       default:
         final url = s.url;
         if (url == null) return s;

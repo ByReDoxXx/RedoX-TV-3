@@ -45,6 +45,7 @@ enum AddMethod {
   mediaHub('MediaHub (mHub)', 'Açık eklenti', RedoxIcons.plugin),
   bulk('Toplu (GitHub)', 'Klasördeki listeler', RedoxIcons.bulkAdd),
   file('Dosyadan', 'Cihazdaki M3U/JSON', RedoxIcons.uploadFile),
+  folder('Klasörden', 'SSD, USB, SD karttaki videolar', RedoxIcons.folder),
   phone('Telefondan', 'QR ile gönder', RedoxIcons.qrCode);
 
   const AddMethod(this.title, this.subtitle, this.icon);
@@ -184,6 +185,8 @@ class _AddSourceTabState extends State<AddSourceTab> {
         });
       case AddMethod.file:
         await _addFile();
+      case AddMethod.folder:
+        await _addFolder();
       case AddMethod.phone:
         await showPhoneQrDialog(context, receiver: widget.receiver ?? SourceReceiver(_sources));
       case AddMethod.mediaHub:
@@ -211,6 +214,18 @@ class _AddSourceTabState extends State<AddSourceTab> {
       final file = path.split(RegExp(r'[/\\]')).last;
       final name = file.replaceAll(RegExp(r'\.(m3u8?|json|html?|txt)$', caseSensitive: false), '');
       return _added(await _sources.addText(name, text, origin: SourceOrigin.file, kind: _content.kind));
+    });
+  }
+
+  /// Klasörden: gezginde klasör seçilir, videoları Film ya da Dizi olur
+  /// (Canlı TV seçiliyken Film).
+  Future<void> _addFolder() async {
+    final path = await Navigator.of(context).push(FileBrowserPage.route(roots: widget.fileRoots, folder: true));
+    if (path == null) return;
+    final kind = _content == SourceContent.series ? SourceKind.series : SourceKind.film;
+    await _run(() async {
+      final s = await _sources.addFolder('', path, kind: kind);
+      return '"${s.name}" eklendi: ${s.count} video (${kind.label} bölümünde).';
     });
   }
 

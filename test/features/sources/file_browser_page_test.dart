@@ -132,4 +132,52 @@ void main() {
     }
     expect(sources.of(SourceKind.live).map((s) => s.name), contains('kanallar'));
   });
+
+  testWidgets('Kaynak ekle › Klasörden: klasör seçilir, videoları Dizi olarak eklenir', (tester) async {
+    await _tv(tester);
+    final root = (await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('redox-ssd-');
+      addTearDown(() => dir.delete(recursive: true));
+      for (final rel in ['Diziler/Arrow/Sezon 1/01.mkv', 'Diziler/Arrow/Sezon 1/02.mkv', 'Diziler/notlar.txt']) {
+        final f = File('${dir.path}/$rel');
+        await f.parent.create(recursive: true);
+        await f.writeAsString('x');
+      }
+      return dir;
+    }))!;
+    final sources = (await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('redox-kaynak-');
+      addTearDown(() => dir.delete(recursive: true));
+      return UserSources.open(dir);
+    }))!;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+        home: Scaffold(
+          body: AddSourceTab(sources: sources, fileRoots: [('Harici SSD', root.path)]),
+        ),
+      ),
+    );
+    await _settle(tester);
+    await tester.tap(find.text('Dizi'));
+    await _settle(tester);
+    await tester.tap(find.text('Klasörden'));
+    await _settle(tester);
+    expect(find.text('Klasör seç'), findsOneWidget);
+    await tester.tap(find.text('Harici SSD'));
+    await _settle(tester);
+    await tester.tap(find.text('Diziler'));
+    await _settle(tester);
+    expect(find.text('notlar.txt'), findsNothing, reason: 'klasör kipinde yalnız klasörler ve videolar');
+    await tester.tap(find.text('Bu klasörü ekle'));
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    final added = sources.of(SourceKind.series).single;
+    expect((added.name, added.count), ('Diziler', 2));
+    final eps = (await tester.runAsync(() => sources.channels(added)))!;
+    expect(eps.map((c) => c.name), ['Arrow S01E01', 'Arrow S01E02']);
+    expect(tester.takeException(), isNull);
+  });
 }
