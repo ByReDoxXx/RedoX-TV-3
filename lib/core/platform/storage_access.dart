@@ -44,13 +44,20 @@ abstract final class StorageAccess {
 
   /// Gezilecek kökler (ad, yol): Android'de dahili depolama ve takılı USB/SD;
   /// Windows'ta sürücüler; Linux'ta ana klasör ve kök.
-  static List<(String, String)> roots() {
+  ///
+  /// Android'de takılı sürücüler sistemin depolama birimlerinden bulunur
+  /// (her birimin uygulama klasörü `/storage/<birim>/Android/data/...`):
+  /// `/storage` uygulamalara listelenmiyor (yalnız geçilebilir), Chromecast'te
+  /// takılı SSD bu yüzden görünmüyordu ("SSD'yi görmüyor"; X-plore görüyor).
+  static Future<List<(String, String)>> roots() async {
     if (Platform.isAndroid) {
-      return [
-        ('Dahili depolama', '/storage/emulated/0'),
+      final volumes = <String>{
+        ...await _volumes(),
+        // Liste izni olan cihazlarda (eski Android) doğrudan da bakılır.
         for (final d in _list('/storage'))
-          if (!const {'emulated', 'self'}.contains(_name(d))) ('USB / SD kart (${_name(d)})', d),
-      ];
+          if (!const {'emulated', 'self'}.contains(_name(d))) d,
+      };
+      return [('Dahili depolama', '/storage/emulated/0'), for (final d in volumes) ('USB / SD kart (${_name(d)})', d)];
     }
     if (Platform.isWindows) {
       return [
@@ -60,6 +67,21 @@ abstract final class StorageAccess {
       ];
     }
     return [if (Platform.environment['HOME'] case final home?) ('Ana klasör', home), ('Kök', '/')];
+  }
+
+  /// Takılı birimlerin kökleri: uygulamanın birim başına dış klasörlerinden
+  /// (`/storage/6AE9-B46A/Android/data/<paket>/files` → `/storage/6AE9-B46A`);
+  /// dahili depolama hariç.
+  static Future<List<String>> _volumes() async {
+    try {
+      return [
+        for (final d in await getExternalStorageDirectories() ?? const <Directory>[])
+          if (d.path.indexOf('/Android/') case final i when i > 0)
+            if (d.path.substring(0, i) case final root when !root.startsWith('/storage/emulated')) root,
+      ];
+    } on Object {
+      return const [];
+    }
   }
 
   static String _name(String path) => path.split(RegExp(r'[/\\]')).where((p) => p.isNotEmpty).lastOrNull ?? path;

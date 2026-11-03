@@ -59,13 +59,18 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
   /// Uygulamanın kendi klasörü (izin istemez).
   String? _appDir;
 
+  /// Cihazın kökleri (ya da [FileBrowserPage.roots]); izin sorulurken okunur.
+  List<(String, String)> _deviceRoots = const [];
+
   Future<void> _ask() async {
     final ok = await StorageAccess.ensure();
     final app = widget.roots == null ? await StorageAccess.appFolder() : null;
+    final device = widget.roots ?? await StorageAccess.roots();
     if (mounted) {
       setState(() {
         _allowed = ok;
         _appDir = app;
+        _deviceRoots = device;
       });
     }
   }
@@ -110,7 +115,7 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
   }
 
   List<(String, String)> get _roots => [
-    if (_allowed ?? false) ...widget.roots ?? StorageAccess.roots(),
+    if (_allowed ?? false) ..._deviceRoots,
     if (_appDir case final app?) ('Uygulama klasörü', app),
   ];
 
