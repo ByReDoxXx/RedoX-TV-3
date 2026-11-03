@@ -307,11 +307,18 @@ class _LibraryPageState extends State<LibraryPage> {
   void _open(List<LiveChannel> list, int i) {
     final tmdb = widget.tmdb;
     if (tmdb == null) return unawaited(widget.onWatch!(list, i));
-    unawaited(
-      Navigator.of(context)
-          .push(FilmDetailPage.route(film: list[i], tmdb: tmdb, onWatch: () => unawaited(widget.onWatch!(list, i)))),
-    );
+    unawaited(Navigator.of(context).push(_detail(tmdb, list, i)));
   }
+
+  /// Film sayfası; "Benzerleri" bütün filmlerde aranır (kategori süzgecinden
+  /// bağımsız), seçilen film aynı sayfanın yerine açılır (Geri listeye döner).
+  Route<void> _detail(Tmdb tmdb, List<LiveChannel> list, int i) => FilmDetailPage.route(
+    film: list[i],
+    tmdb: tmdb,
+    onWatch: () => unawaited(widget.onWatch!(list, i)),
+    library: _allFilms,
+    onSimilar: (c) => unawaited(Navigator.of(context).pushReplacement(_detail(tmdb, _allFilms, _allFilms.indexOf(c)))),
+  );
 
   /// Film listelerinin kayıtları tek listede; yüklenen liste değişmedikçe
   /// aynı nesne (ızgaranın kategori önbelleği ona bağlı).

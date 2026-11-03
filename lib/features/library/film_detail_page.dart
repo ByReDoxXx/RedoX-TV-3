@@ -9,21 +9,64 @@ import '../../core/theme/redox_shapes.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import 'widgets/rating_line.dart';
+import 'widgets/similar_shelf.dart';
 import 'widgets/tmdb_poster.dart';
 
 /// Film ayrıntısı (TMDB): arka plan görseli, afiş, ad, yıl, puan, kategori ve
 /// özet; "İzle" (odakta) filmi oynatır. TMDB'de bulunamazsa listedeki ad ve
-/// afişle açılır.
+/// afişle açılır. Altta "Benzerleri": TMDB önerilerinden [library]'de
+/// olanlar; birine basmak [onSimilar] ile o filmin sayfasını açar.
 class FilmDetailPage extends StatelessWidget {
-  const FilmDetailPage({super.key, required this.film, required this.tmdb, this.onWatch});
+  const FilmDetailPage({
+    super.key,
+    required this.film,
+    required this.tmdb,
+    this.onWatch,
+    this.library = const [],
+    this.onSimilar,
+  });
 
   final LiveChannel film;
   final Tmdb tmdb;
   final VoidCallback? onWatch;
 
-  static Route<void> route({required LiveChannel film, required Tmdb tmdb, VoidCallback? onWatch}) => MaterialPageRoute(
-    builder: (_) => FilmDetailPage(film: film, tmdb: tmdb, onWatch: onWatch),
+  /// Benzerlerin aranacağı film listesi; [onSimilar] null ise raf yok.
+  final List<LiveChannel> library;
+  final ValueChanged<LiveChannel>? onSimilar;
+
+  static Route<void> route({
+    required LiveChannel film,
+    required Tmdb tmdb,
+    VoidCallback? onWatch,
+    List<LiveChannel> library = const [],
+    ValueChanged<LiveChannel>? onSimilar,
+  }) => MaterialPageRoute(
+    builder: (_) => FilmDetailPage(film: film, tmdb: tmdb, onWatch: onWatch, library: library, onSimilar: onSimilar),
   );
+
+  /// Benzerlerden listede olanlar (kendisi hariç).
+  Future<List<(TmdbInfo, LiveChannel)>> _similar(TmdbInfo info) async {
+    final similar = await tmdb.similar(info, series: false);
+    return [
+      for (final pair in Tmdb.inLibrary(similar, library))
+        if (pair.$2 != film) pair,
+    ];
+  }
+
+  Widget _shelf(TmdbInfo? info) {
+    final open = onSimilar;
+    if (info == null || open == null || library.isEmpty) return const SizedBox.shrink();
+    return FutureBuilder(
+      future: _similar(info),
+      builder: (context, snap) => switch (snap.data) {
+        final items? when items.isNotEmpty => Padding(
+          padding: const EdgeInsets.only(top: 28),
+          child: SimilarShelf(items: items, onOpen: open),
+        ),
+        _ => const SizedBox.shrink(),
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +126,10 @@ class FilmDetailPage extends StatelessWidget {
     children: [
       _poster(info, 240),
       const SizedBox(width: 40),
-      Expanded(child: _text(context, info, maxLines: 8)),
+      // Benzerleri rafı için kayar (540 dp TV'de özet + raf sığmayabilir).
+      Expanded(
+        child: SingleChildScrollView(clipBehavior: Clip.none, child: _text(context, info, maxLines: 6)),
+      ),
     ],
   );
 
@@ -143,6 +189,7 @@ class FilmDetailPage extends StatelessWidget {
             ),
           ],
         ),
+        _shelf(info),
       ],
     );
   }

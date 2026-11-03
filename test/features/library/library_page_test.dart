@@ -74,6 +74,17 @@ Future<void> _settle(WidgetTester tester) async {
 Tmdb _tmdb() => Tmdb(
   token: 'anahtar',
   fetch: (uri, _) async {
+    // Komik Film'in benzerleri: biri listede yok, biri özgün adıyla "Film A".
+    if (uri.path == '/3/movie/1/recommendations') {
+      return utf8.encode(
+        jsonEncode({
+          'results': [
+            {'id': 9, 'title': 'Olmayan Film'},
+            {'id': 10, 'title': 'Aksiyon Filmi', 'original_title': 'Film A'},
+          ],
+        }),
+      );
+    }
     final q = uri.queryParameters['query'];
     final hit = switch (q) {
       'Film B' => {
@@ -428,6 +439,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(watched!.$1[watched!.$2].streams.single, 'http://ornek/fb.mp4');
     expect(find.byType(FilmDetailPage), findsOneWidget, reason: 'oynatıcıdan Geri film sayfasına döner');
+
+    // Benzerleri: yalnız listede olan öneri (Komedi süzgecinden bağımsız);
+    // seçilen film aynı sayfanın yerine açılır, Geri listeye döner.
+    expect(find.text('Benzerleri'), findsOneWidget);
+    expect(find.text('Olmayan Film'), findsNothing);
+    await tester.tap(find.text('Aksiyon Filmi'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FilmDetailPage), findsOneWidget);
+    expect(find.text('Film A'), findsWidgets);
+    expect(find.text('Komik Film'), findsNothing);
+    await tester.tap(find.text('İzle'));
+    await tester.pumpAndSettle();
+    expect(watched!.$1[watched!.$2].name, 'Film A');
+    Navigator.of(tester.element(find.byType(FilmDetailPage))).pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(FilmDetailPage), findsNothing);
 
     await tester.pumpWidget(
       _app(

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'live_channel.dart';
 import 'remote_file.dart';
 
 /// TMDB'de bulunan film ya da dizi.
@@ -15,6 +16,7 @@ class TmdbInfo {
     this.rating,
     this.posterPath,
     this.backdropPath,
+    this.originalTitle,
   });
 
   factory TmdbInfo.fromJson(Map<String, Object?> j) => TmdbInfo(
@@ -28,10 +30,14 @@ class TmdbInfo {
     },
     posterPath: j['poster_path'] as String?,
     backdropPath: j['backdrop_path'] as String?,
+    originalTitle: (j['original_title'] ?? j['original_name']) as String?,
   );
 
   final int id;
   final String title;
+
+  /// Özgün ad (yabancı filmde listedeki ad çoğu kez budur).
+  final String? originalTitle;
   final String overview;
   final int? year;
 
@@ -53,6 +59,7 @@ class TmdbInfo {
     'vote_average': ?rating,
     'poster_path': ?posterPath,
     'backdrop_path': ?backdropPath,
+    'original_title': ?originalTitle,
   };
 }
 
@@ -118,6 +125,52 @@ class Tmdb {
 
   /// Saklanan ad sayısı (bulunamayanlar dahil); önbellek yüklenmediyse cihazdan.
   Future<int> cacheSize() async => (await _load()).length;
+
+  /// TMDB'nin önerdiği benzer yapımlar (recommendations); ağ yoksa boş.
+  /// Oturum boyunca bellekte tutulur.
+  Future<List<TmdbInfo>> similar(TmdbInfo info, {required bool series}) =>
+      _similar['${series ? 'd' : 'f'}:${info.id}'] ??= _fetchSimilar(info.id, series);
+
+  final _similar = <String, Future<List<TmdbInfo>>>{};
+
+  Future<List<TmdbInfo>> _fetchSimilar(int id, bool series) async {
+    try {
+      final body = jsonDecode(
+        utf8.decode(
+          await _fetch(
+            Uri.https('api.themoviedb.org', '/3/${series ? 'tv' : 'movie'}/$id/recommendations', {'language': 'tr-TR'}),
+            {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+          ),
+        ),
+      );
+      final results = body is Map ? body['results'] : null;
+      return [
+        if (results is List)
+          for (final r in results)
+            if (r is Map<String, Object?> && r['id'] is int) TmdbInfo.fromJson(r),
+      ];
+    } on Object {
+      return const [];
+    }
+  }
+
+  /// Benzerlerden listede olanlar (oynatılabilenler), TMDB sırasıyla: ad
+  /// sadeleştirilip ([cleanName]) Türkçe ya da özgün adla eşlenir.
+  static List<(TmdbInfo, LiveChannel)> inLibrary(List<TmdbInfo> similar, List<LiveChannel> library) {
+    if (similar.isEmpty) return const [];
+    final byName = <String, LiveChannel>{};
+    for (final c in library) {
+      byName.putIfAbsent(matchKey(cleanName(c.name).$1), () => c);
+    }
+    return [
+      for (final s in similar)
+        if (byName[matchKey(s.title)] ?? byName[matchKey(s.originalTitle ?? '')] case final c?) (s, c),
+    ];
+  }
+
+  /// Eşleme anahtarı: küçük harf, yalnız harf ve rakam ("Yüzüklerin
+  /// Efendisi: Kralın Dönüşü" → "yüzüklerinefendisikralındönüşü").
+  static String matchKey(String s) => s.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]', unicode: true), '');
 
   /// Kayıt adının TMDB karşılığı; bulunamazsa ya da ağ yoksa null.
   Future<TmdbInfo?> find(String name, {required bool series}) {

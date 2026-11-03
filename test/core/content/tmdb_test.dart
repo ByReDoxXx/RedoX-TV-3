@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/tmdb.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -75,5 +76,48 @@ void main() {
     // Önbellek cihazda: yeni nesne aynı adı sormaz.
     final again = Tmdb(token: 'anahtar', fetch: (uri, _) async => fail('sorulmamalı'));
     expect((await again.find('TR: Inception (2010) [4K]', series: false))?.title, 'Başlangıç');
+  });
+
+  test('inLibrary: öneriler Türkçe ya da özgün adla listedekilerle eşlenir, TMDB sırasıyla', () {
+    const library = [
+      LiveChannel(name: 'TR: Yüzüklerin Efendisi (2001) [4K]', number: 1, category: 'Film'),
+      LiveChannel(name: 'Inception 2010 FHD', number: 2, category: 'Film'),
+    ];
+    const similar = [
+      TmdbInfo(id: 1, title: 'Başlangıç', originalTitle: 'Inception'),
+      TmdbInfo(id: 2, title: 'Olmayan'),
+      TmdbInfo(id: 3, title: 'Yüzüklerin efendisi'),
+    ];
+    final pairs = Tmdb.inLibrary(similar, library);
+    expect([for (final (i, c) in pairs) (i.id, c.number)], [(1, 2), (3, 1)]);
+  });
+
+  test('similar: recommendations uç noktası, oturumda bir kez; ağ yoksa boş', () async {
+    final asked = <Uri>[];
+    final tmdb = Tmdb(
+      token: 'anahtar',
+      fetch: (uri, _) async {
+        asked.add(uri);
+        return utf8.encode(
+          jsonEncode({
+            'results': [
+              {'id': 5, 'title': 'Benzer', 'original_title': 'Similar'},
+            ],
+          }),
+        );
+      },
+    );
+    const info = TmdbInfo(id: 27205, title: 'Başlangıç');
+    final list = await tmdb.similar(info, series: false);
+    expect(list.single.originalTitle, 'Similar');
+    expect(asked.single.path, '/3/movie/27205/recommendations');
+    expect(asked.single.queryParameters, {'language': 'tr-TR'});
+    await tmdb.similar(info, series: false);
+    expect(asked, hasLength(1));
+    await tmdb.similar(info, series: true);
+    expect(asked.last.path, '/3/tv/27205/recommendations');
+
+    final offline = Tmdb(token: 'x', fetch: (_, _) async => throw Exception('ağ yok'));
+    expect(await offline.similar(info, series: false), isEmpty);
   });
 }
