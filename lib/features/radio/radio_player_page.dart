@@ -29,17 +29,16 @@ import 'widgets/station_avatar.dart';
 /// dinlenen şarkıları açar; şarkıya basılırsa istasyonu çalar.
 ///
 /// Kumanda: ◄ ► kadranı çevirir, yeni istasyon [tuneDelay] sonra çalar (ses
-/// yeni yayın bağlanana kadar kesilmez); OK duraklat/sürdür; ▲ listeye dön;
-/// ▼ düğmeler. Geri listeye döner, ses sürer. Telefonda kadran kaydırılır.
+/// yeni yayın bağlanana kadar kesilmez); OK duraklat/sürdür; ▲ sağ üstteki
+/// Seçenekler; ▼ düğmeler. Geri listeye döner, ses sürer. Telefonda kadran kaydırılır.
 class RadioPlayerPage extends StatefulWidget {
-  const RadioPlayerPage({super.key, required this.radio, required this.stations, this.favorites, this.clock});
+  const RadioPlayerPage({super.key, required this.radio, required this.stations, this.favorites});
 
   final RadioController radio;
 
   /// Kadrandaki istasyonlar (listede seçili tür; sırası listeyle aynı).
   final List<LiveChannel> stations;
   final Favorites? favorites;
-  final String? clock;
 
   static const tuneDelay = Duration(milliseconds: 700);
 
@@ -47,9 +46,8 @@ class RadioPlayerPage extends StatefulWidget {
     required RadioController radio,
     required List<LiveChannel> stations,
     Favorites? favorites,
-    String? clock,
   }) => PageRouteBuilder(
-    pageBuilder: (_, _, _) => RadioPlayerPage(radio: radio, stations: stations, favorites: favorites, clock: clock),
+    pageBuilder: (_, _, _) => RadioPlayerPage(radio: radio, stations: stations, favorites: favorites),
     transitionsBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
   );
 
@@ -64,6 +62,9 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
   late int _tuned = _indexOfCurrent();
   Timer? _tune;
   bool _dialFocused = false;
+
+  /// Sağ üstteki Seçenekler (kadranda ▲ buraya çıkar).
+  final _optionsFocus = FocusNode(debugLabel: 'Seçenekler');
   double _drag = 0;
 
   RadioController get _radio => widget.radio;
@@ -76,6 +77,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
   @override
   void dispose() {
     _tune?.cancel();
+    _optionsFocus.dispose();
     super.dispose();
   }
 
@@ -111,7 +113,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
       case LogicalKeyboardKey.arrowRight:
         _turn(1);
       case LogicalKeyboardKey.arrowUp:
-        Navigator.maybePop(context);
+        _optionsFocus.requestFocus();
       case LogicalKeyboardKey.select || LogicalKeyboardKey.enter || LogicalKeyboardKey.numpadEnter:
         if (e is KeyDownEvent) _ok();
       default:
@@ -208,12 +210,8 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
                 Text(RadioOptions.sleepLabel(sleep), style: t.labelLarge!.copyWith(color: RedoxSeeds.gold)),
                 const SizedBox(width: 16),
               ],
-              if (widget.clock case final c? when !phone)
-                Text(
-                  c,
-                  style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-                ),
-              if (phone) IconActionButton(icon: RedoxIcons.moreHorizontal, onPressed: _options),
+              // Seçenekler sağ üstte (saatin yerinde, kullanıcı isteği).
+              IconActionButton(icon: RedoxIcons.moreHorizontal, onPressed: _options, focusNode: _optionsFocus),
             ],
           ),
           const Spacer(),
@@ -304,7 +302,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
           const SizedBox(height: 16),
           Row(
             // Oynat her zaman ortada: iki yandaki düğme sayısı farklı olsa da
-            // (sağda Son çalanlar ve TV'de Seçenekler) yan gruplar eşit genişlikte.
+            // (solda favori, sağda Son çalanlar) yan gruplar eşit genişlikte.
             children: [
               Expanded(
                 child: Row(
@@ -333,10 +331,6 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
                       const SizedBox(width: 16),
                       IconActionButton(icon: RedoxIcons.history, onPressed: _recent),
                     ],
-                    if (!phone) ...[
-                      const SizedBox(width: 16),
-                      IconActionButton(icon: RedoxIcons.moreHorizontal, onPressed: _options),
-                    ],
                   ],
                 ),
               ),
@@ -355,7 +349,7 @@ class _RadioPlayerPageState extends State<RadioPlayerPage> {
   }
 }
 
-/// Tuş ipuçları (TV): ◄ ► istasyon, OK duraklat, ▲ liste, ▼ düğmeler. Oklar
+/// Tuş ipuçları (TV): ◄ ► istasyon, OK duraklat, ▲ seçenekler, ▼ düğmeler. Oklar
 /// SVG ikondur: Sora'da ok karakterleri yok (kutu çiziliyordu).
 class _Hints extends StatelessWidget {
   const _Hints();
@@ -396,7 +390,7 @@ class _Hints extends StatelessWidget {
         children: [
           hint(arrows(const [RedoxIcons.chevronLeft, RedoxIcons.chevronRight]), 'İstasyon'),
           hint(const KeyHint('OK', color: RedoxRoles.onSurface), 'Duraklat'),
-          hint(arrows(const [RedoxIcons.expandLess]), 'Liste'),
+          hint(arrows(const [RedoxIcons.expandLess]), 'Seçenekler'),
           hint(arrows(const [RedoxIcons.expandMore]), 'Düğmeler'),
         ],
       ),

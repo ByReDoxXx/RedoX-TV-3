@@ -115,12 +115,7 @@ class ChannelCard extends StatelessWidget {
                     children: [
                       artwork,
                       if (badge != null) Positioned(top: 8, left: 8, child: badge!),
-                      if (number != null)
-                        Positioned(
-                          right: 8,
-                          bottom: 8,
-                          child: _NumberTag(number: number!),
-                        ),
+                      if (number != null) Positioned(right: 8, bottom: 8, child: _NumberTag(number: number!)),
                     ],
                   ),
                 ),
@@ -194,11 +189,7 @@ class _NumberTag extends StatelessWidget {
       ),
       child: Text(
         number.toString().padLeft(3, '0'),
-        style: style.copyWith(
-          color: RedoxRoles.tertiary,
-          fontWeight: FontWeight.w800,
-          fontFeatures: RedoxType.tabular,
-        ),
+        style: style.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w800, fontFeatures: RedoxType.tabular),
       ),
     );
   }

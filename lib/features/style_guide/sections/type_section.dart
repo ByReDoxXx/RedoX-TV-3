@@ -13,10 +13,8 @@ class TypeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meta = Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: RedoxRoles.onSurfaceVariant,
-          fontFeatures: RedoxType.tabular,
-        );
+    final meta = Theme.of(context).textTheme.bodySmall!
+        .copyWith(color: RedoxRoles.onSurfaceVariant, fontFeatures: RedoxType.tabular);
     return SectionFrame(
       index: 2,
       title: 'Yazı',

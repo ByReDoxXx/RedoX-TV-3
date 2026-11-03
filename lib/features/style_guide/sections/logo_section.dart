@@ -24,12 +24,12 @@ class LogoSection extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final caption = t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant);
     Widget variant(String asset, double size, String label) => Column(
-          children: [
-            SvgPicture.asset(asset, width: size, height: size, semanticsLabel: 'RedoX TV $label'),
-            const SizedBox(height: 8),
-            Text(label, style: caption),
-          ],
-        );
+      children: [
+        SvgPicture.asset(asset, width: size, height: size, semanticsLabel: 'RedoX TV $label'),
+        const SizedBox(height: 8),
+        Text(label, style: caption),
+      ],
+    );
     return SectionFrame(
       index: 7,
       title: 'Logo',

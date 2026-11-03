@@ -45,15 +45,9 @@ class PrimaryButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[
-              RedoxIcon(icon!, filled: true, color: fg, size: 20),
-              const SizedBox(width: 8),
-            ],
+            if (icon != null) ...[RedoxIcon(icon!, filled: true, color: fg, size: 20), const SizedBox(width: 8)],
             Text(label),
-            if (keyHint != null) ...[
-              const SizedBox(width: 10),
-              KeyHint(keyHint!, color: fg),
-            ],
+            if (keyHint != null) ...[const SizedBox(width: 10), KeyHint(keyHint!, color: fg)],
           ],
         ),
       ),
@@ -149,11 +143,7 @@ class _GlassButtonState extends State<GlassButton> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (widget.icon != null) ...[
-              RedoxIcon(
-                widget.icon!,
-                color: active ? RedoxSeeds.obsidian : RedoxRoles.secondary,
-                size: 20,
-              ),
+              RedoxIcon(widget.icon!, color: active ? RedoxSeeds.obsidian : RedoxRoles.secondary, size: 20),
               const SizedBox(width: 8),
             ],
             Text(widget.label),

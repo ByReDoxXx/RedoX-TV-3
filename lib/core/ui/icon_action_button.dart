@@ -8,11 +8,14 @@ import 'redox_icon.dart';
 /// Dairesel ikon düğmesi: 48 dp (dokunma/işaretçi), TV'de 40 dp.
 /// Zemin cam düğmeyle aynıdır; odakta amber.
 class IconActionButton extends StatelessWidget {
-  const IconActionButton({super.key, required this.icon, required this.onPressed, this.focused});
+  const IconActionButton({super.key, required this.icon, required this.onPressed, this.focused, this.focusNode});
 
   final RedoxIcons icon;
   final VoidCallback? onPressed;
   final bool? focused;
+
+  /// Odağı dışarıdan taşımak için (örn. radyo kadranında ▲ Seçenekler).
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +28,7 @@ class IconActionButton extends StatelessWidget {
         shape: CircleBorder(side: active ? BorderSide.none : const BorderSide(color: RedoxAccent.glassBorder)),
         child: InkWell(
           onTap: onPressed,
+          focusNode: focusNode,
           customBorder: const CircleBorder(),
           focusColor: Colors.transparent,
           hoverColor: Colors.transparent,

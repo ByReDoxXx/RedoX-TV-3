@@ -17,20 +17,104 @@ abstract final class RedoxType {
   /// TV'de izin verilen en küçük yazı: title-md (16).
   static const double tvMinSize = 16;
 
-  static const displayLg = TextStyle(fontFamily: family, fontSize: 56, height: 64 / 56, fontWeight: FontWeight.w800, letterSpacing: -0.02 * 56);
-  static const displayLgMobile = TextStyle(fontFamily: family, fontSize: 36, height: 44 / 36, fontWeight: FontWeight.w800, letterSpacing: -0.02 * 36);
-  static const headlineLg = TextStyle(fontFamily: family, fontSize: 32, height: 40 / 32, fontWeight: FontWeight.w700, letterSpacing: -0.01 * 32);
-  static const headlineLgMobile = TextStyle(fontFamily: family, fontSize: 26, height: 32 / 26, fontWeight: FontWeight.w700, letterSpacing: -0.01 * 26);
-  static const headlineMd = TextStyle(fontFamily: family, fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w600, letterSpacing: 0);
-  static const headlineSm = TextStyle(fontFamily: family, fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w600, letterSpacing: 0);
-  static const titleLg = TextStyle(fontFamily: family, fontSize: 18, height: 24 / 18, fontWeight: FontWeight.w600, letterSpacing: 0.01 * 18);
-  static const titleMd = TextStyle(fontFamily: family, fontSize: 16, height: 22 / 16, fontWeight: FontWeight.w600, letterSpacing: 0.01 * 16);
-  static const bodyLg = TextStyle(fontFamily: family, fontSize: 16, height: 24 / 16, fontWeight: FontWeight.w400, letterSpacing: 0.01 * 16);
-  static const bodyMd = TextStyle(fontFamily: family, fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w400, letterSpacing: 0.015 * 14);
-  static const bodySm = TextStyle(fontFamily: family, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w400, letterSpacing: 0.02 * 12);
-  static const labelLg = TextStyle(fontFamily: family, fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600, letterSpacing: 0.05 * 14);
-  static const labelMd = TextStyle(fontFamily: family, fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w600, letterSpacing: 0.04 * 12);
-  static const labelSm = TextStyle(fontFamily: family, fontSize: 10, height: 14 / 10, fontWeight: FontWeight.w700, letterSpacing: 0.06 * 10);
+  static const displayLg = TextStyle(
+    fontFamily: family,
+    fontSize: 56,
+    height: 64 / 56,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.02 * 56,
+  );
+  static const displayLgMobile = TextStyle(
+    fontFamily: family,
+    fontSize: 36,
+    height: 44 / 36,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.02 * 36,
+  );
+  static const headlineLg = TextStyle(
+    fontFamily: family,
+    fontSize: 32,
+    height: 40 / 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.01 * 32,
+  );
+  static const headlineLgMobile = TextStyle(
+    fontFamily: family,
+    fontSize: 26,
+    height: 32 / 26,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.01 * 26,
+  );
+  static const headlineMd = TextStyle(
+    fontFamily: family,
+    fontSize: 24,
+    height: 30 / 24,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+  );
+  static const headlineSm = TextStyle(
+    fontFamily: family,
+    fontSize: 20,
+    height: 26 / 20,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+  );
+  static const titleLg = TextStyle(
+    fontFamily: family,
+    fontSize: 18,
+    height: 24 / 18,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.01 * 18,
+  );
+  static const titleMd = TextStyle(
+    fontFamily: family,
+    fontSize: 16,
+    height: 22 / 16,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.01 * 16,
+  );
+  static const bodyLg = TextStyle(
+    fontFamily: family,
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.01 * 16,
+  );
+  static const bodyMd = TextStyle(
+    fontFamily: family,
+    fontSize: 14,
+    height: 20 / 14,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.015 * 14,
+  );
+  static const bodySm = TextStyle(
+    fontFamily: family,
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.02 * 12,
+  );
+  static const labelLg = TextStyle(
+    fontFamily: family,
+    fontSize: 14,
+    height: 20 / 14,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.05 * 14,
+  );
+  static const labelMd = TextStyle(
+    fontFamily: family,
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.04 * 12,
+  );
+  static const labelSm = TextStyle(
+    fontFamily: family,
+    fontSize: 10,
+    height: 14 / 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.06 * 10,
+  );
 
   /// Spec belirteçleri adlarıyla (rehber ve testler için).
   static const tokens = <String, TextStyle>{

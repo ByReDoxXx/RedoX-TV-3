@@ -27,12 +27,7 @@ enum BadgeTone {
 /// Badges"). Nabız: opaklık 1 → 0,5 → 1, 2 sn (zip'teki tasarımın animate-pulse
 /// değeri). Sistem animasyonları kapalıysa nokta sabit kalır.
 class StatusBadge extends StatelessWidget {
-  const StatusBadge({
-    super.key,
-    required this.label,
-    this.tone = BadgeTone.live,
-    this.pulse = false,
-  });
+  const StatusBadge({super.key, required this.label, this.tone = BadgeTone.live, this.pulse = false});
 
   /// Büyük harfle verilir (Türkçe İ/I dönüşümü yazı anında yapılmaz).
   final String label;
@@ -44,18 +39,15 @@ class StatusBadge extends StatelessWidget {
     final style = Theme.of(context).textTheme.labelSmall!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: tone.background,
-        borderRadius: BorderRadius.circular(RedoxRadius.full),
-      ),
+      decoration: BoxDecoration(color: tone.background, borderRadius: BorderRadius.circular(RedoxRadius.full)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (pulse) ...[
-            _PulseDot(color: tone.foreground),
-            const SizedBox(width: 6),
-          ],
-          Text(label, style: style.copyWith(color: tone.foreground, fontWeight: FontWeight.w800)),
+          if (pulse) ...[_PulseDot(color: tone.foreground), const SizedBox(width: 6)],
+          Text(
+            label,
+            style: style.copyWith(color: tone.foreground, fontWeight: FontWeight.w800),
+          ),
         ],
       ),
     );
@@ -72,15 +64,13 @@ class _PulseDot extends StatefulWidget {
 }
 
 class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 1),
-  );
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
 
   // Tailwind animate-pulse eğrisi: cubic-bezier(0.4, 0, 0.6, 1).
-  late final Animation<double> _opacity = Tween(begin: 1.0, end: 0.5)
-      .chain(CurveTween(curve: const Cubic(0.4, 0, 0.6, 1)))
-      .animate(_c);
+  late final Animation<double> _opacity = Tween(
+    begin: 1.0,
+    end: 0.5,
+  ).chain(CurveTween(curve: const Cubic(0.4, 0, 0.6, 1))).animate(_c);
 
   @override
   void didChangeDependencies() {

@@ -11,13 +11,7 @@ import '../theme/redox_metrics.dart';
 ///
 /// Kendisi odak almaz; alt ağaçtaki odaklanabilir öğeyi (düğme, InkWell) izler.
 class FocusGlow extends StatefulWidget {
-  const FocusGlow({
-    super.key,
-    required this.borderRadius,
-    required this.builder,
-    this.focused,
-    this.scale,
-  });
+  const FocusGlow({super.key, required this.borderRadius, required this.builder, this.focused, this.scale});
 
   final BorderRadius borderRadius;
 
@@ -97,9 +91,7 @@ class _FocusGlowState extends State<FocusGlow> with SingleTickerProviderStateMix
       _scale.value = target;
       return;
     }
-    _scale.animateWith(
-      SpringSimulation(M3EMotion.spatialFast, _scale.value, target, _scale.velocity),
-    );
+    _scale.animateWith(SpringSimulation(M3EMotion.spatialFast, _scale.value, target, _scale.velocity));
   }
 
   @override
@@ -139,9 +131,7 @@ class _FocusGlowState extends State<FocusGlow> with SingleTickerProviderStateMix
                     child: IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          borderRadius: widget.borderRadius.add(
-                            BorderRadius.circular(RedoxElevation.focusRingOffset),
-                          ),
+                          borderRadius: widget.borderRadius.add(BorderRadius.circular(RedoxElevation.focusRingOffset)),
                           border: const Border.fromBorderSide(RedoxElevation.focusRing),
                         ),
                       ),

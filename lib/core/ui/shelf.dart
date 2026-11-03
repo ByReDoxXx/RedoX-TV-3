@@ -28,10 +28,7 @@ class Shelf extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) SizedBox(width: gap),
-                children[i],
-              ],
+              for (var i = 0; i < children.length; i++) ...[if (i > 0) SizedBox(width: gap), children[i]],
             ],
           ),
         ),

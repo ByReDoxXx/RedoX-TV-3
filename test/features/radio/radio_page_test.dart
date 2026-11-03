@@ -7,6 +7,8 @@ import 'package:redox_tv/core/content/song_history.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/playback/radio_controller.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/ui/icon_action_button.dart';
+import 'package:redox_tv/core/ui/redox_icon.dart';
 import 'package:redox_tv/features/radio/radio_page.dart';
 import 'package:redox_tv/features/radio/radio_player_page.dart';
 import 'package:redox_tv/features/radio/widgets/radio_options.dart';
@@ -99,32 +101,40 @@ void main() {
     expect(find.text('Kıyı Hit'), findsNothing);
   });
 
-  testWidgets('OK istasyonu çalar ve kadranı açar; ◄ ► çevirir, beklenince çalar; ▲ listeye döner, ses sürer', (
-    tester,
-  ) async {
-    await _size(tester, const Size(960, 540));
-    final (radio, audio, fav) = _setup();
-    await tester.pumpWidget(_app(FormFactor.tv, radio, fav));
-    await _settle(tester);
+  testWidgets(
+    'OK istasyonu çalar ve kadranı açar; ◄ ► çevirir, beklenince çalar; ▲ Seçenekler, Geri listeye döner, ses sürer',
+    (tester) async {
+      await _size(tester, const Size(960, 540));
+      final (radio, audio, fav) = _setup();
+      await tester.pumpWidget(_app(FormFactor.tv, radio, fav));
+      await _settle(tester);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await _settle(tester);
-    expect(find.byType(RadioPlayerPage), findsOneWidget);
-    expect(radio.current, _stations.first);
-    expect(audio.opened, ['s0']);
-    expect(tester.takeException(), isNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await _settle(tester);
+      expect(find.byType(RadioPlayerPage), findsOneWidget);
+      expect(radio.current, _stations.first);
+      expect(audio.opened, ['s0']);
+      expect(tester.takeException(), isNull);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-    expect(radio.current, _stations.first, reason: 'gezinirken eski istasyon çalar');
-    await tester.pump(RadioPlayerPage.tuneDelay);
-    expect(radio.current, _stations[1]);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(radio.current, _stations.first, reason: 'gezinirken eski istasyon çalar');
+      await tester.pump(RadioPlayerPage.tuneDelay);
+      expect(radio.current, _stations[1]);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await _settle(tester);
-    expect(find.byType(RadioPlayerPage), findsNothing);
-    expect(radio.status, RadioStatus.playing);
-  });
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await _settle(tester);
+      expect(find.byType(RadioOptions), findsOneWidget, reason: '▲ sağ üstteki Seçenekler');
+      Navigator.of(tester.element(find.byType(RadioOptions))).pop();
+      await _settle(tester);
+
+      await tester.binding.handlePopRoute();
+      await _settle(tester);
+      expect(find.byType(RadioPlayerPage), findsNothing);
+      expect(radio.status, RadioStatus.playing);
+    },
+  );
 
   testWidgets('seçenekler: uyku zamanlayıcısı ve radyoyu kapat', (tester) async {
     await _size(tester, const Size(960, 540));
@@ -141,7 +151,10 @@ void main() {
       ),
     );
     await _settle(tester);
-    await tester.tap(find.bySemanticsLabel('Seçenekler'));
+    // Sağ üstteki düğme (alttaki tuş ipucunda da "Seçenekler" yazar).
+    final options = find.byWidgetPredicate((w) => w is IconActionButton && w.icon == RedoxIcons.moreHorizontal);
+    expect(tester.getCenter(options).dy, lessThan(100));
+    await tester.tap(options);
     await _settle(tester);
     expect(find.byType(RadioOptions), findsOneWidget);
     await tester.tap(find.text('Uyku zamanlayıcı'));

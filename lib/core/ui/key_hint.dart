@@ -21,7 +21,10 @@ class KeyHint extends StatelessWidget {
         color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(RedoxRadius.xs),
       ),
-      child: Text(label, style: style.copyWith(color: color, fontWeight: FontWeight.w800)),
+      child: Text(
+        label,
+        style: style.copyWith(color: color, fontWeight: FontWeight.w800),
+      ),
     );
   }
 }

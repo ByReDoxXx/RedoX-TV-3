@@ -117,7 +117,6 @@ class _RadioPageState extends State<RadioPage> {
         radio: _radio,
         stations: list.isEmpty ? _radio.stations : list,
         favorites: widget.favorites,
-        clock: widget.clock,
       ),
     );
   }

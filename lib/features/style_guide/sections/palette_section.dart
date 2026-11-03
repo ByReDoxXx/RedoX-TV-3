@@ -71,9 +71,13 @@ class PaletteSection extends StatelessWidget {
           Row(
             children: [
               // Sora'da "→" glifi yok; görünen metinde "–" kullanılır.
-              Expanded(child: _GradientBar(colors: RedoxAccent.thermal, label: 'kızıl – amber – altın')),
+              Expanded(
+                child: _GradientBar(colors: RedoxAccent.thermal, label: 'kızıl – amber – altın'),
+              ),
               const SizedBox(width: 12),
-              const Expanded(child: _GradientBar(colors: [RedoxSeeds.crimson, RedoxAccent.ember], label: 'kızıl – kor')),
+              const Expanded(
+                child: _GradientBar(colors: [RedoxSeeds.crimson, RedoxAccent.ember], label: 'kızıl – kor'),
+              ),
             ],
           ),
           const GroupLabel('Tonal şeritler (ton 0–100)'),
@@ -113,7 +117,12 @@ class _SwatchRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(e.key, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    e.key,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   Text(hexOf(e.value), style: const TextStyle(fontFeatures: RedoxType.tabular)),
                 ],
               ),
@@ -161,7 +170,10 @@ class _TonalStrip extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          SizedBox(width: 150, child: Text(name, style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant))),
+          SizedBox(
+            width: 150,
+            child: Text(name, style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+          ),
           for (final tone in RedoxTonal.tones)
             Expanded(
               child: Container(
@@ -190,5 +202,4 @@ class _TonalStrip extends StatelessWidget {
 }
 
 /// Zemin rengine göre okunur yazı rengi.
-Color _ink(Color c) =>
-    c.computeLuminance() > 0.25 ? RedoxSeeds.obsidian : Colors.white;
+Color _ink(Color c) => c.computeLuminance() > 0.25 ? RedoxSeeds.obsidian : Colors.white;

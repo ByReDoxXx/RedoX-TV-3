@@ -417,14 +417,9 @@ class _RootShellState extends State<RootShell> {
               : (s) {
                   if (s != radio.current) unawaited(radio.play(s));
                   unawaited(
-                    Navigator.of(context).push(
-                      RadioPlayerPage.route(
-                        radio: radio,
-                        stations: radio.stations,
-                        favorites: widget.favorites,
-                        clock: _clock,
-                      ),
-                    ),
+                    Navigator.of(
+                      context,
+                    ).push(RadioPlayerPage.route(radio: radio, stations: radio.stations, favorites: widget.favorites)),
                   );
                 },
         ),

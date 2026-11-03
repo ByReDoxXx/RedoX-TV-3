@@ -43,7 +43,13 @@ class ComponentSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               children: [
-                PrimaryButton(label: 'Canlı yayına gir', icon: RedoxIcons.play, keyHint: 'OK', onPressed: () {}, focused: true),
+                PrimaryButton(
+                  label: 'Canlı yayına gir',
+                  icon: RedoxIcons.play,
+                  keyHint: 'OK',
+                  onPressed: () {},
+                  focused: true,
+                ),
                 const SizedBox(width: 32),
                 GlassButton(label: 'Çoklu ekrana ekle', icon: RedoxIcons.splitScreen, onPressed: () {}, focused: true),
                 const SizedBox(width: 32),
@@ -87,7 +93,10 @@ class ComponentSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text('İzlenme (amber) · canlı maç süresi (ısıl) · oynatma konumu (kızıl). İz: surface-container-lowest.', style: label),
+          Text(
+            'İzlenme (amber) · canlı maç süresi (ısıl) · oynatma konumu (kızıl). İz: surface-container-lowest.',
+            style: label,
+          ),
           const GroupLabel('Giriş ve seçim'),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

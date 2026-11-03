@@ -6,11 +6,7 @@ import '../ui/redox_icon.dart';
 
 /// Telefonda alt menüye sığmayan bölümler: M3 modal alt sayfa (tutamaklı),
 /// her bölüm bir liste satırı. Seçilen satırın dizini [onSelected]'a gider.
-Future<void> showMoreSheet(
-  BuildContext context, {
-  required List<NavRailItem> items,
-  ValueChanged<int>? onSelected,
-}) {
+Future<void> showMoreSheet(BuildContext context, {required List<NavRailItem> items, ValueChanged<int>? onSelected}) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,

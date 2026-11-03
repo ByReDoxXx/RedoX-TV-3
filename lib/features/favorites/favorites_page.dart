@@ -200,8 +200,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final radio = widget.radio;
     if (radio == null) return;
     if (c != radio.current) unawaited(radio.play(c));
-    await Navigator.of(context)
-        .push(RadioPlayerPage.route(radio: radio, stations: list, favorites: _fav, clock: widget.clock));
+    await Navigator.of(context).push(RadioPlayerPage.route(radio: radio, stations: list, favorites: _fav));
   }
 
   @override

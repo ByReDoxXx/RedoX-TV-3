@@ -27,11 +27,7 @@ class SectionFrame extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionHeader(
-            title: '${index.toString().padLeft(2, '0')}  $title',
-            subtitle: subtitle,
-            accent: accent,
-          ),
+          SectionHeader(title: '${index.toString().padLeft(2, '0')}  $title', subtitle: subtitle, accent: accent),
           const SizedBox(height: 20),
           child,
         ],
@@ -50,14 +46,10 @@ class GroupLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 12),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.titleMedium!.copyWith(color: RedoxRoles.onSurface),
-      ),
+      child: Text(text, style: Theme.of(context).textTheme.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
     );
   }
 }
 
 /// Renk değerini "#RRGGBB" olarak yazar.
-String hexOf(Color c) =>
-    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+String hexOf(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';

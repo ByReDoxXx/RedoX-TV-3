@@ -44,7 +44,8 @@ class ShapeSection extends StatelessWidget {
     return SectionFrame(
       index: 4,
       title: 'Şekil, boşluk, derinlik',
-      subtitle: 'Köşe ve boşluk dp · derinlik gölgeyle değil yüzey parlaklığıyla · odakta kızıl halka + aura + amber ışıma.',
+      subtitle:
+          'Köşe ve boşluk dp · derinlik gölgeyle değil yüzey parlaklığıyla · odakta kızıl halka + aura + amber ışıma.',
       accent: RedoxSeeds.amber,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

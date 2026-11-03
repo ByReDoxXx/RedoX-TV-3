@@ -16,9 +16,7 @@ class StyleGuidePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: SingleChildScrollView(child: StyleGuideContent()),
-    );
+    return const Scaffold(body: SingleChildScrollView(child: StyleGuideContent()));
   }
 }
 

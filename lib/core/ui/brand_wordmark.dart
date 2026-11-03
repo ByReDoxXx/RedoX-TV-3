@@ -22,8 +22,14 @@ class BrandWordmark extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: 'RedoX', style: base.copyWith(color: RedoxSeeds.crimson)),
-          TextSpan(text: ' TV', style: base.copyWith(color: RedoxSeeds.gold)),
+          TextSpan(
+            text: 'RedoX',
+            style: base.copyWith(color: RedoxSeeds.crimson),
+          ),
+          TextSpan(
+            text: ' TV',
+            style: base.copyWith(color: RedoxSeeds.gold),
+          ),
         ],
       ),
       semanticsLabel: 'RedoX TV',
