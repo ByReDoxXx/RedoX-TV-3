@@ -255,6 +255,7 @@ class _AddSourceTabState extends State<AddSourceTab> {
           const SizedBox(height: 12),
           TileGrid(
             columns: phone ? 2 : 3,
+            minWidth: phone ? 0 : 200,
             children: [
               for (final (i, m) in methods.indexed)
                 _MethodTile(method: m, compact: phone, autofocus: i == 0, onPressed: _busy ? null : () => _choose(m)),
@@ -311,14 +312,14 @@ class _MethodTile extends StatelessWidget {
                     children: [
                       Text(
                         m.title,
-                        maxLines: compact ? 2 : 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
                       ),
                       if (!compact)
                         Text(
                           m.subtitle,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
                         ),

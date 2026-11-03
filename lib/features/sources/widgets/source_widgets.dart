@@ -31,17 +31,25 @@ class SectionTitle extends StatelessWidget {
 
 /// Eşit genişlikte kutular (satırlara sarılır).
 class TileGrid extends StatelessWidget {
-  const TileGrid({super.key, required this.columns, required this.children});
+  const TileGrid({super.key, required this.columns, required this.children, this.minWidth = 0});
 
+  /// En çok sütun.
   final int columns;
   final List<Widget> children;
+
+  /// Kutunun en dar genişliği (yazı ölçeğiyle büyür): dar alanda sütun
+  /// azalır. TV'de Ayarlar'ın sağ bölmesinde üç sütun yazıları kesiyordu.
+  final double minWidth;
 
   static const gap = 12.0;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
-      final w = (box.maxWidth - gap * (columns - 1)) / columns;
+      final least = MediaQuery.textScalerOf(context).scale(minWidth);
+      final fit = ((box.maxWidth + gap) / (least + gap)).floor();
+      final n = least <= 0 ? columns : fit.clamp(1, columns);
+      final w = (box.maxWidth - gap * (n - 1)) / n;
       return Wrap(
         spacing: gap,
         runSpacing: gap,

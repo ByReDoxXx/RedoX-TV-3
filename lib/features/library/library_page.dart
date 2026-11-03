@@ -148,7 +148,11 @@ class _LibraryPageState extends State<LibraryPage> {
           return _posterGrid<LiveChannel>(
             items: all,
             categoryOf: (c) => c.category,
-            titleOf: (c) => c.name,
+            // Afişte temiz ad: "|MULTI| Ad (2023) [4K]" etiketleri kartı dolduruyordu.
+            titleOf: (c) => switch (Tmdb.cleanName(c.name).$1) {
+              '' => c.name,
+              final name => name,
+            },
             artworkOf: (c) => TmdbPoster(name: c.name, url: c.logoUrl, tmdb: widget.tmdb),
             onOpen: widget.onWatch == null ? null : (list, i) => _open(list, i),
             padding: padding,

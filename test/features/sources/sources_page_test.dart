@@ -135,6 +135,7 @@ void main() {
     final receiver = _FakeReceiver(s);
     await tester.pumpWidget(_app(FormFactor.tv, s, receiver: receiver));
     await _settle(tester);
+    await tester.ensureVisible(find.text(AddMethod.phone.title));
     await tester.tap(find.text(AddMethod.phone.title));
     await _settle(tester);
     expect(find.byType(PhoneQrDialog), findsOneWidget);
@@ -218,6 +219,7 @@ void main() {
     final s = await _sources(tester, empty: true);
     await tester.pumpWidget(_app(FormFactor.tv, s));
     await _settle(tester);
+    await tester.ensureVisible(find.text(AddMethod.mediaHub.title));
     await tester.tap(find.text(AddMethod.mediaHub.title));
     await _settle(tester);
     expect(find.textContaining('henüz eklenmedi'), findsOneWidget);
@@ -250,6 +252,7 @@ void main() {
         await maybeSnapshot(tester, key, 'build/kaynaklar/$name-1-ekle.png', pixelRatio: 2);
         expect(tester.takeException(), isNull);
         for (final (m, file) in [(AddMethod.xtream, '2-xtream'), (AddMethod.portal, '3-portal')]) {
+          await tester.ensureVisible(find.text(m.title));
           await tester.tap(find.text(m.title));
           await _settle(tester);
           await settleAssets(tester, rounds: 2);
@@ -259,6 +262,7 @@ void main() {
           await _settle(tester);
         }
         if (f == FormFactor.tv) {
+          await tester.ensureVisible(find.text(AddMethod.phone.title));
           await tester.tap(find.text(AddMethod.phone.title));
           await _settle(tester);
           await settleAssets(tester, rounds: 2);
