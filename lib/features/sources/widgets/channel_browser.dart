@@ -321,15 +321,16 @@ class _ChannelRow extends StatelessWidget {
       row,
       lockKey,
       before: [
-        if (fav != null) ...[const SizedBox(width: 8), _StarButton(favorite: fav, onPressed: onFavorite)],
+        if (fav != null) ...[const SizedBox(width: 8), StarButton(favorite: fav, onPressed: onFavorite)],
       ],
     );
   }
 }
 
-/// Favori yıldızı: favorideyse dolu altın.
-class _StarButton extends StatelessWidget {
-  const _StarButton({required this.favorite, this.onPressed});
+/// Favori yıldızı: favorideyse dolu altın; kumandada odak halkası ve amber
+/// zemin (dizi bölümleri de kullanır).
+class StarButton extends StatelessWidget {
+  const StarButton({super.key, required this.favorite, this.onPressed});
 
   final bool favorite;
   final VoidCallback? onPressed;

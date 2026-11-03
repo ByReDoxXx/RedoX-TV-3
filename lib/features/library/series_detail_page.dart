@@ -16,6 +16,7 @@ import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../locks/lock_scope.dart';
+import '../sources/widgets/channel_browser.dart';
 import 'widgets/rating_line.dart';
 import 'widgets/tmdb_poster.dart';
 
@@ -346,19 +347,7 @@ class _EpisodeRow extends StatelessWidget {
       children: [
         Expanded(child: row),
         const SizedBox(width: 8),
-        Semantics(
-          button: true,
-          label: favorite == true ? 'Favorilerden çıkar' : 'Favorilere ekle',
-          excludeSemantics: true,
-          child: IconButton(
-            onPressed: onFavorite,
-            icon: RedoxIcon(
-              RedoxIcons.star,
-              filled: favorite == true,
-              color: favorite == true ? RedoxSeeds.gold : RedoxRoles.onSurfaceVariant,
-            ),
-          ),
-        ),
+        StarButton(favorite: favorite == true, onPressed: onFavorite),
       ],
     );
   }
