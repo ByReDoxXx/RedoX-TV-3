@@ -33,7 +33,8 @@ ANA = [
 ]
 
 # Ücretli kanalların aracı sunuculardan izinsiz yeniden yayını: eklenmez.
-DISLA = {"ssport", "ssport2", "disneyjr", "babytv"}
+# MC TV: kullanıcı isteğiyle listeden çıkarıldı (04.11.2026); geri eklenmez.
+DISLA = {"ssport", "ssport2", "disneyjr", "babytv", "mctv"}
 
 # Sınamada (01.11.2026, Türkiye çıkışlı) yayın vermeyen adresler: aracı
 # sunucu HTML döndürüyor, 404, yanıt yok ya da yalnız yurt içi (Almanya).
