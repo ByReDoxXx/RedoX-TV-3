@@ -1,10 +1,9 @@
 name: Derleme
 
+# Özel depoda aylık ücretsiz kota sınırlı: yalnız sürüm etiketinde ve elle.
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 env:
@@ -55,6 +54,7 @@ jobs:
           name: redox-tv-android-${{ matrix.flavor }}
           path: build/app/outputs/flutter-apk/app-*-${{ matrix.flavor }}-release.apk
           if-no-files-found: error
+          retention-days: 3
 
   windows:
     name: Windows
@@ -74,6 +74,7 @@ jobs:
           name: redox-tv-windows
           path: build/windows/x64/runner/Release
           if-no-files-found: error
+          retention-days: 3
 
   linux:
     name: Linux
@@ -97,3 +98,4 @@ jobs:
           name: redox-tv-linux
           path: build/linux/x64/release/bundle
           if-no-files-found: error
+          retention-days: 3
