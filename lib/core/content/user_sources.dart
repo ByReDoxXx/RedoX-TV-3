@@ -314,7 +314,29 @@ class UserSources extends ChangeNotifier {
   /// dosyası. Her liste ayrı klasör olur.
   Future<BulkResult> addBulk(String url, {SourceKind kind = SourceKind.live}) async {
     final uri = _httpUri(url);
-    final urls = uri.host == 'github.com' ? await _githubLists(uri) : _lines(await _download(uri));
+    if (uri.host != 'github.com') {
+      final text = await _download(uri);
+      // Adres listelerin listesi değil, kendisi bir M3U (ör. raw.githubusercontent
+      // .../film.m3u): satırlarındaki yayın adresleri liste sanılmasın; tek liste.
+      if (text.contains('#EXTINF')) {
+        final file = uri.pathSegments.where((s) => s.isNotEmpty).lastOrNull ?? '';
+        final name = file.replaceAll(RegExp(r'\.m3u8?$', caseSensitive: false), '');
+        final s = await _store(
+          name,
+          SourceFormats.detect(text, base: uri),
+          origin: SourceOrigin.bulk,
+          url: uri.toString(),
+          raw: text,
+          kind: kind,
+        );
+        return (added: [s], failed: 0);
+      }
+      return _addAll(_lines(text), kind);
+    }
+    return _addAll(await _githubLists(uri), kind);
+  }
+
+  Future<BulkResult> _addAll(List<(String, String)> urls, SourceKind kind) async {
     if (urls.isEmpty) throw const SourceException('Bu adreste M3U listesi bulunamadı.');
     final added = <UserSource>[];
     var failed = 0;

@@ -225,4 +225,20 @@ void main() {
     expect(r.added.single.origin, SourceOrigin.bulk);
     expect(r.failed, 1);
   });
+
+  test('Toplu: adres kendisi bir M3U ise tek liste olur (yayın adresleri liste sanılmaz)', () async {
+    final asked = <Uri>[];
+    final s = await UserSources.open(
+      await _dir(),
+      fetch: (uri, _) async {
+        asked.add(uri);
+        return utf8.encode(_m3u);
+      },
+    );
+    final r = await s.addBulk('https://raw.githubusercontent.com/kisi/depo/main/lists/sinema.m3u');
+    expect(r.failed, 0);
+    expect(r.added.single.name, 'sinema');
+    expect(r.added.single.origin, SourceOrigin.bulk);
+    expect(asked, hasLength(1), reason: 'listedeki yayınlar indirilmez');
+  });
 }
