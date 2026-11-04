@@ -8,7 +8,7 @@ import 'remote_file.dart';
 /// Kanal listesi: şifreli paket (`channels.bin`, [DataPack]). Uygulamanın
 /// içinde bir kopyası durur (açılış, internet yokken); güncel olanı
 /// ByReDoxXx/redox-epg deposundan iner, böylece kanal eklemek için yeni sürüm
-/// gerekmez. Kaynak liste gizli depodadır (`assets/channels/tr.m3u`) ve
+/// gerekmez. Kaynak liste bu depoda değildir (`~/.redox/kaynak/tr.m3u`) ve
 /// uygulamaya konmaz.
 abstract final class ChannelSource {
   static const asset = 'assets/channels/channels.bin';

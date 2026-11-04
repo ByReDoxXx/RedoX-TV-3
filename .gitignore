@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Kaynak kanal listeleri depoda tutulmaz (uygulama şifreli .bin paketlerini kullanır).
+assets/**/*.m3u

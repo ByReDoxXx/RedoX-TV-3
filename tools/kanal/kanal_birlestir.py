@@ -1,4 +1,4 @@
-"""Kanal listesine (assets/channels/tr.m3u) yeni bir M3U'yu birleştirir ve
+"""Kanal listesine (~/.redox/kaynak/tr.m3u; depoda değil) yeni bir M3U'yu birleştirir ve
 kanalları yeniden numaralar.
 
 Uygulama kodu değildir; listeyi yeniden üretilebilir kılmak için burada durur.
@@ -23,7 +23,7 @@ import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LIST = ROOT / "assets/channels/tr.m3u"
+LIST = Path.home() / ".redox/kaynak/tr.m3u"
 
 # Ana kanallar, hiremco.com.tr Türksat frekans listesindeki sırayla.
 ANA = [

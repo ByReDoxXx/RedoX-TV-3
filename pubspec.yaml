@@ -45,7 +45,7 @@ flutter:
     - assets/brand/redox-mark.png
     - assets/brand/redox-mark.svg
     - assets/icons/
-    # Şifreli kanal listesi (DataPack). Kaynak tr.m3u uygulamaya konmaz.
+    # Şifreli kanal listesi (DataPack). Kaynak liste depoda ve uygulamada yoktur.
     - assets/channels/channels.bin
     - assets/radios/radios.bin
     - assets/sounds/radyo_cizirti.wav

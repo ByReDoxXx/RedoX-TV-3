@@ -25,6 +25,7 @@ import 'package:redox_tv/features/tv/widgets/epg_grid.dart';
 
 import '../../support/fake_engine.dart';
 import '../../support/render.dart';
+import '../../support/real_list.dart';
 
 Widget _app(
   FormFactor f, {
@@ -222,7 +223,7 @@ void main() {
     (tester) => withRealShadows(() async {
       await loadSora(tester);
       await _size(tester, const Size(960, 540));
-      final content = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync());
+      final content = TvContent.fromM3u(realChannelList.readAsStringSync());
       final key = GlobalKey();
       await tester.pumpWidget(_app(FormFactor.tv, boundary: key, content: content));
       await settleAssets(tester, rounds: 2);
@@ -242,6 +243,7 @@ void main() {
       expect(find.text('Yayın akışı bilgisi yok'), findsWidgets);
       await maybeSnapshot(tester, key, 'build/tv/epg-gercek-4k.png', pixelRatio: 4);
     }),
+    skip: noRealChannelList,
   );
 
   testWidgets(
@@ -258,7 +260,7 @@ void main() {
           GuideEntry(title: 'Gizli Oteller', start: t(21), stop: t(22)),
         ],
       });
-      final content = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync()).withGuide(guide, now);
+      final content = TvContent.fromM3u(realChannelList.readAsStringSync()).withGuide(guide, now);
       final key = GlobalKey();
       await tester.pumpWidget(_app(FormFactor.tv, boundary: key, content: content));
       await settleAssets(tester, rounds: 2);
@@ -279,6 +281,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await maybeSnapshot(tester, key, 'build/tv/epg-akis-4k.png', pixelRatio: 4);
     }),
+    skip: noRealChannelList,
   );
 
   // Açık katlanabilir telefon (840 dp, tablet düzeni): panel yerine 4 sütun.

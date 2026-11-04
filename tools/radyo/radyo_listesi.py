@@ -5,7 +5,7 @@ Depo kökünden çalıştırılır:
 
     python -I tools/radyo/radyo_listesi.py [--eski <radios.json>]
 
-Çıktı: assets/radios/radios.m3u (kanal listesiyle aynı biçim: group-title tür,
+Çıktı: ~/.redox/kaynak/radios.m3u, depoda değil (kanal listesiyle aynı biçim: group-title tür,
 aynı adlı kayıtlar tek istasyonun yedek yayınları). Uygulamaya şifreli paket
 olarak girer (radios.bin; redox-epg/tools/pack.mjs radios). M3U uygulamaya
 konmaz.
@@ -31,7 +31,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "assets/radios/radios.m3u"
+OUT = Path.home() / ".redox/kaynak/radios.m3u"
 API = "https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/TR?hidebroken=true&limit=2000"
 # Shoutcast sunucuları tarayıcı kimliğine ses yerine HTML döndürür.
 UA = "RedoXTV/3.0"

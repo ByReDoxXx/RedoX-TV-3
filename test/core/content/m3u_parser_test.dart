@@ -1,8 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:redox_tv/core/content/m3u_parser.dart';
 import 'package:redox_tv/features/tv/tv_content.dart';
+
+import '../../support/real_list.dart';
 
 void main() {
   test('öznitelikler, aynı tvg-id akışları birleşir, numaraya göre sıralanır', () {
@@ -33,7 +33,7 @@ https://c/1.m3u8
   });
 
   test('gömülü Türkçe liste: şifresiz, numaralar benzersiz ve artan, her kanalın akışı var', () {
-    final tv = TvContent.fromM3u(File('assets/channels/tr.m3u').readAsStringSync());
+    final tv = TvContent.fromM3u(realChannelList.readAsStringSync());
     final c = tv.channels;
     expect(c.length, greaterThan(150));
     // Ana kanallar önde (Türksat frekans listesi sırası; tools/kanal).
@@ -48,5 +48,5 @@ https://c/1.m3u8
     expect(c.any((x) => RegExp(r'bein|disney|baby tv|\bfx\b', caseSensitive: false).hasMatch(x.name)), isFalse);
     // Çipler sabit sırada başlar.
     expect(tv.categories.take(3), ['Ulusal', 'Haber', 'Spor']);
-  });
+  }, skip: noRealChannelList);
 }
