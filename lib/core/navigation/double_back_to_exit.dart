@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -45,11 +48,14 @@ class DoubleBackToExitState extends State<DoubleBackToExit> {
       if (handler()) return;
     }
     if (widget.onBack?.call() ?? false) return;
-    // Masaüstünde Geri Esc'tir; pencere kapatma düğmesiyle kapanır.
-    if (FormFactor.current == FormFactor.desktop) return;
     final now = DateTime.now();
     if (_last != null && now.difference(_last!) <= widget.window) {
-      SystemNavigator.pop();
+      // SystemNavigator.pop masaüstünde uygulamayı kapatmaz.
+      if (FormFactor.current == FormFactor.desktop) {
+        unawaited(ServicesBinding.instance.exitApplication(AppExitType.required));
+      } else {
+        SystemNavigator.pop();
+      }
       return;
     }
     _last = now;

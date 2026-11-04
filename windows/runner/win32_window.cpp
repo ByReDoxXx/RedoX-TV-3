@@ -150,8 +150,16 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  // Açılışta ekranı kaplar (kullanıcı isteği); başlık çubuğu ve kapatma düğmesi kalır.
-  return ShowWindow(window_handle_, SW_SHOWMAXIMIZED);
+  // Kenarlıksız tam ekran (kullanıcı isteği): başlık çubuğu ve düğmeler yok,
+  // görev çubuğu örtülür. Çıkış: Geri'ye (Esc) iki kez ya da Alt+F4.
+  const LONG style = GetWindowLong(window_handle_, GWL_STYLE);
+  SetWindowLong(window_handle_, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
+  MONITORINFO monitor{sizeof(monitor)};
+  GetMonitorInfo(MonitorFromWindow(window_handle_, MONITOR_DEFAULTTOPRIMARY), &monitor);
+  const RECT& r = monitor.rcMonitor;
+  SetWindowPos(window_handle_, HWND_TOP, r.left, r.top, r.right - r.left, r.bottom - r.top,
+               SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  return ShowWindow(window_handle_, SW_SHOW);
 }
 
 // static
