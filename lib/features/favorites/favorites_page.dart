@@ -210,14 +210,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final touch = metrics.formFactor != FormFactor.tv;
     final padding = PageLayout.scrollPadding(context, metrics);
     final t = Theme.of(context).textTheme;
-    final tabs = [
-      (FavoriteTab.tv, 'TV kanalları', _fav.channels.length),
-      if (widget.radio != null) (FavoriteTab.radio, 'Radyo', _fav.radios.length),
-      if (widget.sources != null || _fav.sources.isNotEmpty) (FavoriteTab.sources, 'Kaynaklar', _fav.sources.length),
-    ];
     return ListenableBuilder(
       listenable: _fav,
       builder: (context, _) {
+        // Sayılar burada: favoriden çıkarınca çipteki sayı da güncellensin.
+        final tabs = [
+          (FavoriteTab.tv, 'TV kanalları', _fav.channels.length),
+          if (widget.radio != null) (FavoriteTab.radio, 'Radyo', _fav.radios.length),
+          if (widget.sources != null || _fav.sources.isNotEmpty)
+            (FavoriteTab.sources, 'Kaynaklar', _fav.sources.length),
+        ];
         final items = _items();
         return Padding(
           padding: EdgeInsets.only(top: padding.top, bottom: phone ? 0 : padding.bottom),
