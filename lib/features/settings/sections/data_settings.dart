@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../core/content/backup.dart';
+import '../../../core/content/omdb.dart';
 import '../../../core/content/song_history.dart';
+import '../../../core/content/stored_api_key.dart';
 import '../../../core/content/tmdb.dart';
 import '../../../core/content/user_sources.dart';
 import '../../../core/content/watch_history.dart';
@@ -13,10 +15,10 @@ import '../../../core/theme/redox_colors.dart';
 import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../sources/file_browser_page.dart';
+import '../widgets/api_key_setting.dart';
 import '../widgets/setting_tiles.dart';
-import '../widgets/tmdb_key_setting.dart';
 
-/// Ayarlar › Veriler: TMDB anahtarı; geçmişleri ve film/dizi bilgilerini temizle; bütün
+/// Ayarlar › Veriler: TMDB ve OMDb anahtarları; geçmişleri ve film/dizi bilgilerini temizle; bütün
 /// ayarları ve listeleri dosyaya yedekle, dosyadan geri yükle.
 class DataSettings extends StatelessWidget {
   const DataSettings({
@@ -26,6 +28,7 @@ class DataSettings extends StatelessWidget {
     this.songs,
     this.tmdb,
     this.checkTmdbKey = Tmdb.checkKey,
+    this.checkOmdbKey = Omdb.checkKey,
     this.backupFolder,
     this.fileRoots,
     this.padding = EdgeInsets.zero,
@@ -38,8 +41,9 @@ class DataSettings extends StatelessWidget {
   final SongHistory? songs;
   final Tmdb? tmdb;
 
-  /// Girilen TMDB anahtarının denetimi (testlerde sahte).
-  final Future<TmdbKeyCheck> Function(String key) checkTmdbKey;
+  /// Girilen anahtarların denetimi (testlerde sahte).
+  final Future<ApiKeyCheck> Function(String key) checkTmdbKey;
+  final Future<ApiKeyCheck> Function(String key) checkOmdbKey;
 
   /// Yedeğin yazılacağı klasör; null ise Backup.folder (testlerde geçici).
   final Future<Directory> Function()? backupFolder;
@@ -70,6 +74,7 @@ class DataSettings extends StatelessWidget {
 
   Future<void> _clearTmdb(BuildContext context) async {
     await tmdb!.clearCache();
+    await Omdb.shared?.clearCache();
     if (context.mounted) settingToast(context, 'Film ve dizi bilgileri silindi; açıldıkça yeniden alınır.');
   }
 
@@ -125,7 +130,6 @@ class DataSettings extends StatelessWidget {
     title: 'Veriler',
     padding: padding,
     children: [
-      TmdbKeySetting(check: checkTmdbKey),
       if (history != null)
         ActionSetting(
           title: 'İzleme geçmişi',
@@ -166,6 +170,21 @@ class DataSettings extends StatelessWidget {
         label: 'Yedekten yükle',
         icon: RedoxIcons.restore,
         onPressed: () => unawaited(_restore(context)),
+      ),
+      ApiKeySetting(
+        name: 'TMDB',
+        description: 'Film ve dizi afişleri, özetleri ve puanları için. themoviedb.org hesabınızda Ayarlar › API.',
+        store: Tmdb.key,
+        check: checkTmdbKey,
+      ),
+      ApiKeySetting(
+        name: 'OMDb',
+        description:
+            'IMDb puanı için (TMDB anahtarı da gerekir). Ücretsiz anahtarı omdbapi.com adresinden alın; günde 1000 '
+            'istek sınırı vardır.',
+        store: Omdb.key,
+        check: checkOmdbKey,
+        rejectedHint: ' Anahtarı e-postadaki bağlantıyla etkinleştirdiğinizden emin olun.',
       ),
     ],
   );

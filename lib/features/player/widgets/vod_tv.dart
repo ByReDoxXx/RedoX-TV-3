@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/content/channel_folder.dart';
 import '../../../core/content/live_channel.dart';
+import '../../../core/content/omdb.dart';
 import '../../../core/content/tmdb.dart';
 import '../../../core/content/watch_progress.dart';
 import '../../../core/theme/redox_colors.dart';
@@ -61,6 +62,7 @@ class VodInfo extends StatelessWidget {
             if (info?.rating case final r?)
               RatingLine(
                 info: TmdbInfo(id: info!.id, title: info.title, rating: r),
+                imdb: Omdb.shared?.ratingOf(tmdb!, info, series: series),
                 style: t.bodySmall!.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w700),
               ),
             if (full && (info?.overview.isNotEmpty ?? false)) ...[

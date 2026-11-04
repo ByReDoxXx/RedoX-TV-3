@@ -14,6 +14,7 @@ import 'core/content/diagnostics.dart';
 import 'core/content/epg_source.dart';
 import 'core/content/live_channel.dart';
 import 'core/content/favorites.dart';
+import 'core/content/omdb.dart';
 import 'core/content/profiles.dart';
 import 'core/content/radio_source.dart';
 import 'core/content/reminders.dart';
@@ -72,8 +73,9 @@ Future<void> main() async {
   final profiles = await ProfileStore.load();
   // Ayarlar (oynatıcı, açılış): oynatma katmanı da okur.
   AppSettings.instance = await AppSettings.load();
-  // Kullanıcının girdiği TMDB anahtarı (Ayarlar › Veriler).
-  await Tmdb.loadKey();
+  // Kullanıcının girdiği servis anahtarları (Ayarlar › Veriler).
+  await Tmdb.key.load();
+  await Omdb.key.load();
   final history = await WatchHistory.load();
   // Film/dizide kaldığı yer (profil başına).
   final progress = await WatchProgress.load();

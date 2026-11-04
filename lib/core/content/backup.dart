@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../platform/storage_access.dart';
+import 'omdb.dart';
 import 'tmdb.dart';
 import 'user_sources.dart';
 
@@ -14,18 +15,20 @@ import 'user_sources.dart';
 /// başlatılmalıdır (her şey açılışta okunur).
 ///
 /// Güvenlik: Xtream şifresi ve portal MAC'i liste dizinindedir, yedekte de
-/// bulunur; dosya başkasıyla paylaşılmamalıdır. TMDB anahtarı yedeğe yazılmaz,
-/// geri yüklemede cihazdaki korunur.
+/// bulunur; dosya başkasıyla paylaşılmamalıdır. Servis anahtarları (TMDB, OMDb)
+/// yedeğe yazılmaz, geri yüklemede cihazdakiler korunur.
 abstract final class Backup {
   static const format = 'redox-yedek';
   static const version = 1;
+
+  static List<String> get _deviceOnly => [Tmdb.key.pref, Omdb.key.pref];
 
   /// Yedeğin JSON metni.
   static Future<String> create(UserSources sources) async {
     final prefs = await SharedPreferences.getInstance();
     final values = <String, Object?>{
       for (final key in prefs.getKeys())
-        if (key != Tmdb.keyPref)
+        if (!_deviceOnly.contains(key))
           if (prefs.get(key) case final v?) key: v is List ? [for (final e in v) '$e'] : v,
     };
     return jsonEncode({
@@ -54,11 +57,13 @@ abstract final class Backup {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    final tmdbKey = prefs.getString(Tmdb.keyPref);
+    final kept = {for (final k in _deviceOnly) k: prefs.getString(k)};
     await prefs.clear();
-    if (tmdbKey != null) await prefs.setString(Tmdb.keyPref, tmdbKey);
+    for (final MapEntry(:key, :value) in kept.entries) {
+      if (value != null) await prefs.setString(key, value);
+    }
     for (final MapEntry(:key, :value) in ((data['ayarlar'] as Map?) ?? const {}).cast<String, Object?>().entries) {
-      if (key == Tmdb.keyPref) continue;
+      if (_deviceOnly.contains(key)) continue;
       switch (value) {
         case final bool v:
           await prefs.setBool(key, v);

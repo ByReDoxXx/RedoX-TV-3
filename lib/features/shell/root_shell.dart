@@ -172,7 +172,7 @@ class _RootShellState extends State<RootShell> {
     super.initState();
     widget.history?.addListener(_syncFrames);
     widget.homeRequests?.addListener(_remoteHome);
-    Tmdb.current.addListener(_tmdbChanged);
+    Tmdb.key.current.addListener(_tmdbChanged);
     _reminderTimer = Timer.periodic(const Duration(seconds: 20), (_) => unawaited(_checkReminders()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncFrames();
@@ -184,7 +184,7 @@ class _RootShellState extends State<RootShell> {
   void dispose() {
     widget.history?.removeListener(_syncFrames);
     widget.homeRequests?.removeListener(_remoteHome);
-    Tmdb.current.removeListener(_tmdbChanged);
+    Tmdb.key.current.removeListener(_tmdbChanged);
     _reminderTimer?.cancel();
     _split.dispose();
     super.dispose();

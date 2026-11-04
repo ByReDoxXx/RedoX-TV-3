@@ -6,6 +6,7 @@ import '../../core/content/content_locks.dart';
 import '../../core/content/favorites.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/series_catalog.dart';
+import '../../core/content/omdb.dart';
 import '../../core/content/tmdb.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
@@ -230,6 +231,7 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
                   RatingLine(
                     info: info,
                     extra: [s.summary],
+                    imdb: info == null ? null : Omdb.shared?.ratingOf(widget.tmdb!, info, series: true),
                     style: t.titleSmall!.copyWith(color: RedoxRoles.tertiary),
                   ),
                 ],

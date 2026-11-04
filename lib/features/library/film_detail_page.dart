@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/content/live_channel.dart';
+import '../../core/content/omdb.dart';
 import '../../core/content/tmdb.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
@@ -178,6 +179,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
         RatingLine(
           info: info,
           extra: [widget.film.category],
+          imdb: info == null ? null : Omdb.shared?.ratingOf(widget.tmdb, info, series: false),
           style: t.titleMedium!.copyWith(color: RedoxRoles.tertiary),
         ),
         if (info != null && info.overview.isNotEmpty) ...[

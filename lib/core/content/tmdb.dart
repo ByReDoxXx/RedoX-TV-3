@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'dart:io' show HttpException;
 import 'dart:isolate';
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'live_channel.dart';
 import 'remote_file.dart';
+import 'stored_api_key.dart';
 
 /// TMDB'de bulunan film ya da dizi.
 class TmdbInfo {
@@ -66,17 +66,6 @@ class TmdbInfo {
   };
 }
 
-/// Girilen TMDB anahtarının denetim sonucu.
-enum TmdbKeyCheck {
-  valid,
-
-  /// TMDB anahtarı reddetti (HTTP 401).
-  rejected,
-
-  /// Ağ yok ya da TMDB yanıt vermedi; anahtar denenemedi.
-  unreachable,
-}
-
 /// TMDB (themoviedb.org): Film ve Dizi kayıtlarının afişi, arka planı, özeti,
 /// yılı ve puanı (kullanıcı isteği: "TMDB ve IMDB desteği"). Kayıt adı
 /// sadeleştirilip ([cleanName]) Türkçe aranır; ilk sonuç alınır. Sonuçlar
@@ -94,45 +83,23 @@ class Tmdb {
   final String token;
   final Future<List<int>> Function(Uri uri, Map<String, String> headers) _fetch;
 
-  /// Uygulamanın TMDB'si; anahtar girilince ya da kaldırılınca değişir.
-  static final current = ValueNotifier<Tmdb?>(null);
+  static final key = StoredApiKey<Tmdb>('tmdb_anahtar', (k) => Tmdb(token: k));
 
   /// Şu anki TMDB; anahtar girilmediyse null.
-  static Tmdb? get shared => current.value;
-
-  /// Anahtarın cihazdaki adı. Yedeğe yazılmaz (Backup).
-  static const keyPref = 'tmdb_anahtar';
-
-  /// Cihazdaki anahtarı yükler (main.dart).
-  static Future<void> loadKey() async {
-    final key = (await SharedPreferences.getInstance()).getString(keyPref);
-    current.value = key == null || key.isEmpty ? null : Tmdb(token: key);
-  }
-
-  /// Anahtarı saklar ve hemen kullanır; null kaldırır (TMDB kapanır).
-  static Future<void> setKey(String? key) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (key == null) {
-      await prefs.remove(keyPref);
-      current.value = null;
-    } else {
-      await prefs.setString(keyPref, key);
-      current.value = Tmdb(token: key);
-    }
-  }
+  static Tmdb? get shared => key.current.value;
 
   /// Anahtarı TMDB'ye sorar; saklamaz.
-  static Future<TmdbKeyCheck> checkKey(
+  static Future<ApiKeyCheck> checkKey(
     String key, {
     Future<List<int>> Function(Uri uri, Map<String, String> headers)? fetch,
   }) async {
     try {
       await Tmdb(token: key, fetch: fetch)._get('/3/authentication', const {});
-      return TmdbKeyCheck.valid;
+      return ApiKeyCheck.valid;
     } on HttpException catch (e) {
-      return e.message.contains('401') ? TmdbKeyCheck.rejected : TmdbKeyCheck.unreachable;
+      return e.message.contains('401') ? ApiKeyCheck.rejected : ApiKeyCheck.unreachable;
     } on Object {
-      return TmdbKeyCheck.unreachable;
+      return ApiKeyCheck.unreachable;
     }
   }
 
@@ -212,6 +179,13 @@ class Tmdb {
     } on Object {
       return const [];
     }
+  }
+
+  /// Kaydın IMDb kimliği ("tt0137523"); yoksa null. Ağ hatasında fırlatır.
+  Future<String?> imdbId(int id, {required bool series}) async {
+    final body = jsonDecode(utf8.decode(await _get('/3/${series ? 'tv' : 'movie'}/$id/external_ids', const {})));
+    final imdb = body is Map ? body['imdb_id'] : null;
+    return imdb is String && imdb.isNotEmpty ? imdb : null;
   }
 
   /// Benzerlerden listede olanlar (oynatılabilenler), TMDB sırasıyla: ad

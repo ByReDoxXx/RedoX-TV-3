@@ -41,7 +41,7 @@ enum SettingsSection {
   startup('Açılış', 'Profil sorusu ve ilk sayfa', RedoxIcons.home),
   parental('Ebeveyn denetimi', 'PIN ve kilitli içerik', RedoxIcons.lock),
   remote('Telefon kumandası', 'Ad ve eşleşmiş telefonlar', RedoxIcons.remote),
-  data('Veriler', 'TMDB anahtarı, temizle, yedekle', RedoxIcons.database),
+  data('Veriler', 'TMDB ve IMDb anahtarı, temizle, yedekle', RedoxIcons.database),
   about('Hakkında', 'Sürüm, güncelleme, tanılama', RedoxIcons.info);
 
   const SettingsSection(this.label, this.summary, this.icon);
