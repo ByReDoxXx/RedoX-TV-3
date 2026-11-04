@@ -128,8 +128,8 @@ void main() {
         final key = GlobalKey();
         final store = ProfileStore(
           profiles: const [
-            Profile(id: 'p1', name: 'Serhat'),
-            Profile(id: 'p2', name: 'irem', color: 3),
+            Profile(id: 'p1', name: 'Deniz'),
+            Profile(id: 'p2', name: 'Ece', color: 3),
             Profile(id: 'cocuk', name: 'Çocuk', color: 2, kids: true),
           ],
         );

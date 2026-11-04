@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../layout/form_factor.dart';
@@ -38,6 +40,7 @@ class StoryAvatar extends StatelessWidget {
   /// Telefonda etiketler 12 sp'dir (TV'de 16): halkalar arası 12 dp yeter
   /// (kullanıcı isteği). En uzun etiket iki satıra iner.
   static const slotExtraPhone = 12.0;
+  static const minSlot = 76.0;
   static const labelInset = 4.0;
   static const labelLines = 2;
 
@@ -46,7 +49,8 @@ class StoryAvatar extends StatelessWidget {
     final style = Theme.of(context).textTheme.labelMedium!;
     final phone = Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.phone;
     return SizedBox(
-      width: diameter + (phone ? slotExtraPhone : slotExtra),
+      // Küçük halkada (TV) da etiket kelime ortasından bölünmesin.
+      width: math.max(diameter + (phone ? slotExtraPhone : slotExtra), minSlot),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -83,13 +87,19 @@ class StoryAvatar extends StatelessWidget {
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: labelInset),
-            child: Text(
-              label,
-              style: style.copyWith(color: RedoxRoles.onSurface),
-              maxLines: labelLines,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
+            // Tek kelime bölünmez: dar yuvada küçülür ("Anasay-fa" olmasın).
+            child: label.contains(' ')
+                ? Text(
+                    label,
+                    style: style.copyWith(color: RedoxRoles.onSurface),
+                    maxLines: labelLines,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  )
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(label, style: style.copyWith(color: RedoxRoles.onSurface), maxLines: 1),
+                  ),
           ),
         ],
       ),
