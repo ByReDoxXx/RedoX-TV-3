@@ -1,7 +1,7 @@
 name: redox_tv
 description: "RedoX TV 3.0: Android TV, tablet, telefon, Windows ve Linux için IPTV istemcisi."
 publish_to: 'none'
-version: 3.0.0+3
+version: 3.0.1+4
 
 environment:
   sdk: ^3.13.7
