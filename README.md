@@ -12,7 +12,8 @@
 <p align="center">
   <a href="#türkçe"><b>Türkçe</b></a> ·
   <a href="#english"><b>English</b></a> ·
-  <a href="https://github.com/ByReDoxXx/RedoX-TV-3/wiki"><b>Wiki</b></a>
+  <a href="https://github.com/ByReDoxXx/RedoX-TV-3/wiki"><b>Wiki</b></a> ·
+  <a href="https://github.com/ByReDoxXx/RedoX-TV-3/releases/latest"><b>İndir / Download</b></a>
 </p>
 
 ---
@@ -57,7 +58,7 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 
 ### İndirme ve kurulum
 
-Şu anda yayında hazır dosya yok; uygulamayı [kaynaktan derleyebilirsiniz](#kaynaktan-derleme). Yeni sürüm yayımlandığında dosya adları şöyledir:
+[Son sürümden](https://github.com/ByReDoxXx/RedoX-TV-3/releases/latest) cihazınıza uygun dosyayı indirin:
 
 | Cihaz | Dosya |
 |---|---|
@@ -70,7 +71,7 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 
 - **Android:** APK'yı açın; sorarsa bilinmeyen kaynaklardan kuruluma izin verin. Android TV için [Kurulum](https://github.com/ByReDoxXx/RedoX-TV-3/wiki/Kurulum) sayfasına bakın.
 - **Windows:** Zip'i bir klasöre açıp `redox_tv.exe`'yi çalıştırın. Uygulama imzasızdır, SmartScreen uyarı verebilir. Tam ekran açılır; çıkmak için ana ekranda Esc'e iki kez ya da Alt+F4'e basın.
-- **Linux:** v3.0.0'da hazır paket yoktur; kaynaktan derlenir.
+- **Linux:** Hazır paket yoktur; kaynaktan derlenir.
 
 ### Kaynaktan derleme
 
@@ -147,7 +148,7 @@ The screenshots above show live TV, radio, movie details, the player, adding a s
 
 ### Download and install
 
-There are no prebuilt files available right now; you can [build the app from source](#building-from-source). When a new version is released, the files are named as follows:
+Get the right file from the [latest release](https://github.com/ByReDoxXx/RedoX-TV-3/releases/latest):
 
 | Device | File |
 |---|---|
@@ -160,7 +161,7 @@ There are no prebuilt files available right now; you can [build the app from sou
 
 - **Android:** Open the APK and allow installing from unknown sources if asked.
 - **Windows:** Extract the zip and run `redox_tv.exe`. The app is unsigned, so SmartScreen may warn you. It opens full screen; press Esc twice on the home screen or Alt+F4 to quit.
-- **Linux:** v3.0.0 has no prebuilt package; build it from source.
+- **Linux:** There is no prebuilt package; build it from source.
 
 ### Building from source
 
