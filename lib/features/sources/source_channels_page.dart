@@ -10,6 +10,7 @@ import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
+import '../../core/ui/desktop_back_button.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/segmented_toggle.dart';
@@ -123,6 +124,7 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
             children: [
               Row(
                 children: [
+                  const DesktopBackButton(gap: 12),
                   const RedoxIcon(RedoxIcons.folder, color: RedoxSeeds.gold),
                   const SizedBox(width: 10),
                   Expanded(

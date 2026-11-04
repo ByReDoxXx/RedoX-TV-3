@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'core/layout/form_factor.dart';
 import 'core/navigation/destinations.dart';
@@ -220,7 +224,23 @@ class _RedoxAppState extends State<RedoxApp> {
           child: child!,
         );
         final remote = widget.remote;
-        return remote == null ? scaled : PairingOverlay(host: remote, child: scaled);
+        // Esc ve farenin geri tuşu Geri demektir (Windows/Linux'ta sistem Geri'si
+        // yok). Oynatıcı ve arama kutusu Esc'i önce kendileri alır.
+        return Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (_, e) {
+            if (e is! KeyDownEvent || e.logicalKey != LogicalKeyboardKey.escape) return KeyEventResult.ignored;
+            unawaited(_navigator.currentState?.maybePop());
+            return KeyEventResult.handled;
+          },
+          child: Listener(
+            onPointerDown: (e) {
+              if (e.buttons & kBackMouseButton != 0) unawaited(_navigator.currentState?.maybePop());
+            },
+            child: remote == null ? scaled : PairingOverlay(host: remote, child: scaled),
+          ),
+        );
       },
       navigatorKey: _navigator,
       home: Builder(builder: _home),

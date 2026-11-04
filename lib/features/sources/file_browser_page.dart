@@ -10,6 +10,7 @@ import '../../core/platform/storage_access.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
+import '../../core/ui/desktop_back_button.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
@@ -240,6 +241,7 @@ class _FileBrowserPageState extends State<FileBrowserPage> {
               children: [
                 Row(
                   children: [
+                    const DesktopBackButton(gap: 12),
                     IconTile(
                       icon: widget.folder ? RedoxIcons.folder : RedoxIcons.uploadFile,
                       tint: RedoxSeeds.gold,

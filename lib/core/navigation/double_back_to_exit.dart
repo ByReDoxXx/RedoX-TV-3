@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../layout/form_factor.dart';
+
 /// Kök sayfada Geri: ilk basışta uyarı, [window] içinde ikinci basışta
 /// uygulamadan çıkılır (kullanıcı isteği: Geri doğrudan çıkmasın).
 ///
@@ -43,6 +45,8 @@ class DoubleBackToExitState extends State<DoubleBackToExit> {
       if (handler()) return;
     }
     if (widget.onBack?.call() ?? false) return;
+    // Masaüstünde Geri Esc'tir; pencere kapatma düğmesiyle kapanır.
+    if (FormFactor.current == FormFactor.desktop) return;
     final now = DateTime.now();
     if (_last != null && now.difference(_last!) <= widget.window) {
       SystemNavigator.pop();

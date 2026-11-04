@@ -6,6 +6,7 @@ import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
+import '../../core/ui/desktop_back_button.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import 'widgets/rating_line.dart';
@@ -110,6 +111,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                   child: phone ? _phone(context, info) : _wide(context, info),
                 ),
               ),
+              const Positioned(left: 8, top: 8, child: DesktopBackButton()),
             ],
           );
         },

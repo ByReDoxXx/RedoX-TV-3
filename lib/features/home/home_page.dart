@@ -168,7 +168,8 @@ class HomePage extends StatelessWidget {
             // Öğretici hikâyeler (kullanıcı isteği: "giren birisi uygulamayı
             // öğrensin"): her cihazda, o cihazın ekran görüntüleriyle.
             TutorialRow(kids: kids, onGo: onNavigate),
-            if (phone) const SizedBox(height: 12),
+            // TV'de 540 dp'de pano ve raf ilk ekrana sığsın diye boşluk yok.
+            if (metrics.formFactor != FormFactor.tv) const SizedBox(height: 12),
             Text(
               '${content.greeting}, ${content.profileName}',
               maxLines: 1,

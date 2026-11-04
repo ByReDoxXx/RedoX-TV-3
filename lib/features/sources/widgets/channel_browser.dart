@@ -281,9 +281,12 @@ class _ChannelRow extends StatelessWidget {
             child: Row(
               children: [
                 SizedBox(
-                  width: 36,
+                  // 3 haneye göre; büyük listede 4-5 hane alt satıra kaymasın.
+                  width: 36 + 9.0 * ('${c.number}'.length - 3).clamp(0, 4),
                   child: Text(
                     '${c.number}',
+                    maxLines: 1,
+                    softWrap: false,
                     textAlign: TextAlign.right,
                     style: t.labelLarge!.copyWith(color: RedoxRoles.onSurfaceVariant, fontFeatures: RedoxType.tabular),
                   ),

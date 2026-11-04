@@ -11,6 +11,7 @@ import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
+import '../../core/ui/desktop_back_button.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/focus_glow.dart';
 import '../../core/ui/redox_buttons.dart';
@@ -103,6 +104,7 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
                 ),
               ),
               SafeArea(child: _wide(context, info)),
+              const Positioned(left: 8, top: 8, child: DesktopBackButton()),
             ],
           );
         },
