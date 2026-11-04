@@ -12,8 +12,7 @@
 <p align="center">
   <a href="#türkçe"><b>Türkçe</b></a> ·
   <a href="#english"><b>English</b></a> ·
-  <a href="https://github.com/ByReDoxXx/RedoX-TV-3/wiki"><b>Wiki</b></a> ·
-  <a href="https://github.com/ByReDoxXx/RedoX-TV-3/releases/latest"><b>İndir / Download</b></a>
+  <a href="https://github.com/ByReDoxXx/RedoX-TV-3/wiki"><b>Wiki</b></a>
 </p>
 
 ---
@@ -58,7 +57,7 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 
 ### İndirme ve kurulum
 
-[Son sürümden](https://github.com/ByReDoxXx/RedoX-TV-3/releases/latest) cihazınıza uygun dosyayı indirin:
+Şu anda yayında hazır dosya yok; uygulamayı [kaynaktan derleyebilirsiniz](#kaynaktan-derleme). Yeni sürüm yayımlandığında dosya adları şöyledir:
 
 | Cihaz | Dosya |
 |---|---|
@@ -148,7 +147,7 @@ The screenshots above show live TV, radio, movie details, the player, adding a s
 
 ### Download and install
 
-Get the right file from the [latest release](https://github.com/ByReDoxXx/RedoX-TV-3/releases/latest):
+There are no prebuilt files available right now; you can [build the app from source](#building-from-source). When a new version is released, the files are named as follows:
 
 | Device | File |
 |---|---|
