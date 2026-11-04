@@ -12,6 +12,8 @@ Kurallar:
 - Listede olan kanalın yeni adresi, yoksa yedek akış olarak eklenir.
 - Listede olmayan kanal, logosu ve kategorisiyle eklenir.
 - Ücretli kanalların izinsiz yeniden yayınları eklenmez (DISLA).
+- Liste, Türksat frekans listesinde şifresiz olan kanallardan oluşur (kullanıcı isteği, 04.11.2026);
+  eklenecek kanal önce o listede denetlenir (turksat.com.tr/en/satellite/turksat-frequency-list).
 - Numara: önce ANA sırası (Türksat frekans listesi, hiremco.com.tr, 16.10.2026:
   ana kanallar önde); sonra mevcut sıra (Türksat kanal/frekans PDF'inin satır
   sırası, önceki çalışma); en sonda yeni kanallar, kategori sırasıyla.
