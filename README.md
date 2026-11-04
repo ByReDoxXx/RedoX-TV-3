@@ -46,7 +46,7 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 
 - **Canlı TV:** Kategoriler, canlı önizleme, EPG çizelgesi, program hatırlatma, kanal numarasıyla geçiş.
 - **Radyo:** Türlere ayrılmış liste, kadran, şarkı adı, son çalan şarkılar, başka bölümde gezerken çalmaya devam.
-- **Film ve dizi:** Afişler ve TMDB bilgileri; kategori, tür ve yıl süzgeci; sezon ve bölüm düzeni; kaldığın yerden devam.
+- **Film ve dizi:** Afişler ve TMDB bilgileri (kendi TMDB anahtarınızla); kategori, tür ve yıl süzgeci; sezon ve bölüm düzeni; kaldığın yerden devam.
 - **Arama:** Kanal, program, radyo, film ve dizide tek kutudan; Türkçe harf yazmasan da bulur.
 - **Oynatıcı:** media_kit tabanlı; kalite, ses ve altyazı seçimi, uyku zamanlayıcısı.
 - **Bölünmüş ekran:** Aynı anda 2 ya da 4 kanal.
@@ -91,11 +91,11 @@ flutter build linux --release --dart-define-from-file=keys.json
 `keys.json` depoda yoktur; kendiniz oluşturursunuz ve hiçbir yere yüklemezsiniz:
 
 ```json
-{ "REDOX_DATA_KEY": "<şifreli veri paketlerinin anahtarı>", "TMDB_TOKEN": "<TMDB API belirteci>" }
+{ "REDOX_DATA_KEY": "<şifreli veri paketlerinin anahtarı>" }
 ```
 
 - Uygulamayla gelen şifreli kanal ve radyo paketleri `REDOX_DATA_KEY` olmadan açılmaz.
-- `TMDB_TOKEN` yoksa film ve dizi ayrıntıları gelmez.
+- TMDB anahtarı derlemeye girmez; her kullanıcı kendi anahtarını uygulamada **Ayarlar › Veriler**'den girer. Girilmezse afiş ve özet gelmez.
 - Windows derlemesi NTFS sürücü ister; exFAT'ta sembolik bağlantı hatası verir.
 - Sürüm imzası `key.properties` dosyasından okunur; dosya yoksa debug imzası kullanılır.
 
@@ -136,7 +136,7 @@ The screenshots above show live TV, radio, movie details, the player, adding a s
 
 - **Live TV:** Categories, live preview, EPG grid, program reminders, jumping to a channel by number.
 - **Radio:** Stations by genre, tuning dial, song titles, recently played songs, playback while you browse the app.
-- **Movies and series:** Posters and TMDB details; category, genre and year filters; seasons and episodes; resume where you left off.
+- **Movies and series:** Posters and TMDB details (with your own TMDB key); category, genre and year filters; seasons and episodes; resume where you left off.
 - **Search:** One box for channels, programs, radio, movies and series; works without typing Turkish letters.
 - **Player:** Built on media_kit; quality, audio and subtitle selection, sleep timer.
 - **Split screen:** 2 or 4 channels at once.
@@ -181,11 +181,11 @@ flutter build linux --release --dart-define-from-file=keys.json
 `keys.json` is not in the repository. Create your own and never upload it:
 
 ```json
-{ "REDOX_DATA_KEY": "<key for the encrypted data packs>", "TMDB_TOKEN": "<TMDB API token>" }
+{ "REDOX_DATA_KEY": "<key for the encrypted data packs>" }
 ```
 
 - The bundled encrypted channel and radio packs do not open without `REDOX_DATA_KEY`.
-- Without `TMDB_TOKEN`, movie and series details are not loaded.
+- The TMDB key is not built into the app; each user enters their own in the app under **Ayarlar › Veriler** (Settings › Data). Without it, movie and series details are not loaded.
 - The Windows build needs an NTFS drive; exFAT fails with a symlink error.
 - Release signing reads `key.properties`; without it, the debug signature is used.
 

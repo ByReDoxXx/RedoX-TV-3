@@ -18,6 +18,7 @@ import 'core/content/profiles.dart';
 import 'core/content/radio_source.dart';
 import 'core/content/reminders.dart';
 import 'core/content/song_history.dart';
+import 'core/content/tmdb.dart';
 import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
 import 'core/content/watch_progress.dart';
@@ -71,6 +72,8 @@ Future<void> main() async {
   final profiles = await ProfileStore.load();
   // Ayarlar (oynatıcı, açılış): oynatma katmanı da okur.
   AppSettings.instance = await AppSettings.load();
+  // Kullanıcının girdiği TMDB anahtarı (Ayarlar › Veriler).
+  await Tmdb.loadKey();
   final history = await WatchHistory.load();
   // Film/dizide kaldığı yer (profil başına).
   final progress = await WatchProgress.load();

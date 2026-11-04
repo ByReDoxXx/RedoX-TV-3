@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpException;
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'live_channel.dart';
@@ -64,13 +66,27 @@ class TmdbInfo {
   };
 }
 
+/// Girilen TMDB anahtarının denetim sonucu.
+enum TmdbKeyCheck {
+  valid,
+
+  /// TMDB anahtarı reddetti (HTTP 401).
+  rejected,
+
+  /// Ağ yok ya da TMDB yanıt vermedi; anahtar denenemedi.
+  unreachable,
+}
+
 /// TMDB (themoviedb.org): Film ve Dizi kayıtlarının afişi, arka planı, özeti,
 /// yılı ve puanı (kullanıcı isteği: "TMDB ve IMDB desteği"). Kayıt adı
 /// sadeleştirilip ([cleanName]) Türkçe aranır; ilk sonuç alınır. Sonuçlar
 /// (bulunamayanlar da) cihazda saklanır, aynı ad yeniden sorulmaz.
 ///
-/// Anahtar (API Read Access Token) derlemede verilir:
-/// `--dart-define=TMDB_TOKEN=…`; yoksa TMDB kapalıdır ([shared] null).
+/// Anahtarı kullanıcı Ayarlar › Veriler'den girer; cihazda saklanır, uygulamaya
+/// gömülmez (kullanıcı isteği: "açık kalmasın"; gömülü anahtar APK'dan
+/// çıkarılabiliyordu). Girilmediyse TMDB kapalıdır ([shared] null). İki tür
+/// kabul edilir: API Read Access Token (Bearer) ve 32 haneli API anahtarı
+/// (`api_key`).
 class Tmdb {
   Tmdb({required this.token, Future<List<int>> Function(Uri uri, Map<String, String> headers)? fetch})
     : _fetch = fetch ?? ((uri, headers) => fetchBytes(uri, headers: headers, timeout: const Duration(seconds: 10)));
@@ -78,10 +94,58 @@ class Tmdb {
   final String token;
   final Future<List<int>> Function(Uri uri, Map<String, String> headers) _fetch;
 
-  static const _token = String.fromEnvironment('TMDB_TOKEN');
+  /// Uygulamanın TMDB'si; anahtar girilince ya da kaldırılınca değişir.
+  static final current = ValueNotifier<Tmdb?>(null);
 
-  /// Uygulamanın TMDB'si; anahtar verilmeden derlendiyse null.
-  static final Tmdb? shared = _token.isEmpty ? null : Tmdb(token: _token);
+  /// Şu anki TMDB; anahtar girilmediyse null.
+  static Tmdb? get shared => current.value;
+
+  /// Anahtarın cihazdaki adı. Yedeğe yazılmaz (Backup).
+  static const keyPref = 'tmdb_anahtar';
+
+  /// Cihazdaki anahtarı yükler (main.dart).
+  static Future<void> loadKey() async {
+    final key = (await SharedPreferences.getInstance()).getString(keyPref);
+    current.value = key == null || key.isEmpty ? null : Tmdb(token: key);
+  }
+
+  /// Anahtarı saklar ve hemen kullanır; null kaldırır (TMDB kapanır).
+  static Future<void> setKey(String? key) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (key == null) {
+      await prefs.remove(keyPref);
+      current.value = null;
+    } else {
+      await prefs.setString(keyPref, key);
+      current.value = Tmdb(token: key);
+    }
+  }
+
+  /// Anahtarı TMDB'ye sorar; saklamaz.
+  static Future<TmdbKeyCheck> checkKey(
+    String key, {
+    Future<List<int>> Function(Uri uri, Map<String, String> headers)? fetch,
+  }) async {
+    try {
+      await Tmdb(token: key, fetch: fetch)._get('/3/authentication', const {});
+      return TmdbKeyCheck.valid;
+    } on HttpException catch (e) {
+      return e.message.contains('401') ? TmdbKeyCheck.rejected : TmdbKeyCheck.unreachable;
+    } on Object {
+      return TmdbKeyCheck.unreachable;
+    }
+  }
+
+  static final _shortKey = RegExp(r'^[0-9a-fA-F]{32}$');
+
+  /// TMDB isteği; anahtar türüne göre sorguda ya da başlıkta gider.
+  Future<List<int>> _get(String path, Map<String, String> query) {
+    final short = _shortKey.hasMatch(token);
+    return _fetch(Uri.https('api.themoviedb.org', path, {...query, if (short) 'api_key': token}), {
+      if (!short) 'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+  }
 
   static const _prefsKey = 'tmdb_onbellek';
   static const _cacheLimit = 1000;
@@ -137,12 +201,7 @@ class Tmdb {
   Future<List<TmdbInfo>> _fetchSimilar(int id, bool series) async {
     try {
       final body = jsonDecode(
-        utf8.decode(
-          await _fetch(
-            Uri.https('api.themoviedb.org', '/3/${series ? 'tv' : 'movie'}/$id/recommendations', {'language': 'tr-TR'}),
-            {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
-          ),
-        ),
+        utf8.decode(await _get('/3/${series ? 'tv' : 'movie'}/$id/recommendations', const {'language': 'tr-TR'})),
       );
       final results = body is Map ? body['results'] : null;
       return [
@@ -213,14 +272,11 @@ class Tmdb {
     try {
       body = jsonDecode(
         utf8.decode(
-          await _fetch(
-            Uri.https('api.themoviedb.org', '/3/search/${series ? 'tv' : 'movie'}', {
-              'query': query,
-              'language': 'tr-TR',
-              if (year != null) series ? 'first_air_date_year' : 'year': '$year',
-            }),
-            {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
-          ),
+          await _get('/3/search/${series ? 'tv' : 'movie'}', {
+            'query': query,
+            'language': 'tr-TR',
+            if (year != null) series ? 'first_air_date_year' : 'year': '$year',
+          }),
         ),
       );
     } on Object {

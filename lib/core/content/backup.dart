@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../platform/storage_access.dart';
+import 'tmdb.dart';
 import 'user_sources.dart';
 
 /// Yedek dosyası (Ayarlar › Veriler): bütün ayarlar (profiller, favoriler,
@@ -13,7 +14,8 @@ import 'user_sources.dart';
 /// başlatılmalıdır (her şey açılışta okunur).
 ///
 /// Güvenlik: Xtream şifresi ve portal MAC'i liste dizinindedir, yedekte de
-/// bulunur; dosya başkasıyla paylaşılmamalıdır.
+/// bulunur; dosya başkasıyla paylaşılmamalıdır. TMDB anahtarı yedeğe yazılmaz,
+/// geri yüklemede cihazdaki korunur.
 abstract final class Backup {
   static const format = 'redox-yedek';
   static const version = 1;
@@ -23,7 +25,8 @@ abstract final class Backup {
     final prefs = await SharedPreferences.getInstance();
     final values = <String, Object?>{
       for (final key in prefs.getKeys())
-        if (prefs.get(key) case final v?) key: v is List ? [for (final e in v) '$e'] : v,
+        if (key != Tmdb.keyPref)
+          if (prefs.get(key) case final v?) key: v is List ? [for (final e in v) '$e'] : v,
     };
     return jsonEncode({
       'bicim': format,
@@ -51,8 +54,11 @@ abstract final class Backup {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
+    final tmdbKey = prefs.getString(Tmdb.keyPref);
     await prefs.clear();
+    if (tmdbKey != null) await prefs.setString(Tmdb.keyPref, tmdbKey);
     for (final MapEntry(:key, :value) in ((data['ayarlar'] as Map?) ?? const {}).cast<String, Object?>().entries) {
+      if (key == Tmdb.keyPref) continue;
       switch (value) {
         case final bool v:
           await prefs.setBool(key, v);

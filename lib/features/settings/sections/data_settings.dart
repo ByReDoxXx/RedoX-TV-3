@@ -14,8 +14,9 @@ import '../../../core/ui/redox_buttons.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../sources/file_browser_page.dart';
 import '../widgets/setting_tiles.dart';
+import '../widgets/tmdb_key_setting.dart';
 
-/// Ayarlar › Veriler: geçmişleri ve film/dizi bilgilerini temizle; bütün
+/// Ayarlar › Veriler: TMDB anahtarı; geçmişleri ve film/dizi bilgilerini temizle; bütün
 /// ayarları ve listeleri dosyaya yedekle, dosyadan geri yükle.
 class DataSettings extends StatelessWidget {
   const DataSettings({
@@ -24,6 +25,7 @@ class DataSettings extends StatelessWidget {
     this.history,
     this.songs,
     this.tmdb,
+    this.checkTmdbKey = Tmdb.checkKey,
     this.backupFolder,
     this.fileRoots,
     this.padding = EdgeInsets.zero,
@@ -35,6 +37,9 @@ class DataSettings extends StatelessWidget {
   final WatchHistory? history;
   final SongHistory? songs;
   final Tmdb? tmdb;
+
+  /// Girilen TMDB anahtarının denetimi (testlerde sahte).
+  final Future<TmdbKeyCheck> Function(String key) checkTmdbKey;
 
   /// Yedeğin yazılacağı klasör; null ise Backup.folder (testlerde geçici).
   final Future<Directory> Function()? backupFolder;
@@ -120,6 +125,7 @@ class DataSettings extends StatelessWidget {
     title: 'Veriler',
     padding: padding,
     children: [
+      TmdbKeySetting(check: checkTmdbKey),
       if (history != null)
         ActionSetting(
           title: 'İzleme geçmişi',
