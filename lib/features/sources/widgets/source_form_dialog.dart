@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/layout/form_factor.dart';
+import '../../../core/layout/mouse_mode.dart';
 import '../../../core/theme/redox_colors.dart';
-import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_buttons.dart';
@@ -106,7 +105,7 @@ class _SourceFormDialogState extends State<SourceFormDialog> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final tv = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
+    final tv = usesSystemTextInput(context);
     final buttons = Wrap(
       spacing: 12,
       runSpacing: 12,

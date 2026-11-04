@@ -20,7 +20,13 @@ import '../../support/render.dart';
 // Tablet sürümü (kullanıcının tableti yok): uygulamanın her bölümü yaygın
 // tablet boyutlarında (dp) taşmasız açılır; görüntüler build/tablet/.
 
-const _sizes = [('10-yatay', Size(1280, 800)), ('10-dikey', Size(800, 1280)), ('kucuk-yatay', Size(1024, 768))];
+const _sizes = [
+  ('10-yatay', Size(1280, 800), FormFactor.tablet),
+  ('10-dikey', Size(800, 1280), FormFactor.tablet),
+  ('kucuk-yatay', Size(1024, 768), FormFactor.tablet),
+  // Android TV'de fare kullanılınca: masaüstü arayüzü TV ekranında.
+  ('tv-fare', Size(960, 540), FormFactor.desktop),
+];
 
 final _stations = [
   for (var i = 1; i <= 12; i++)
@@ -83,7 +89,7 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
-  for (final (name, size) in _sizes) {
+  for (final (name, size, form) in _sizes) {
     testWidgets('tablet $name: bütün bölümler taşmasız, sol ray', (tester) async {
       await withRealShadows(() async {
         await loadSora(tester);
@@ -102,7 +108,7 @@ void main() {
               child: MaterialApp(
                 debugShowCheckedModeBanner: false,
                 themeAnimationDuration: Duration.zero,
-                theme: RedoxTheme.dark(formFactor: FormFactor.tablet),
+                theme: RedoxTheme.dark(formFactor: form),
                 home: RootShell(
                   // Her bölüm ayrı kabukla açılır.
                   key: ValueKey(section),

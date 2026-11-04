@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/content/profiles.dart';
-import '../../../core/layout/form_factor.dart';
+import '../../../core/layout/mouse_mode.dart';
 import '../../../core/theme/redox_colors.dart';
-import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_buttons.dart';
@@ -76,7 +75,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final tv = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
+    final tv = usesSystemTextInput(context);
     final preview = Profile(id: '', name: _name.text.isEmpty ? '?' : _name.text, color: _color, kids: _kids);
     final header = Row(
       children: [

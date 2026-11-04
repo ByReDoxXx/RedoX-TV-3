@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../layout/form_factor.dart';
+import '../layout/mouse_mode.dart';
 import '../navigation/search_scope.dart';
 import '../platform/system_text_input.dart';
 import '../navigation/double_back_to_exit.dart';
@@ -85,7 +86,7 @@ class _HeaderSearchState extends State<HeaderSearch> {
   }
 
   void _start() {
-    if (Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.tv) {
+    if (usesSystemTextInput(context)) {
       unawaited(_askSystem());
       return;
     }

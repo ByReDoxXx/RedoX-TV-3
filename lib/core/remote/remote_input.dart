@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../layout/mouse_mode.dart';
 import '../platform/device_controls.dart';
 import 'remote_key.dart';
 
@@ -64,6 +65,7 @@ abstract final class RemoteInput {
 
   /// Tuşu odaktaki düğüme basılıp bırakılmış gibi verir; işlendiyse true.
   static bool press(RemoteKey key) {
+    MouseMode.instance.keyUsed();
     final logical = _keys[key];
     if (logical == null) return false;
     final physical = PhysicalKeyboardKey(logical.keyId);

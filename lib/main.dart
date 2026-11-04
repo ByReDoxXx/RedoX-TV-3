@@ -24,6 +24,7 @@ import 'core/content/watch_progress.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/layout/form_factor.dart';
+import 'core/layout/mouse_mode.dart';
 import 'core/playback/stream_probe.dart';
 import 'core/remote/remote_host.dart';
 import 'core/remote/remote_input.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
   // kipidir ve halka ilk tuşa kadar gizli kalır (emülatörde doğrulandı).
   if (FormFactor.current == FormFactor.tv) {
     FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
+    MouseMode.instance.start();
   }
   // Kanal listesi ve yayın akışı şifreli paketlerdir (DataPack). Uygulamadaki
   // kopya açılışta okunur; güncel liste ve akış arkada iner.

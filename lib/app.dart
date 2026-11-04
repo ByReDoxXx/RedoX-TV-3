@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/layout/form_factor.dart';
+import 'core/layout/mouse_mode.dart';
 import 'core/navigation/destinations.dart';
 import 'core/theme/redox_theme.dart';
 import 'core/content/app_settings.dart';
@@ -200,7 +201,7 @@ class _RedoxAppState extends State<RedoxApp> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     // Yazı boyutu değişince bütün uygulama yeniden çizilir.
-    listenable: AppSettings.instance,
+    listenable: Listenable.merge([AppSettings.instance, MouseMode.instance]),
     builder: (context, _) => _app(context),
   );
 
@@ -213,7 +214,7 @@ class _RedoxAppState extends State<RedoxApp> {
       // çizilip taşıyordu (renkler değişmez, yalnız ölçüler).
       themeAnimationDuration: Duration.zero,
       theme: RedoxTheme.dark(
-        formFactor: FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context)),
+        formFactor: MouseMode.instance.apply(FormFactor.forWindow(FormFactor.current, MediaQuery.sizeOf(context))),
         oled: AppSettings.instance.oled,
       ),
       themeMode: ThemeMode.dark,
@@ -235,8 +236,12 @@ class _RedoxAppState extends State<RedoxApp> {
             return KeyEventResult.handled;
           },
           child: Listener(
+            onPointerHover: MouseMode.instance.pointer,
             onPointerDown: (e) {
-              if (e.buttons & kBackMouseButton != 0) unawaited(_navigator.currentState?.maybePop());
+              MouseMode.instance.pointer(e);
+              // TV'de sağ tık da Geri: fareyle gelen kullanıcının kumandası elinde olmayabilir.
+              final right = FormFactor.current == FormFactor.tv && e.buttons & kSecondaryMouseButton != 0;
+              if (right || e.buttons & kBackMouseButton != 0) unawaited(_navigator.currentState?.maybePop());
             },
             child: remote == null ? scaled : PairingOverlay(host: remote, child: scaled),
           ),

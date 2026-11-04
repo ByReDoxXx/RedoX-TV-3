@@ -6,6 +6,7 @@ import '../../core/content/live_channel.dart';
 import '../../core/content/series_catalog.dart';
 import '../../core/content/tmdb.dart';
 import '../../core/layout/form_factor.dart';
+import '../../core/layout/mouse_mode.dart';
 import '../../core/platform/system_text_input.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
@@ -103,7 +104,7 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   late final _controller = TextEditingController(text: widget.initialQuery);
 
-  bool get _tv => Theme.of(context).extension<RedoxMetrics>()?.formFactor == FormFactor.tv;
+  bool get _tv => usesSystemTextInput(context);
 
   @override
   void initState() {

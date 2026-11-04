@@ -13,6 +13,7 @@ import android.text.InputType
 import android.util.Rational
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
+import android.view.KeyEvent
 import android.widget.EditText
 import android.widget.FrameLayout
 import io.flutter.embedding.android.FlutterActivity
@@ -148,8 +149,10 @@ class MainActivity : FlutterActivity() {
             .setNegativeButton("Vazgeç", null)
             .setOnDismissListener { if (!answered) result.success(null) }
             .create()
-        edit.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
+        edit.setOnEditorActionListener { _, actionId, event ->
+            // Fiziksel klavyenin Enter'ı IME_NULL ile gelir.
+            val enter = actionId == EditorInfo.IME_NULL && event?.action == KeyEvent.ACTION_DOWN
+            if (actionId == EditorInfo.IME_ACTION_DONE || enter) {
                 answered = true
                 result.success(edit.text.toString())
                 dialog.dismiss()
