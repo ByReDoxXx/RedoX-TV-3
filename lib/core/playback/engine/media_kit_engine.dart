@@ -9,6 +9,7 @@ import '../../content/app_settings.dart';
 import '../../content/diagnostics.dart';
 import '../../layout/form_factor.dart';
 import '../subtitle_look.dart';
+import 'mpv_probe.dart';
 import 'playback_engine.dart';
 
 /// media_kit (libmpv) ile oynatma. Uygulama başında
@@ -21,7 +22,10 @@ class MediaKitEngine implements PlaybackEngine {
     // bile yazılımla çözülüyordu (hwdec-current=no; Pixel'de görüldü).
     _video = VideoController(_player, configuration: _android ? _zeroCopy : const VideoControllerConfiguration());
     unawaited(_tune());
-    if (_android) unawaited(_watchSurface());
+    if (_android) {
+      unawaited(_watchSurface());
+      _watchdog = EngineWatchdog(ping: _ping, onStuck: _markStuck)..start();
+    }
     final s = _player.stream;
     _subscriptions.addAll([
       s.playing.listen((v) => _update(_state.value.copyWith(playing: v))),
@@ -44,6 +48,60 @@ class MediaKitEngine implements PlaybackEngine {
 
   final _player = Player();
   late final VideoController _video;
+  EngineWatchdog? _watchdog;
+
+  /// Oynatıcı çekirdeği yanıt vermiyor: ona dokunan her çağrı arayüzü
+  /// dondurur, çağrılmaz (motor kapanırken de).
+  bool _stuck = false;
+  bool _disposed = false;
+
+  /// Süren ayrı isolate okumaları: oynatıcı kapatılmadan biter (kapanmış
+  /// oynatıcıyı okumak uygulamayı düşürür).
+  final _reads = <Future<Object?>>{};
+
+  /// Bilgi okumalarının süresi; takılı çekirdekte boşuna beklenmez.
+  static const _readTimeout = Duration(seconds: 8);
+
+  /// mpv özellikleri, arayüzü dondurmadan ([MpvProbe]). Okunamayan değer null;
+  /// takılı ya da kapanmış oynatıcıda ve süre aşılınca boş.
+  Future<Map<String, String?>> _read(List<String> names) async {
+    if (_stuck || _disposed) return const {};
+    if (!_android) {
+      final native = _player.platform;
+      if (native is! NativePlayer) return const {};
+      return {
+        for (final name in names)
+          name: await native.getProperty(name).then<String?>((v) => v, onError: (Object _) => null),
+      };
+    }
+    final handle = await _player.handle;
+    if (_stuck || _disposed) return const {};
+    final read = MpvProbe.read(library: 'libmpv.so', handle: handle, names: names);
+    _reads.add(read);
+    unawaited(read.then<void>((_) {}, onError: (Object _) {}).whenComplete(() => _reads.remove(read)));
+    try {
+      return await read.timeout(_readTimeout);
+    } on TimeoutException {
+      return const {};
+    }
+  }
+
+  /// Bekçinin yoklaması: görüntü yokken (yayın açılırken) yoklanmaz.
+  Future<void> _ping() async {
+    if (_stuck || _disposed || !_state.value.hasVideo) return;
+    final handle = await _player.handle;
+    final read = MpvProbe.read(library: 'libmpv.so', handle: handle, names: const ['time-pos']);
+    _reads.add(read);
+    unawaited(read.then<void>((_) {}, onError: (Object _) {}).whenComplete(() => _reads.remove(read)));
+    await read;
+  }
+
+  void _markStuck() {
+    if (_stuck || _disposed) return;
+    _stuck = true;
+    Diagnostics.instance.log('görüntü', 'oynatıcı yanıt vermiyor (donanım çözücü takılmış olabilir)');
+    _update(_state.value.copyWith(stuck: true));
+  }
 
   static bool get _android => defaultTargetPlatform == TargetPlatform.android;
 
@@ -110,37 +168,33 @@ class MediaKitEngine implements PlaybackEngine {
     // Görüntü yüzeyi bağlanınca media_kit çıkışı ve çözücüyü yeniden kurar:
     // ölçüm ondan sonra.
     await Future<void>.delayed(const Duration(seconds: 6));
-    final native = _player.platform;
-    if (native is! NativePlayer) return;
-    Future<String> get(String name) async {
-      try {
-        final v = await native.getProperty(name);
-        return v.isEmpty ? '-' : v;
-      } on Object {
-        return '?';
-      }
-    }
-
+    const names = [
+      'video-codec',
+      'current-vo',
+      'hwdec',
+      'hwdec-current',
+      'current-tracks/video/codec',
+      'current-tracks/video/dolby-vision-profile',
+      'video-dec-params/gamma',
+      'video-dec-params/primaries',
+      'video-dec-params/colormatrix',
+      'video-dec-params/pixelformat',
+      'video-params/gamma',
+      'video-format',
+      'file-format',
+    ];
+    final values = await _read(names);
+    if (_disposed) return;
     final parts = [
-      for (final name in const [
-        'video-codec',
-        'current-vo',
-        'hwdec',
-        'hwdec-current',
-        'current-tracks/video/codec',
-        'current-tracks/video/dolby-vision-profile',
-        'video-dec-params/gamma',
-        'video-dec-params/primaries',
-        'video-dec-params/colormatrix',
-        'video-dec-params/pixelformat',
-        'video-params/gamma',
-        'video-format',
-        'file-format',
-      ])
-        '$name=${await get(name)}',
+      for (final name in names)
+        '$name=${switch (values[name]) {
+          null => '?',
+          '' => '-',
+          final v => v,
+        }}',
     ];
     Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
-    unawaited(_logDrops(native));
+    unawaited(_logDrops());
   }
 
   /// İlk görüntü boyutu geldi. Android'de önce yayının HDR olup olmadığına
@@ -153,7 +207,7 @@ class MediaKitEngine implements PlaybackEngine {
     if (_android && !_hdrChecked && (width ?? 0) > 0) {
       _hdrChecked = true;
       final native = _player.platform;
-      if (native is NativePlayer) await _hdrToSdr(native);
+      if (native is NativePlayer) await _hdrToSdr();
     }
     _update(_state.value.copyWith(width: () => width));
     unawaited(_logVideo(width));
@@ -220,19 +274,20 @@ class MediaKitEngine implements PlaybackEngine {
     }
   }
 
-  Future<void> _hdrToSdr(NativePlayer native) async {
+  Future<void> _hdrToSdr() async {
     // TV'de kopyalı yol yok: Chromecast 4K HDR'de 10 sn'de 15 kare atladı,
     // ses görüntünün önüne geçti (kullanıcı: "kasıyor, ses önden gidiyor").
     // TV kutusu HDR'yi donanımla doğrudan ekrana verir (HDR10/HLG destekli
     // televizyonda renk doğru); pembe görüntü yalnız telefonda görüldü.
     if (!_android || _tv || _sdrPath) return;
-    final gamma = await native.getProperty('video-dec-params/gamma');
+    final values = await _read(const ['video-dec-params/gamma', 'video-codec']);
+    final gamma = values['video-dec-params/gamma'];
     final hdr = gamma == 'pq' || gamma == 'hlg';
     // Telefon/tablette HEVC de: kopyasız yol bazı HEVC filmlerde (SDR,
     // BT.709 bildiren) yeşil-mor görüntü veriyordu; kopyalı yolda doğru
     // (Pixel'de görüldü, 0 kare atlama). TV'de kopyalı yol 1080p'de bile
     // kare atlattığı için (Chromecast) yalnız HDR'de.
-    final codec = (await native.getProperty('video-codec')).toLowerCase();
+    final codec = (values['video-codec'] ?? '').toLowerCase();
     final hevc = codec.contains('hevc');
     final legacy = _legacy(codec);
     if (!hdr && !hevc && !legacy) return;
@@ -249,11 +304,13 @@ class MediaKitEngine implements PlaybackEngine {
 
   /// Oynatmanın yükü: 10 sn sonra atlanan kareler günlüğe (takılma
   /// şikâyetlerini ayırt etmek için; her yayında bir kez).
-  Future<void> _logDrops(NativePlayer native) async {
+  Future<void> _logDrops() async {
     await Future<void>.delayed(const Duration(seconds: 10));
-    final drops = await native.getProperty('frame-drop-count');
-    final decoderDrops = await native.getProperty('decoder-frame-drop-count');
-    final fps = await native.getProperty('estimated-vf-fps');
+    final values = await _read(const ['frame-drop-count', 'decoder-frame-drop-count', 'estimated-vf-fps']);
+    if (_disposed || values.isEmpty) return;
+    final drops = values['frame-drop-count'];
+    final decoderDrops = values['decoder-frame-drop-count'];
+    final fps = values['estimated-vf-fps'];
     final path = !_sdrPath ? 'kopyasız' : (_copyHwdec == 'no' ? 'yazılım' : 'kopyalı');
     Diagnostics.instance.log('görüntü', '$path yol 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
   }
@@ -310,7 +367,9 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Stream<String> get errors => _errors.stream;
 
-  void _update(EngineState next) => _state.value = next;
+  void _update(EngineState next) {
+    if (!_disposed) _state.value = next;
+  }
 
   /// mpv'nin "auto"/"no" sözde izleri listeye alınmaz (arayüz "Otomatik" ve
   /// "Kapalı"yı kendisi ekler).
@@ -341,6 +400,7 @@ class MediaKitEngine implements PlaybackEngine {
 
   @override
   Future<void> open(String url) async {
+    if (_stuck) return;
     // Yeni yayında boyut ve izler sıfırlanır: "görüntü geldi" yeniden ölçülür.
     _update(const EngineState());
     _capped = false;
@@ -354,7 +414,9 @@ class MediaKitEngine implements PlaybackEngine {
   }
 
   @override
-  Future<void> playOrPause() => _player.playOrPause();
+  Future<void> playOrPause() async {
+    if (!_stuck) await _player.playOrPause();
+  }
 
   final _position = ValueNotifier(Duration.zero);
 
@@ -362,66 +424,79 @@ class MediaKitEngine implements PlaybackEngine {
   ValueListenable<Duration> get position => _position;
 
   @override
-  Future<void> seek(Duration to) {
+  Future<void> seek(Duration to) async {
+    if (_stuck) return;
     final end = _state.value.duration;
     final clamped = to < Duration.zero ? Duration.zero : (end > Duration.zero && to > end ? end : to);
     _position.value = clamped;
-    return _player.seek(clamped);
+    await _player.seek(clamped);
   }
 
   @override
-  Future<void> setMuted(bool muted) => _player.setVolume(muted ? 0 : 100);
+  Future<void> setMuted(bool muted) async {
+    if (!_stuck) await _player.setVolume(muted ? 0 : 100);
+  }
 
   @override
-  Future<void> selectVideoTrack(String id) {
+  Future<void> selectVideoTrack(String id) async {
+    if (_stuck) return;
     _capped = true;
-    return _selectVideoTrack(id);
+    await _player.setVideoTrack(switch (id) {
+      EngineState.autoTrack => VideoTrack.auto(),
+      EngineState.noTrack => VideoTrack.no(),
+      _ => _tracks.video.firstWhere((v) => v.id == id, orElse: VideoTrack.auto),
+    });
   }
 
-  Future<void> _selectVideoTrack(String id) => _player.setVideoTrack(switch (id) {
-    EngineState.autoTrack => VideoTrack.auto(),
-    EngineState.noTrack => VideoTrack.no(),
-    _ => _tracks.video.firstWhere((v) => v.id == id, orElse: VideoTrack.auto),
-  });
+  @override
+  Future<void> selectAudioTrack(String id) async {
+    if (_stuck) return;
+    await _player.setAudioTrack(switch (id) {
+      EngineState.autoTrack => AudioTrack.auto(),
+      EngineState.noTrack => AudioTrack.no(),
+      _ => _tracks.audio.firstWhere((a) => a.id == id, orElse: AudioTrack.auto),
+    });
+  }
 
   @override
-  Future<void> selectAudioTrack(String id) => _player.setAudioTrack(switch (id) {
-    EngineState.autoTrack => AudioTrack.auto(),
-    EngineState.noTrack => AudioTrack.no(),
-    _ => _tracks.audio.firstWhere((a) => a.id == id, orElse: AudioTrack.auto),
-  });
-
-  @override
-  Future<void> selectSubtitleTrack(String id) => _player.setSubtitleTrack(switch (id) {
-    EngineState.autoTrack => SubtitleTrack.auto(),
-    EngineState.noTrack => SubtitleTrack.no(),
-    _ => _tracks.subtitle.firstWhere((s) => s.id == id, orElse: SubtitleTrack.auto),
-  });
+  Future<void> selectSubtitleTrack(String id) async {
+    if (_stuck) return;
+    await _player.setSubtitleTrack(switch (id) {
+      EngineState.autoTrack => SubtitleTrack.auto(),
+      EngineState.noTrack => SubtitleTrack.no(),
+      _ => _tracks.subtitle.firstWhere((s) => s.id == id, orElse: SubtitleTrack.auto),
+    });
+  }
 
   @override
   Future<StreamStats> stats() async {
-    final native = _player.platform;
-    if (native is! NativePlayer) return const StreamStats();
-    Future<String?> get(String name) async {
-      try {
-        final v = (await native.getProperty(name)).trim();
-        return v.isEmpty ? null : v;
-      } on Object {
-        return null;
-      }
-    }
+    final values = await _read(const [
+      'hwdec-current',
+      'demuxer-cache-duration',
+      'video-codec',
+      'audio-codec-name',
+      'estimated-vf-fps',
+      'video-bitrate',
+      'audio-bitrate',
+      'frame-drop-count',
+    ]);
+    if (values.isEmpty) return const StreamStats();
+    String? get(String name) => switch (values[name]?.trim()) {
+      null || '' => null,
+      final v => v,
+    };
 
-    final hwdec = await get('hwdec-current');
-    final cache = double.tryParse(await get('demuxer-cache-duration') ?? '');
+    final hwdec = get('hwdec-current');
+    final cache = double.tryParse(get('demuxer-cache-duration') ?? '');
     return StreamStats(
-      videoCodec: await get('video-codec'),
-      audioCodec: await get('audio-codec-name'),
+      videoCodec: get('video-codec'),
+      audioCodec: get('audio-codec-name'),
       decoder: hwdec == null || hwdec == 'no' ? 'yazılım' : hwdec,
-      fps: double.tryParse(await get('estimated-vf-fps') ?? ''),
-      videoBitrate: double.tryParse(await get('video-bitrate') ?? '')?.round(),
-      audioBitrate: double.tryParse(await get('audio-bitrate') ?? '')?.round(),
+      fps: double.tryParse(get('estimated-vf-fps') ?? ''),
+      videoBitrate: double.tryParse(get('video-bitrate') ?? '')?.round(),
+      audioBitrate: double.tryParse(get('audio-bitrate') ?? '')?.round(),
       cache: cache == null ? null : Duration(milliseconds: (cache * 1000).round()),
-      droppedFrames: int.tryParse(await get('frame-drop-count') ?? ''),
+      droppedFrames: int.tryParse(get('frame-drop-count') ?? ''),
     );
   }
 
@@ -441,12 +516,32 @@ class MediaKitEngine implements PlaybackEngine {
 
   @override
   Future<void> dispose() async {
+    _watchdog?.stop();
+    // Kapatmadan önce çekirdek yanıt veriyor mu: takılıysa kapatma çağrısı da
+    // arayüzü dondurur (Geri ile çıkarken). O zaman oynatıcı bırakılır; uygulama
+    // yeniden açılınca sistem temizler.
+    if (_android && !_stuck) {
+      try {
+        await Future.wait([
+          ..._reads,
+          MpvProbe.read(library: 'libmpv.so', handle: await _player.handle, names: const ['time-pos']),
+        ]).timeout(_disposeProbe);
+      } on TimeoutException {
+        _stuck = true;
+        Diagnostics.instance.log('görüntü', 'oynatıcı kapanırken yanıt vermedi, bırakıldı');
+      } on Object {
+        // Okuma hatası takılma değildir.
+      }
+    }
+    _disposed = true;
     for (final s in _subscriptions) {
       await s.cancel();
     }
     await _errors.close();
     _state.dispose();
     _position.dispose();
-    await _player.dispose();
+    if (!_stuck) await _player.dispose();
   }
+
+  static const _disposeProbe = Duration(seconds: 2);
 }

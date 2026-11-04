@@ -34,6 +34,7 @@ class EngineState {
     this.audioTrack = autoTrack,
     this.subtitleTrack = autoTrack,
     this.duration = Duration.zero,
+    this.stuck = false,
   });
 
   static const autoTrack = 'auto';
@@ -55,6 +56,10 @@ class EngineState {
 
   /// Yayının süresi; canlı yayında sıfır (sarılamaz).
   final Duration duration;
+
+  /// Oynatıcı yanıt vermiyor (donanım çözücü takıldı): yayın durdu, bu motorla
+  /// yeni yayın açılamaz. Yeni motor (oynatıcıya yeniden giriş) çalışır.
+  final bool stuck;
 
   /// Sarılabilir mi (film, dizi bölümü; canlı yayın değil). Canlı HLS son
   /// birkaç saniyelik penceresini süre olarak bildirir (TRT 1: 0:17;
@@ -78,6 +83,7 @@ class EngineState {
     String? audioTrack,
     String? subtitleTrack,
     Duration? duration,
+    bool? stuck,
   }) => EngineState(
     playing: playing ?? this.playing,
     buffering: buffering ?? this.buffering,
@@ -90,6 +96,7 @@ class EngineState {
     audioTrack: audioTrack ?? this.audioTrack,
     subtitleTrack: subtitleTrack ?? this.subtitleTrack,
     duration: duration ?? this.duration,
+    stuck: stuck ?? this.stuck,
   );
 }
 

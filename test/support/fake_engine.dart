@@ -62,6 +62,9 @@ class FakeEngine implements PlaybackEngine {
     }
   }
 
+  /// Oynatıcı yanıt vermez oldu.
+  void freeze() => _state.value = _state.value.copyWith(stuck: true);
+
   /// Görüntü gelsin (yayın açıldı).
   void showVideo({int width = 1280, int height = 720}) =>
       _state.value = _state.value.copyWith(playing: true, width: () => width, height: () => height);

@@ -147,6 +147,10 @@ class PlaybackSession extends ChangeNotifier {
     _stallTimer?.cancel();
     _stallTimer = null;
     _lastError = null;
+    if (engine.state.value.stuck) {
+      _setStatus(PlaybackStatus.failed);
+      return;
+    }
     if (_streams.isEmpty) {
       _setStatus(PlaybackStatus.failed);
       return;
@@ -182,6 +186,17 @@ class PlaybackSession extends ChangeNotifier {
 
   void _onEngine() {
     final e = engine.state.value;
+    if (e.stuck) {
+      // Motor yanıt vermiyor: yedek akış da aynı motorda açılamaz.
+      _startupTimer?.cancel();
+      _stallTimer?.cancel();
+      _stallTimer = null;
+      if (_status != PlaybackStatus.failed) {
+        Diagnostics.instance.log('oynatıcı', '${channel.name}: oynatıcı yanıt vermiyor');
+        _setStatus(PlaybackStatus.failed);
+      }
+      return;
+    }
     if (_status == PlaybackStatus.loading && e.hasVideo) {
       _startupTimer?.cancel();
       _setStatus(PlaybackStatus.playing);
