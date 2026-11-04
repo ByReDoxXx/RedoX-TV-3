@@ -105,6 +105,25 @@ void main() {
     });
   }
 
+  testWidgets('masaüstü: çubuk açıkken ok tuşları sarar, Enter ve Boşluk duraklatır', (tester) async {
+    final e = await _open(tester, f: FormFactor.desktop, size: const Size(1280, 720), mode: PlayerMode.film);
+    e.showVideo();
+    e.setDuration(const Duration(minutes: 90));
+    await tester.pump();
+    expect(find.byType(VodTouchControls), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(e.seeks, isNotEmpty);
+    final playing = e.state.value.playing;
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(e.state.value.playing, !playing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(e.state.value.playing, playing);
+    await tester.pump(const Duration(seconds: 10));
+  });
+
   testWidgets('TV: film çubuğu (VodBar), ▲▼ başka filme geçmez; çıkarken yer yazılır', (tester) async {
     final progress = WatchProgress();
     final key = GlobalKey();

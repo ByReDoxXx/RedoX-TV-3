@@ -170,6 +170,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   bool get _keys => Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
 
+  /// Masaüstü: çubuk açıkken de tuşlar oynatıcınındır (çubuk fareyle kullanılır).
+  bool get _desktop => Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.desktop;
+
   @override
   void initState() {
     super.initState();
@@ -525,7 +528,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       _playFocus.requestFocus();
       return KeyEventResult.handled;
     }
-    if (_options || _drawer || (_bar && !_hints)) return KeyEventResult.ignored;
+    if (_options || _drawer || (_bar && !_hints && !_desktop)) return KeyEventResult.ignored;
     final key = event.logicalKey;
     // Açılamadı: ◄► ve OK ekrandaki "Tekrar dene" / "Sonraki kanal"
     // düğmelerinindir; ▲▼ ve rakamlar yine kanal değiştirir (yoksa kullanıcı
@@ -549,7 +552,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter ||
         key == LogicalKeyboardKey.gameButtonA) {
-      _showBar(focus: true);
+      if (_desktop && _vod) {
+        unawaited(_engine.playOrPause());
+      } else {
+        _showBar(focus: true);
+      }
     } else if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.channelUp) {
       _session.zap(1);
     } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.channelDown) {
