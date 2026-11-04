@@ -4,21 +4,37 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'channel_folder.dart';
 import 'live_channel.dart';
+import 'user_sources.dart';
+
+/// Eski favorinin kaynak listesinde bulunan bilgileri.
+typedef FavoriteOrigin = ({SourceKind kind, String sourceId, String category});
 
 /// Kaynaklardan favoriye eklenen kayıt: ad, yayın adresi, logo (kullanıcının
-/// listesindeki kanal, film ya da dizi bölümü). Kimliği adresidir.
+/// listesindeki kanal, film ya da dizi bölümü). Kimliği adresidir. [kind]
+/// Favoriler'deki sekmesini belirler; bu alan yokken eklenenlerde null'dur.
 @immutable
 class FavoriteItem {
-  const FavoriteItem({required this.name, required this.url, this.logo});
+  const FavoriteItem({required this.name, required this.url, this.logo, this.kind, this.sourceId, this.category});
 
-  factory FavoriteItem.of(LiveChannel c) => FavoriteItem(name: c.name, url: c.streams.first, logo: c.logoUrl);
+  factory FavoriteItem.of(LiveChannel c, {required SourceKind kind, String? sourceId}) => FavoriteItem(
+    name: c.name,
+    url: c.streams.first,
+    logo: c.logoUrl,
+    kind: kind,
+    sourceId: sourceId,
+    category: c.category,
+  );
 
   static FavoriteItem? fromJson(Object? j) => switch (j) {
     {'ad': final String name, 'adres': final String url} => FavoriteItem(
       name: name,
       url: url,
       logo: j['logo'] as String?,
+      kind: SourceKind.values.asNameMap()[j['tur']],
+      sourceId: j['kaynak'] as String?,
+      category: j['grup'] as String?,
     ),
     _ => null,
   };
@@ -26,8 +42,38 @@ class FavoriteItem {
   final String name;
   final String url;
   final String? logo;
+  final SourceKind? kind;
 
-  Map<String, Object?> toJson() => {'ad': name, 'adres': url, 'logo': ?logo};
+  /// Geldiği liste (dizi kilidi için).
+  final String? sourceId;
+
+  /// Listedeki grubu (adında sezon/bölüm olmayan dizi bu adla toplanır).
+  final String? category;
+
+  /// Sekmesi: kayıtlı tür, yoksa addan ve adresten tahmin.
+  SourceKind get resolvedKind => kind ?? guessKind(name, url);
+
+  static final _filmUrl = RegExp(r'/movie/|\.(mp4|mkv|avi|mov)(\?|$)', caseSensitive: false);
+
+  /// Türü kayıtlı olmayan favori: bölüm adı ya da Xtream `/series/` dizi,
+  /// `/movie/` ya da video dosyası film, gerisi canlı TV.
+  static SourceKind guessKind(String name, String url) {
+    if (ChannelFolder.parseEpisode(name) != null || url.contains('/series/')) return SourceKind.series;
+    if (_filmUrl.hasMatch(url)) return SourceKind.film;
+    return SourceKind.live;
+  }
+
+  FavoriteItem withOrigin(FavoriteOrigin o) =>
+      FavoriteItem(name: name, url: url, logo: logo, kind: o.kind, sourceId: o.sourceId, category: o.category);
+
+  Map<String, Object?> toJson() => {
+    'ad': name,
+    'adres': url,
+    'logo': ?logo,
+    'tur': ?kind?.name,
+    'kaynak': ?sourceId,
+    'grup': ?category,
+  };
 
   @override
   bool operator ==(Object other) => other is FavoriteItem && other.url == url;
@@ -37,7 +83,8 @@ class FavoriteItem {
 }
 
 /// Bir profilin favorileri: TV kanalları ve radyo istasyonları (numaralar) ve
-/// Kaynaklar'dan eklenen kayıtlar, ekleme (ya da kullanıcının) sırasıyla.
+/// Kaynaklar'dan eklenen kayıtlar (türüne göre Televizyon, Film ya da Dizi
+/// sekmesinde), ekleme (ya da kullanıcının) sırasıyla.
 /// Cihazda saklanır.
 class Favorites extends ChangeNotifier {
   Favorites({
@@ -59,7 +106,7 @@ class Favorites extends ChangeNotifier {
   static const _kSources = 'favori_kaynak';
 
   /// Eski "Klasörler" sekmesinin ağacı: ilk açılışta kayıtları [sources]'a
-  /// taşınır (kullanıcı isteği: klasörler Kaynaklar'da; sekme kaldırıldı).
+  /// taşınır.
   static const _kOldFolders = 'favori_klasor';
 
   /// Cihazdaki favoriler: dönen işlev profilin favorilerini verir (aynı
@@ -164,16 +211,82 @@ class Favorites extends ChangeNotifier {
   /// Sıralama (Favoriler sayfası): kaydı [to] konumuna taşır.
   void moveChannel(int number, int to) => _move(_channels, number, to);
   void moveRadio(int number, int to) => _move(_radios, number, to);
+
+  /// Kaydı kendi türünün listesinde [to] konumuna taşır.
   void moveSource(String url, int to) {
     final i = _sources.indexWhere((s) => s.url == url);
-    if (i >= 0) _move(_sources, _sources[i], to);
+    if (i < 0) return;
+    final item = _sources[i];
+    final same = sourcesOf(item.resolvedKind);
+    final from = same.indexOf(item);
+    final target = to.clamp(0, same.length - 1);
+    if (from == target) return;
+    final anchor = same[target];
+    _sources.remove(item);
+    final at = _sources.indexOf(anchor);
+    _sources.insert(target > from ? at + 1 : at, item);
+    _changed();
   }
 
-  /// Kaynak favorileri oynatıcı listesi olarak (numara sırası).
-  List<LiveChannel> get sourceChannels => [
-    for (final (i, item) in _sources.indexed)
-      LiveChannel(name: item.name, number: i + 1, category: 'Kaynaklar', streams: [item.url], logoUrl: item.logo),
+  /// [kind] türündeki kayıtları [urls] sırasına dizer (Film ve Dizi'de
+  /// sürükle-bırak); diğer türlerin yeri değişmez. Listede olmayan adres atlanır.
+  void reorderSources(SourceKind kind, List<String> urls) {
+    final byUrl = {for (final i in sourcesOf(kind)) i.url: i};
+    final ordered = [...urls.map((u) => byUrl[u]).nonNulls];
+    if (ordered.length != byUrl.length) return;
+    var next = 0;
+    for (final (i, item) in _sources.indexed) {
+      if (item.resolvedKind == kind) _sources[i] = ordered[next++];
+    }
+    _changed();
+  }
+
+  /// [kind] türündeki kaynak favorileri.
+  List<FavoriteItem> sourcesOf(SourceKind kind) => [
+    for (final i in _sources)
+      if (i.resolvedKind == kind) i,
   ];
+
+  /// [kind] türündeki kaynak favorileri oynatıcı listesi olarak (numara sırası).
+  List<LiveChannel> sourceChannels(SourceKind kind) => [
+    for (final (i, item) in sourcesOf(kind).indexed)
+      LiveChannel(
+        name: item.name,
+        number: i + 1,
+        category: item.category ?? kind.label,
+        streams: [item.url],
+        logoUrl: item.logo,
+      ),
+  ];
+
+  /// Türü kayıtlı olmayan favorilerin adresleri.
+  Set<String> get unclassified => {
+    for (final i in _sources)
+      if (i.kind == null) i.url,
+  };
+
+  /// Eski favorilere kaynak listesinde bulunan bilgileri işler. [complete]:
+  /// bütün listeler okundu; bulunamayanların türü tahminle kalıcı olur.
+  void classify(Map<String, FavoriteOrigin> found, {required bool complete}) {
+    var changed = false;
+    for (final (i, item) in _sources.indexed) {
+      if (item.kind != null) continue;
+      final origin = found[item.url];
+      if (origin != null) {
+        _sources[i] = item.withOrigin(origin);
+      } else if (complete) {
+        _sources[i] = item.withOrigin((
+          kind: item.resolvedKind,
+          sourceId: item.sourceId ?? 'favori',
+          category: item.category ?? item.resolvedKind.label,
+        ));
+      } else {
+        continue;
+      }
+      changed = true;
+    }
+    if (changed) _changed();
+  }
 
   void _toggle<T>(List<T> list, T value) {
     if (!list.remove(value)) list.add(value);

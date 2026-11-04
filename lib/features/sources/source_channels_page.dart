@@ -30,7 +30,7 @@ class SourceChannelsPage extends StatefulWidget {
   final UserSource source;
   final Future<void> Function(List<LiveChannel> channels, int index)? onWatch;
 
-  /// Yıldız (Favoriler › Kaynaklar); null ise yıldız yok.
+  /// Yıldız; null ise yıldız yok.
   final Favorites? favorites;
 
   @override
@@ -192,6 +192,8 @@ class _SourceChannelsPageState extends State<SourceChannelsPage> {
                       folderLock: (path) => ContentLocks.folder(_source.id, path),
                       onWatch: widget.onWatch,
                       favorites: widget.favorites,
+                      favoriteKind: _source.kind,
+                      sourceId: _source.id,
                     );
                   },
                 ),

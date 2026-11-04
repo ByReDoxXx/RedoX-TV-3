@@ -297,7 +297,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     child: MediaCard(
                       title: titleOf(x),
                       badge: switch (badgeOf?.call(x)) {
-                        final text? => _Badge(text),
+                        final text? => PosterBadge(text),
                         null => null,
                       },
                       width: box.maxWidth,
@@ -361,23 +361,4 @@ class _LibraryPageState extends State<LibraryPage> {
   /// Dizi sayfası; dizi kilitliyse önce PIN.
   Future<void> _openSeries(Series series) =>
       SeriesDetailPage.open(context, series, tmdb: widget.tmdb, favorites: widget.favorites, onWatch: widget.onWatch);
-}
-
-/// Afişin köşesinde koyu hap ("2 sezon · 3 bölüm").
-class _Badge extends StatelessWidget {
-  const _Badge(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(color: const Color(0xD90B0B20), borderRadius: BorderRadius.circular(999)),
-    child: Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: Theme.of(context).textTheme.labelSmall!.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w700),
-    ),
-  );
 }

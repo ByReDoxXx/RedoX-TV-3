@@ -7,6 +7,7 @@ import '../../../core/content/channel_folder.dart';
 import '../../../core/content/content_locks.dart';
 import '../../../core/content/favorites.dart';
 import '../../../core/content/live_channel.dart';
+import '../../../core/content/user_sources.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
@@ -19,7 +20,7 @@ import '../../radio/widgets/station_avatar.dart';
 /// görünümü:** açık klasörün alt klasörleri, sonra kayıtları; OK klasöre
 /// girer, "Yukarı" ve Geri üst klasöre çıkar. **Liste görünümü** ([folders]
 /// false): [flat] düz liste. OK oynatır (klasör görünümünde klasörün
-/// kayıtlarıyla); yıldız Favoriler › Kaynaklar'a ekler; kilit düğmeleri
+/// kayıtlarıyla); yıldız Favoriler'de türünün sekmesine ekler; kilit düğmeleri
 /// klasör ve kayıtta (LockScope varsa).
 class ChannelBrowser extends StatefulWidget {
   const ChannelBrowser({
@@ -31,6 +32,8 @@ class ChannelBrowser extends StatefulWidget {
     this.folderLock,
     this.onWatch,
     this.favorites,
+    this.favoriteKind = SourceKind.live,
+    this.sourceId,
   });
 
   final ChannelFolder root;
@@ -44,8 +47,12 @@ class ChannelBrowser extends StatefulWidget {
   final String Function(List<String> path)? folderLock;
   final Future<void> Function(List<LiveChannel> channels, int index)? onWatch;
 
-  /// Yıldız (Favoriler › Kaynaklar); null ise yıldız yok.
+  /// Yıldız; null ise yıldız yok.
   final Favorites? favorites;
+
+  /// Kaydın Favoriler'deki sekmesi (listenin türü) ve geldiği liste.
+  final SourceKind favoriteKind;
+  final String? sourceId;
 
   @override
   State<ChannelBrowser> createState() => _ChannelBrowserState();
@@ -102,7 +109,9 @@ class _ChannelBrowserState extends State<ChannelBrowser> {
             channel: c,
             autofocus: i == 0,
             favorite: fav?.hasSource(c.streams.first),
-            onFavorite: fav == null ? null : () => fav.toggleSource(FavoriteItem.of(c)),
+            onFavorite: fav == null
+                ? null
+                : () => fav.toggleSource(FavoriteItem.of(c, kind: widget.favoriteKind, sourceId: widget.sourceId)),
             lockKey: ContentLocks.item(c.streams.first),
             onPressed: widget.onWatch == null ? null : () => unawaited(widget.onWatch!(items, i - prefix.length)),
           ),

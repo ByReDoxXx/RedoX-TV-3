@@ -8,6 +8,7 @@ import '../../core/content/live_channel.dart';
 import '../../core/content/series_catalog.dart';
 import '../../core/content/omdb.dart';
 import '../../core/content/tmdb.dart';
+import '../../core/content/user_sources.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
@@ -310,7 +311,13 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
         episode: e,
         onPressed: widget.onWatch == null ? null : () => _play(_season, i),
         favorite: fav?.hasSource(e.channel.streams.first),
-        onFavorite: fav == null ? null : () => setState(() => fav.toggleSource(FavoriteItem.of(e.channel))),
+        onFavorite: fav == null
+            ? null
+            : () => setState(
+                () => fav.toggleSource(
+                  FavoriteItem.of(e.channel, kind: SourceKind.series, sourceId: widget.series.sourceId),
+                ),
+              ),
       ),
     );
   }

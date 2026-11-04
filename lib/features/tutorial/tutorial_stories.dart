@@ -138,8 +138,8 @@ abstract final class TutorialStories {
         shot: 'favorites',
         highlight: 'favorites.tabs',
         title: 'Favoriler',
-        tv: 'Yıldızladığın kanallar, radyolar ve kaynak kayıtları burada. Sırayı istediğin gibi değiştir.',
-        touch: 'Yıldızladığın kanallar, radyolar ve kaynak kayıtları burada. Tutup sürükle, sırayı değiştir.',
+        tv: 'Yıldızladığın kanallar, radyolar, filmler ve diziler kendi sekmesinde. Uzun OK ile kanalların sırasını değiştir.',
+        touch: 'Yıldızladığın kanallar, radyolar, filmler ve diziler kendi sekmesinde. Tutup sürükle, kanalların sırasını değiştir.',
       ),
     ]),
     TutorialStory(AppSection.splitScreen, [

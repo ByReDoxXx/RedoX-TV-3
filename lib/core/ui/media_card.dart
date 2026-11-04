@@ -20,6 +20,7 @@ class MediaCard extends StatelessWidget {
     this.badge,
     this.onPressed,
     this.focused,
+    this.autofocus = false,
   });
 
   final String title;
@@ -32,6 +33,7 @@ class MediaCard extends StatelessWidget {
   final Widget? badge;
   final VoidCallback? onPressed;
   final bool? focused;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +53,7 @@ class MediaCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onPressed,
+            autofocus: autofocus,
             focusColor: Colors.transparent,
             hoverColor: Colors.transparent,
             child: AspectRatio(
@@ -114,4 +117,23 @@ class MediaCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Afişin köşesinde koyu hap ("2 sezon · 3 bölüm").
+class PosterBadge extends StatelessWidget {
+  const PosterBadge(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: const Color(0xD90B0B20), borderRadius: BorderRadius.circular(999)),
+    child: Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w700),
+    ),
+  );
 }
