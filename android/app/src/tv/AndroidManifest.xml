@@ -10,10 +10,12 @@
         android:required="true" />
 
     <application android:banner="@drawable/banner">
-        <!-- Deneme: Philips'te Vulkan grafik belleği 1,1 GB'a çıktı, film akıcı değil. -->
+        <!-- Deneme: Philips'te Vulkan grafik belleği 1,1 GB'a çıktı, film akıcı değil.
+             ImpellerBackend=opengles sürüm derlemesinde yok sayılıyor (flutter_main.cc,
+             FLUTTER_RELEASE); sürümde Vulkan'dan çıkmanın tek yolu Impeller'ı kapatmak. -->
         <meta-data
-            android:name="io.flutter.embedding.android.ImpellerBackend"
-            android:value="opengles" />
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
