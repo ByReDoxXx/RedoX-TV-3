@@ -80,6 +80,11 @@ Future<void> _key(WidgetTester tester, LogicalKeyboardKey key) async {
 PlayerBar _bar(WidgetTester tester) => tester.widget<PlayerBar>(find.byType(PlayerBar));
 
 void main() {
+  testWidgets('görüntü arkada çiziliyorsa sayfa arka planı saydam', (tester) async {
+    await _open(tester, engine: FakeEngine()..paintsBehindUi = true);
+    expect(tester.widget<Scaffold>(find.byType(Scaffold).last).backgroundColor, Colors.transparent);
+  });
+
   testWidgets('takılan oynatıcının yerine yenisi açılır, sınır dolunca açılmaz', (tester) async {
     final engines = <FakeEngine>[];
     var closed = false;

@@ -184,5 +184,8 @@ abstract class PlaybackEngine {
   /// Görüntü yüzeyi.
   Widget view({BoxFit fit = BoxFit.contain});
 
+  /// Görüntü Flutter'ın arkasında çiziliyor: sayfa arka planı saydam olmalı.
+  bool get paintsBehindUi;
+
   Future<void> dispose();
 }

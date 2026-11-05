@@ -18,6 +18,7 @@ import android.view.KeyEvent
 import android.widget.EditText
 import android.widget.FrameLayout
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.TransparencyMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -33,8 +34,16 @@ class MainActivity : FlutterActivity() {
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
 
+    private val isTv: Boolean
+        get() = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+
+    /** TV: film Flutter'ın arkasındaki yüzeyde ([VideoSurfaceHost]); yüzey saydam. */
+    override fun getTransparencyMode(): TransparencyMode =
+        if (isTv) TransparencyMode.transparent else TransparencyMode.opaque
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        if (isTv) VideoSurfaceHost(this, flutterEngine.dartExecutor.binaryMessenger)
         // Resim içinde resim: oynatıcı "etkin" der; Android 12+ kendiliğinden
         // girer (setAutoEnterEnabled), öncesinde onUserLeaveHint'te girilir.
         // Pencere kipi değişince Dart'a "kip" (oynatıcı denetimleri gizler).

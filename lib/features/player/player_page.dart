@@ -176,7 +176,9 @@ class _ReopeningPlayerState extends State<_ReopeningPlayer> {
 }
 
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
-  late final PlaybackEngine _engine = (widget.engineFactory ?? MediaKitEngine.new)();
+  // TV'de tam ekran film ayrı yüzeyde; küçük önizlemeler dokuda kalır.
+  late final PlaybackEngine _engine =
+      (widget.engineFactory ?? () => MediaKitEngine(nativeSurface: FormFactor.current == FormFactor.tv))();
   late final PlaybackSession _session = PlaybackSession(
     engine: _engine,
     channels: widget.channels,
@@ -673,7 +675,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           autofocus: true,
           onKeyEvent: _onKey,
           child: Scaffold(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            backgroundColor: _engine.paintsBehindUi ? Colors.transparent : Theme.of(context).scaffoldBackgroundColor,
             body: ListenableBuilder(
               listenable: Listenable.merge([_engine.state, PictureInPicture.active]),
               builder: (context, _) => _layers(context, _engine.state.value, PictureInPicture.active.value),

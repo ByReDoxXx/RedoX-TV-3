@@ -11,6 +11,9 @@ class FakeEngine implements PlaybackEngine {
   final _errors = StreamController<String>.broadcast();
   final _audioFallbacks = StreamController<AudioFallback>.broadcast();
 
+  @override
+  bool paintsBehindUi = false;
+
   /// Açılan adresler, sırasıyla.
   final opened = <String>[];
   final videoSelections = <String>[];

@@ -13,6 +13,7 @@ import 'audio_fallback.dart';
 import 'late_closer.dart';
 import 'mpv_log_ring.dart';
 import 'mpv_probe.dart';
+import 'native_video_surface.dart';
 import 'playback_engine.dart';
 import 'seek_gate.dart';
 import 'seek_queue.dart';
@@ -20,15 +21,19 @@ import 'seek_queue.dart';
 /// media_kit (libmpv) ile oynatma. Uygulama başında
 /// `MediaKit.ensureInitialized()` çağrılmış olmalı (main.dart).
 class MediaKitEngine implements PlaybackEngine {
-  MediaKitEngine() {
+  /// [nativeSurface]: görüntü Flutter'ın arkasındaki ayrı yüzeye çizilir (TV'de tam
+  /// ekran oynatıcı); yalnız Android'de.
+  MediaKitEngine({bool nativeSurface = false}) : _surface = nativeSurface && _android ? NativeVideoSurface() : null {
     // Görüntü denetleyicisi yayın açılmadan kurulur: donanım çözücü ve
     // kopyasız çıkış ayarı mpv'ye ilk yayından önce verilsin. Önceden ilk
     // çizimde kuruluyordu, yayın ondan önce açıldığı için telefonda 4K HEVC
     // bile yazılımla çözülüyordu (hwdec-current=no; Pixel'de görüldü).
-    _video = VideoController(_player, configuration: _android ? _zeroCopy : const VideoControllerConfiguration());
+    if (_surface == null) {
+      _video = VideoController(_player, configuration: _android ? _zeroCopy : const VideoControllerConfiguration());
+    }
     _tuned = _tune();
     if (_android) {
-      unawaited(_watchSurface());
+      if (_surface == null) unawaited(_watchSurface());
       _watchdog = EngineWatchdog(ping: _ping, onStuck: _markStuck)..start();
     }
     final s = _player.stream;
@@ -73,6 +78,10 @@ class MediaKitEngine implements PlaybackEngine {
     configuration: PlayerConfiguration(logLevel: _diagnoseCore ? MPVLogLevel.v : MPVLogLevel.error),
   );
   late final VideoController _video;
+  final NativeVideoSurface? _surface;
+
+  @override
+  bool get paintsBehindUi => _surface != null;
 
   /// TV'de çekirdek takılması (Philips) çözülene dek: mpv'nin ayrıntılı günlüğü
   /// bellekte tutulur, takılınca tanılamaya yazılır.
@@ -175,6 +184,7 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> _tune() async {
     final native = _player.platform;
     if (native is! NativePlayer) return;
+    if (_surface != null) await _attachSurface(native, _surface);
     await native.setProperty('demuxer-lavf-analyzeduration', '1');
     await native.setProperty('network-timeout', '10');
     final settings = AppSettings.instance;
@@ -197,6 +207,60 @@ class MediaKitEngine implements PlaybackEngine {
       default:
         break;
     }
+  }
+
+  /// media_kit'in denetleyicisi yerine (o Flutter dokusuna bağlar): aynı ayarlar, ayrı
+  /// yüzey. Yayın açılmadan bağlanır; çözücü baştan donanımla kurulur, yeniden
+  /// kurulup sarılmaz. Yüzey gelmezse açılış bekletilmez (görüntü gelmez, süre dolar).
+  Future<void> _attachSurface(NativePlayer native, NativeVideoSurface surface) async {
+    for (final e in const {
+      'vo': 'null',
+      'hwdec': 'mediacodec',
+      'vid': 'auto',
+      'force-window': 'no',
+      'sub-use-margins': 'no',
+      'sub-font-provider': 'none',
+      'sub-scale-with-window': 'yes',
+      'hwdec-codecs': 'h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1',
+    }.entries) {
+      await native.setProperty(e.key, e.value);
+    }
+    final first = Completer<void>();
+    var attached = false;
+    surface.wid.addListener(() {
+      final wid = surface.wid.value;
+      if (wid != null && !first.isCompleted) first.complete();
+      if (_stuck || _disposed) return;
+      unawaited(_applySurface(native, wid, reattach: attached));
+      attached = true;
+    });
+    await surface.open();
+    try {
+      await first.future.timeout(const Duration(seconds: 3));
+      await _surfaceApplied;
+    } on TimeoutException {
+      Diagnostics.instance.log('görüntü', 'video yüzeyi gelmedi');
+    }
+  }
+
+  /// Sıradaki yüzey değişikliği öncekinin üstüne binmesin.
+  Future<void> _surfaceApplied = Future.value();
+
+  Future<void> _applySurface(NativePlayer native, int? wid, {required bool reattach}) {
+    return _surfaceApplied = _surfaceApplied.then((_) async {
+      if (_stuck || _disposed) return;
+      // media_kit'in sırası: yüzey değişirken vo=null, yoksa uygulama düşer.
+      await native.setProperty('vo', 'null');
+      await native.setProperty('wid', '${wid ?? 0}');
+      if (wid == null) {
+        await native.setProperty('vid', 'no');
+        return;
+      }
+      await native.setProperty('vo', _zeroCopy.vo!);
+      await native.setProperty('vid', 'auto');
+      // Arka plandan dönüş: çözücü yeni yüzeyde kaldığı yerden sürsün.
+      if (reattach) await _player.seek(_player.state.position);
+    });
   }
 
   /// Yayının görüntü biçimi tanılama günlüğüne (yayın başına bir kez, ilk
@@ -601,7 +665,7 @@ class MediaKitEngine implements PlaybackEngine {
     _settling = false;
     _heldWidth = null;
     _surfaceAttached = Completer();
-    if (_diagnoseCore) _gate.close();
+    if (_diagnoseCore && _surface == null) _gate.close();
     if (_sdrPath) {
       _sdrPath = false;
       await _locked(_leaveSdrPath);
@@ -730,18 +794,31 @@ class MediaKitEngine implements PlaybackEngine {
   }
 
   @override
-  Widget view({BoxFit fit = BoxFit.contain}) =>
-      // Denetimler uygulamanındır (alt çubuk); media_kit'inkiler kapalı.
-      Video(
-        controller: _video,
-        controls: NoVideoControls,
+  Widget view({BoxFit fit = BoxFit.contain}) {
+    final surface = _surface;
+    if (surface != null) {
+      final s = _state.value;
+      return NativeVideoView(
+        surface: surface,
+        size: s.hasVideo ? Size(s.width!.toDouble(), s.height!.toDouble()) : null,
         fit: fit,
-        // Ayarlar › Altyazı: boyut, renk, arka plan, konum, kalınlık.
-        subtitleViewConfiguration: SubtitleViewConfiguration(
-          style: SubtitleLook.style(AppSettings.instance),
-          padding: SubtitleLook.padding(AppSettings.instance),
-        ),
+        subtitles: _player.stream.subtitle,
+        subtitleStyle: SubtitleLook.style(AppSettings.instance),
+        subtitlePadding: SubtitleLook.padding(AppSettings.instance),
       );
+    }
+    // Denetimler uygulamanındır (alt çubuk); media_kit'inkiler kapalı.
+    return Video(
+      controller: _video,
+      controls: NoVideoControls,
+      fit: fit,
+      // Ayarlar › Altyazı: boyut, renk, arka plan, konum, kalınlık.
+      subtitleViewConfiguration: SubtitleViewConfiguration(
+        style: SubtitleLook.style(AppSettings.instance),
+        padding: SubtitleLook.padding(AppSettings.instance),
+      ),
+    );
+  }
 
   @override
   Future<void> dispose() async {
@@ -776,6 +853,7 @@ class MediaKitEngine implements PlaybackEngine {
     } else if (_android) {
       unawaited(_closeLate());
     }
+    await _surface?.close(keep: !responsive);
   }
 
   /// Meşgul çekirdeğe önce durmasını söyler: arkada oynamayı sürdürmesin.
