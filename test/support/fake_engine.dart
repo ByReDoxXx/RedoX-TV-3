@@ -9,6 +9,7 @@ import 'package:redox_tv/core/playback/engine/playback_engine.dart';
 class FakeEngine implements PlaybackEngine {
   final _state = ValueNotifier(const EngineState());
   final _errors = StreamController<String>.broadcast();
+  final _audioFallbacks = StreamController<AudioFallback>.broadcast();
 
   /// Açılan adresler, sırasıyla.
   final opened = <String>[];
@@ -43,6 +44,12 @@ class FakeEngine implements PlaybackEngine {
 
   @override
   Stream<String> get errors => _errors.stream;
+
+  @override
+  Stream<AudioFallback> get audioFallbacks => _audioFallbacks.stream;
+
+  /// Motor ses izi değiştirsin.
+  void emitAudioFallback(AudioFallback fallback) => _audioFallbacks.add(fallback);
 
   @override
   Future<void> open(String url) async {

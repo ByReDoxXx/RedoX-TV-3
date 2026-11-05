@@ -7,6 +7,7 @@ import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/platform/device_controls.dart';
 import 'package:redox_tv/core/platform/picture_in_picture.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/playback/engine/playback_engine.dart';
 import 'package:redox_tv/core/playback/playback_session.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/channel_drawer.dart';
@@ -79,6 +80,26 @@ Future<void> _key(WidgetTester tester, LogicalKeyboardKey key) async {
 PlayerBar _bar(WidgetTester tester) => tester.widget<PlayerBar>(find.byType(PlayerBar));
 
 void main() {
+  testWidgets('çözülemeyen ses izi ekranda 5 sn bildirilir', (tester) async {
+    final e = await _open(tester);
+    e.emitAudioFallback(const AudioFallback(MediaTrack('2', 'English')));
+    await tester.pump();
+    expect(find.text('Ses çözülemedi, “English” izine geçildi'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('Ses çözülemedi, “English” izine geçildi'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Ses çözülemedi, “English” izine geçildi'), findsNothing);
+
+    e.emitAudioFallback(const AudioFallback(null));
+    await _settle(tester);
+    expect(find.text('Bu dosyanın sesi çözülemiyor'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    // Sayfa kapandıktan sonraki bildirim yok sayılır.
+    e.emitAudioFallback(const AudioFallback(null));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('açılış: ilk akış oynar; çubuk ve ipuçları 3,8 sn görünür, sonra kapanır', (tester) async {
     final e = await _open(tester);
     expect(e.opened, [_channels.first.streams.first]);

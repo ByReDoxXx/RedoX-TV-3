@@ -26,6 +26,15 @@ class MediaTrack {
   int get hashCode => Object.hash(id, label);
 }
 
+/// Ses izi çözülemedi: oynatıcı [to] izine geçti; null ise çalınabilen ses izi
+/// yok, görüntü sessiz sürüyor.
+@immutable
+class AudioFallback {
+  const AudioFallback(this.to);
+
+  final MediaTrack? to;
+}
+
 /// Motorun anlık durumu. Seçili iz kimlikleri: [autoTrack] (otomatik),
 /// [noTrack] (kapalı) veya listedeki bir iz.
 @immutable
@@ -147,6 +156,9 @@ abstract class PlaybackEngine {
 
   /// Oynatma hataları (açılamayan adres, desteklenmeyen biçim...).
   Stream<String> get errors;
+
+  /// Çözülemeyen ses izinden kendiliğinden geçiş.
+  Stream<AudioFallback> get audioFallbacks;
 
   /// Adresi açar ve oynatmaya başlar; önceki yayın kapanır.
   Future<void> open(String url);

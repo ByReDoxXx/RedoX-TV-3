@@ -245,9 +245,9 @@ class PlaybackSession extends ChangeNotifier {
     // gerekirse kendisi yeniden bağlanır.
     if (_status != PlaybackStatus.loading || (_staleTimer?.isActive ?? false)) return;
     _staleTimer = Timer(staleErrorWindow, () {});
-    // Cihazdaki dosyada hata yayını bitirmez: mpv iz açamazsa (ses, görüntü)
-    // sıradaki izi dener, oynatma sürer. Dosya gerçekten açılamıyorsa hemen,
-    // değilse açılış süresi karar verir.
+    // Cihazdaki dosyada hata yayını bitirmez: mpv bir izi açamazsa onsuz sürer
+    // (ses izini motor değiştirir). Dosya gerçekten açılamıyorsa hemen, değilse
+    // açılış süresi karar verir.
     if (isLocalMedia(_streams[_stream]) && !_fatalLocal(message)) return;
     _failover();
   }

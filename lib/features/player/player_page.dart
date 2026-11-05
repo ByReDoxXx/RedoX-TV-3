@@ -201,6 +201,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       );
     }
     _session.addListener(_onSession);
+    _audioFallbacks = _engine.audioFallbacks.listen(_onAudioFallback);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onSession());
     // Telefon/tablet: Ana ekrana çıkınca yayın küçük pencerede sürer.
     if (_pip) unawaited(PictureInPicture.setEnabled(true));
@@ -225,6 +226,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _seekTimer?.cancel();
     _sleep.cancel();
     _sleepWarning?.cancel();
+    unawaited(_audioFallbacks.cancel());
     _session.removeListener(_onSession);
     _session.dispose();
     unawaited(_engine.dispose());
@@ -451,10 +453,21 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _restartBarTimer();
   }
 
-  void _notify(String text) {
+  late final StreamSubscription<AudioFallback> _audioFallbacks;
+
+  void _onAudioFallback(AudioFallback f) {
+    if (!mounted) return;
+    final to = f.to;
+    _notify(
+      to == null ? 'Bu dosyanın sesi çözülemiyor' : 'Ses çözülemedi, “${to.label}” izine geçildi',
+      duration: const Duration(seconds: 5),
+    );
+  }
+
+  void _notify(String text, {Duration duration = const Duration(seconds: 2)}) {
     _noticeTimer?.cancel();
     setState(() => _notice = text);
-    _noticeTimer = Timer(const Duration(seconds: 2), () {
+    _noticeTimer = Timer(duration, () {
       if (mounted) setState(() => _notice = null);
     });
   }

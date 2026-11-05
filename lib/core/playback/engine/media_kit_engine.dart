@@ -9,6 +9,7 @@ import '../../content/app_settings.dart';
 import '../../content/diagnostics.dart';
 import '../../layout/form_factor.dart';
 import '../subtitle_look.dart';
+import 'audio_fallback.dart';
 import 'mpv_probe.dart';
 import 'playback_engine.dart';
 
@@ -54,7 +55,7 @@ class MediaKitEngine implements PlaybackEngine {
       s.error.listen((e) {
         if (_transient(e)) {
           Diagnostics.instance.log('oynatıcı', 'geçici ileti: $e');
-        } else {
+        } else if (!_onDecoderFailure(e)) {
           _errors.add(e);
         }
       }),
@@ -388,6 +389,7 @@ class MediaKitEngine implements PlaybackEngine {
 
   final _state = ValueNotifier(const EngineState());
   final _errors = StreamController<String>.broadcast();
+  final _audioFallbacks = StreamController<AudioFallback>.broadcast();
   final _subscriptions = <StreamSubscription<Object?>>[];
   Tracks _tracks = const Tracks();
 
@@ -397,6 +399,9 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Stream<String> get errors => _errors.stream;
 
+  @override
+  Stream<AudioFallback> get audioFallbacks => _audioFallbacks.stream;
+
   void _update(EngineState next) {
     if (!_disposed) _state.value = next;
   }
@@ -404,6 +409,58 @@ class MediaKitEngine implements PlaybackEngine {
   /// mpv'nin "auto"/"no" sözde izleri listeye alınmaz (arayüz "Otomatik" ve
   /// "Kapalı"yı kendisi ekler).
   static bool _real(String id) => id != EngineState.autoTrack && id != EngineState.noTrack;
+
+  /// Çözülemeyen kodekler (bu dosyada; kullanıcı iz seçince sıfırlanır).
+  final _failedCodecs = <String>{};
+
+  /// Bildirilen son geçiş: iz değişimi sürerken gelen iz listesi yinelemesin.
+  /// Boş metin: çalınabilen ses yok.
+  String? _lastFallback;
+
+  /// mpv'ye bu açılışta yedek iz seçtirildi: seçim sonraki dosyaya taşınmasın.
+  bool _audioFellBack = false;
+
+  /// Ses izi çözülemediyse yedeğe geçer. İleti ses izine aitse true: yayın
+  /// görüntüyle sürer, hata sayılmaz. İzler henüz bilinmiyorsa kodek saklanır,
+  /// iz listesi gelince karar verilir.
+  bool _onDecoderFailure(String error) {
+    final codec = AudioFallbackRule.failedCodec(error);
+    if (codec == null) return false;
+    _failedCodecs.add(codec);
+    if (!_tracks.audio.any((a) => a.codec?.toLowerCase() == codec)) return false;
+    Diagnostics.instance.log('oynatıcı', 'ses izi çözülemedi: $codec');
+    _fallBackAudio();
+    return true;
+  }
+
+  void _fallBackAudio() {
+    if (_failedCodecs.isEmpty || _stuck || _disposed) return;
+    final step = AudioFallbackRule.next(
+      tracks: [
+        for (final a in _tracks.audio.where((a) => _real(a.id)))
+          AudioCandidate(a.id, codec: a.codec, language: a.language),
+      ],
+      selected: _player.state.track.audio.id,
+      failed: _failedCodecs,
+    );
+    switch (step) {
+      case KeepAudio():
+        return;
+      case SwitchAudio(:final id):
+        if (_lastFallback == id) return;
+        _lastFallback = id;
+        _audioFellBack = true;
+        final to = _state.value.audioTracks.firstWhere((t) => t.id == id, orElse: () => MediaTrack(id, 'Ses $id'));
+        Diagnostics.instance.log('oynatıcı', 'yedek ses izine geçildi: ${to.label}');
+        unawaited(_player.setAudioTrack(_tracks.audio.firstWhere((a) => a.id == id)));
+        _audioFallbacks.add(AudioFallback(to));
+      case NoPlayableAudio():
+        if (_lastFallback == '') return;
+        _lastFallback = '';
+        Diagnostics.instance.log('oynatıcı', 'çalınabilen ses izi yok');
+        _audioFallbacks.add(const AudioFallback(null));
+    }
+  }
 
   void _onTracks(Tracks t) {
     _tracks = t;
@@ -426,6 +483,7 @@ class MediaKitEngine implements PlaybackEngine {
         ],
       ),
     );
+    _fallBackAudio();
   }
 
   @override
@@ -440,6 +498,9 @@ class MediaKitEngine implements PlaybackEngine {
     Diagnostics.instance.log('oynatıcı', local ? 'cihazdaki dosya açılıyor' : 'ağ yayını açılıyor');
     // Yeni yayında boyut ve izler sıfırlanır: "görüntü geldi" yeniden ölçülür.
     _update(const EngineState());
+    _tracks = const Tracks();
+    _failedCodecs.clear();
+    _lastFallback = null;
     _capped = false;
     _videoLogged = false;
     _hdrChecked = false;
@@ -448,6 +509,10 @@ class MediaKitEngine implements PlaybackEngine {
       await _locked(_leaveSdrPath);
     }
     await _tuned;
+    if (_audioFellBack) {
+      _audioFellBack = false;
+      await _player.setAudioTrack(AudioTrack.auto());
+    }
     await _tuneFor(local: local);
     // Beklerken yeni açılış geldiyse (Tekrar dene, sonraki bölüm) bu açılmaz.
     if (id != _openId || _stuck || _disposed) return;
@@ -508,6 +573,9 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Future<void> selectAudioTrack(String id) async {
     if (_stuck) return;
+    // Kullanıcının seçimi: seçtiği iz de çözülemezse yeniden yedeğe geçilir.
+    _failedCodecs.clear();
+    _lastFallback = null;
     await _player.setAudioTrack(switch (id) {
       EngineState.autoTrack => AudioTrack.auto(),
       EngineState.noTrack => AudioTrack.no(),
@@ -595,6 +663,7 @@ class MediaKitEngine implements PlaybackEngine {
       await s.cancel();
     }
     await _errors.close();
+    await _audioFallbacks.close();
     _state.dispose();
     _position.dispose();
     if (!_stuck) await _player.dispose();
