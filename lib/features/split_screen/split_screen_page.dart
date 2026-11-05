@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/layout/page_layout.dart';
+import '../../core/platform/full_screen.dart';
 import '../../core/playback/engine/media_kit_engine.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../../core/theme/redox_colors.dart';
@@ -66,6 +67,7 @@ class _SplitScreenPageState extends State<SplitScreenPage> {
   @override
   void initState() {
     super.initState();
+    unawaited(FullScreen.enter());
     _split.addListener(_sync);
     _sync();
   }
@@ -74,6 +76,7 @@ class _SplitScreenPageState extends State<SplitScreenPage> {
   void dispose() {
     _split.removeListener(_sync);
     _closeAll();
+    unawaited(FullScreen.leave());
     super.dispose();
   }
 

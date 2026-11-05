@@ -11,6 +11,7 @@ import '../../core/content/tmdb.dart';
 import '../../core/content/watch_progress.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/device_controls.dart';
+import '../../core/platform/full_screen.dart';
 import '../../core/platform/picture_in_picture.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/playback/engine/media_kit_engine.dart';
@@ -177,6 +178,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(FullScreen.enter());
     if (_vod) {
       _engine.state.addListener(_resume);
       _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
@@ -207,6 +209,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     unawaited(DeviceControls.setBrightness(null));
     if (_pip) unawaited(PictureInPicture.setEnabled(false));
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(FullScreen.leave());
     if (_vod) {
       _saveProgress();
       _progressTimer?.cancel();
