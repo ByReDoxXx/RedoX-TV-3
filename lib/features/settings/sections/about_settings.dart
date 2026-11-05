@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/brand/app_info.dart';
+import '../../../core/brand/brand_assets.dart';
 import '../../../core/content/backup.dart';
 import '../../../core/content/diagnostics.dart';
 import '../../../core/content/user_sources.dart';
@@ -194,18 +195,32 @@ class _BrandMeaning extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'RedoX ne demek?',
-          style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+        Image.asset(
+          BrandAssets.logoTransparent,
+          width: 88,
+          height: 88,
+          semanticLabel: 'RedoX logosu: alevli kırmızı boğa',
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Redoks, yanmayı da oluşturan kimyasal bir tepkimedir: yanma, redoks tepkimesinin bilinen bir örneğidir. '
-          'Ad aynı zamanda Red + oX, yani kırmızı boğa anlamına gelir; logodaki alevli boğa da buradan gelir.',
-          style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'RedoX ne demek?',
+                style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Redoks, yanmayı da oluşturan kimyasal bir tepkimedir: yanma, redoks tepkimesinin bilinen bir örneğidir. '
+                'Ad aynı zamanda Red + oX, yani kırmızı boğa anlamına gelir; logodaki alevli boğa da buradan gelir.',
+                style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
       ],
     );
