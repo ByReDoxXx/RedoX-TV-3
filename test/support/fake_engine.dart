@@ -62,6 +62,9 @@ class FakeEngine implements PlaybackEngine {
     }
   }
 
+  /// Motor hata iletisi bildirsin.
+  void emitError(String message) => _errors.add(message);
+
   /// Oynatıcı yanıt vermez oldu.
   void freeze() => _state.value = _state.value.copyWith(stuck: true);
 

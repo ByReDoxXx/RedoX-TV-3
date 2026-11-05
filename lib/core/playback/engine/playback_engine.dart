@@ -1,6 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+/// Adres cihazdaki bir dosya mı (USB, SSD, SD kart, dahili depolama)?
+bool isLocalMedia(String url) =>
+    url.startsWith('/') ||
+    url.startsWith('file:') ||
+    url.startsWith('content:') ||
+    url.startsWith('fd:') ||
+    RegExp(r'^[A-Za-z]:[\\/]').hasMatch(url);
+
 /// Seçilebilir iz (kalite, ses, altyazı).
 @immutable
 class MediaTrack {

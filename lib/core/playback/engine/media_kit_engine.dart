@@ -21,19 +21,30 @@ class MediaKitEngine implements PlaybackEngine {
     // çizimde kuruluyordu, yayın ondan önce açıldığı için telefonda 4K HEVC
     // bile yazılımla çözülüyordu (hwdec-current=no; Pixel'de görüldü).
     _video = VideoController(_player, configuration: _android ? _zeroCopy : const VideoControllerConfiguration());
-    unawaited(_tune());
+    _tuned = _tune();
     if (_android) {
       unawaited(_watchSurface());
       _watchdog = EngineWatchdog(ping: _ping, onStuck: _markStuck)..start();
     }
     final s = _player.stream;
     _subscriptions.addAll([
-      s.playing.listen((v) => _update(_state.value.copyWith(playing: v))),
+      s.playing.listen((v) {
+        if (!_startLogged) {
+          Diagnostics.instance.log('oynatıcı', 'açılışta oynuyor=$v, ${_opening.elapsedMilliseconds} ms');
+        }
+        _update(_state.value.copyWith(playing: v));
+      }),
       s.buffering.listen((v) => _update(_state.value.copyWith(buffering: v))),
       s.width.listen((v) => unawaited(_onWidth(v))),
       s.height.listen((v) => _update(_state.value.copyWith(height: () => v))),
       s.duration.listen((v) => _update(_state.value.copyWith(duration: v))),
-      s.position.listen((v) => _position.value = v),
+      s.position.listen((v) {
+        _position.value = v;
+        if (!_startLogged && v > Duration.zero) {
+          _startLogged = true;
+          Diagnostics.instance.log('oynatıcı', 'oynatma başladı, ${_opening.elapsedMilliseconds} ms');
+        }
+      }),
       s.tracks.listen(_onTracks),
       s.track.listen(
         (t) => _update(
@@ -41,13 +52,28 @@ class MediaKitEngine implements PlaybackEngine {
         ),
       ),
       s.error.listen((e) {
-        if (!_transient(e)) _errors.add(e);
+        if (_transient(e)) {
+          Diagnostics.instance.log('oynatıcı', 'geçici ileti: $e');
+        } else {
+          _errors.add(e);
+        }
       }),
     ]);
   }
 
   final _player = Player();
   late final VideoController _video;
+
+  /// Oynatıcı ayarları bitti: ilk yayın bunlarla açılsın.
+  late final Future<void> _tuned;
+
+  /// Her açılışta artar: eski açılışın gecikmiş işleri yeniye karışmaz.
+  int _openId = 0;
+  final _opening = Stopwatch();
+  bool _startLogged = true;
+
+  /// Şimdiki ayarlar cihazdaki dosya için mi.
+  bool _localTuned = false;
   EngineWatchdog? _watchdog;
 
   /// Oynatıcı çekirdeği yanıt vermiyor: ona dokunan her çağrı arayüzü
@@ -165,9 +191,12 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> _logVideo(int? width) async {
     if (_videoLogged || (width ?? 0) == 0) return;
     _videoLogged = true;
+    final id = _openId;
+    Diagnostics.instance.log('görüntü', 'ilk boyut $width, ${_opening.elapsedMilliseconds} ms');
     // Görüntü yüzeyi bağlanınca media_kit çıkışı ve çözücüyü yeniden kurar:
     // ölçüm ondan sonra.
     await Future<void>.delayed(const Duration(seconds: 6));
+    if (id != _openId) return;
     const names = [
       'video-codec',
       'current-vo',
@@ -194,7 +223,7 @@ class MediaKitEngine implements PlaybackEngine {
         }}',
     ];
     Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
-    unawaited(_logDrops());
+    unawaited(_logDrops(id));
   }
 
   /// İlk görüntü boyutu geldi. Android'de önce yayının HDR olup olmadığına
@@ -304,8 +333,9 @@ class MediaKitEngine implements PlaybackEngine {
 
   /// Oynatmanın yükü: 10 sn sonra atlanan kareler günlüğe (takılma
   /// şikâyetlerini ayırt etmek için; her yayında bir kez).
-  Future<void> _logDrops() async {
+  Future<void> _logDrops(int id) async {
     await Future<void>.delayed(const Duration(seconds: 10));
+    if (id != _openId) return;
     final values = await _read(const ['frame-drop-count', 'decoder-frame-drop-count', 'estimated-vf-fps']);
     if (_disposed || values.isEmpty) return;
     final drops = values['frame-drop-count'];
@@ -401,6 +431,13 @@ class MediaKitEngine implements PlaybackEngine {
   @override
   Future<void> open(String url) async {
     if (_stuck) return;
+    final id = ++_openId;
+    final local = isLocalMedia(url);
+    _opening
+      ..reset()
+      ..start();
+    _startLogged = false;
+    Diagnostics.instance.log('oynatıcı', local ? 'cihazdaki dosya açılıyor' : 'ağ yayını açılıyor');
     // Yeni yayında boyut ve izler sıfırlanır: "görüntü geldi" yeniden ölçülür.
     _update(const EngineState());
     _capped = false;
@@ -410,7 +447,27 @@ class MediaKitEngine implements PlaybackEngine {
       _sdrPath = false;
       await _locked(_leaveSdrPath);
     }
+    await _tuned;
+    await _tuneFor(local: local);
+    // Beklerken yeni açılış geldiyse (Tekrar dene, sonraki bölüm) bu açılmaz.
+    if (id != _openId || _stuck || _disposed) return;
     await _player.open(Media(url));
+  }
+
+  /// Cihazdaki dosya ağ önbelleği olmadan okunur: media_kit önbelleği açık ve
+  /// diske yazar kuruyor (cache, cache-on-disk), mpv'nin yerel dosyadaki
+  /// kendi kararı ise kapalıdır. Yoksa 4K film USB'den okunurken bir de geçici
+  /// dosyaya yazılırdı. Ağ yayınının hızlı açılış ayarı (1 sn çözümleme) de
+  /// dosyada ses izlerini kaçırabilir; ffmpeg'in olağan 5 sn'si kullanılır.
+  Future<void> _tuneFor({required bool local}) async {
+    final native = _player.platform;
+    if (local == _localTuned || native is! NativePlayer) return;
+    _localTuned = local;
+    final seconds = AppSettings.instance.buffer.seconds;
+    await native.setProperty('cache', local ? 'no' : 'yes');
+    await native.setProperty('cache-on-disk', local ? 'no' : 'yes');
+    await native.setProperty('demuxer-lavf-analyzeduration', local ? '5' : '1');
+    await native.setProperty('demuxer-readahead-secs', local ? '5' : '${seconds ?? 1}');
   }
 
   @override

@@ -55,6 +55,11 @@ class PlaybackSession extends ChangeNotifier {
 
   static const defaultStartupTimeout = Duration(seconds: 15);
 
+  /// Cihazdaki dosyanın açılış süresi: uykudaki USB disk önce dönmeye başlar,
+  /// 4K film de ağ yayınından yavaş açılabilir. Yedek akış yoktur; 15 sn'de
+  /// vazgeçmek film açılırken "açılamadı" gösteriyordu.
+  static const localStartupTimeout = Duration(seconds: 45);
+
   /// Hatayla yedek akışa geçtikten sonra bu süre gelen hatalar eski akışındır
   /// (emülatörde açılmayan adres iki hata bildirdi; ikincisi yedek akışı da
   /// "açılamadı" saydırıyordu). Yeni akış bu sürede hata verirse
@@ -97,6 +102,9 @@ class PlaybackSession extends ChangeNotifier {
   int? _previous;
   PlaybackStatus _status = PlaybackStatus.loading;
   String? _lastError;
+
+  /// Şimdiki akış motora verildi: motorun görüntüsü artık bu akışındır.
+  bool _engineOpened = false;
 
   int get index => _index;
   LiveChannel get channel => channels[_index];
@@ -147,6 +155,7 @@ class PlaybackSession extends ChangeNotifier {
     _stallTimer?.cancel();
     _stallTimer = null;
     _lastError = null;
+    _engineOpened = false;
     if (engine.state.value.stuck) {
       _setStatus(PlaybackStatus.failed);
       return;
@@ -158,10 +167,11 @@ class PlaybackSession extends ChangeNotifier {
     _setStatus(PlaybackStatus.loading);
     // Zamanlayıcı açılıştan önce: motor hatayı hemen bildirirse yedek akışa
     // geçiş bu zamanlayıcıyı iptal eder (sonradan kurulsaydı ortada kalırdı).
-    _startupTimer = Timer(startupTimeout, _failover);
     final url = _streams[_stream];
+    _startupTimer = Timer(isLocalMedia(url) ? localStartupTimeout : startupTimeout, _failover);
     final resolve = this.resolve;
     if (resolve == null) {
+      _engineOpened = true;
       unawaited(engine.open(url));
       return;
     }
@@ -170,7 +180,9 @@ class PlaybackSession extends ChangeNotifier {
     unawaited(
       resolve(url).then(
         (real) {
-          if (!_disposed && generation == _generation && stream == _stream) unawaited(engine.open(real));
+          if (_disposed || generation != _generation || stream != _stream) return;
+          _engineOpened = true;
+          unawaited(engine.open(real));
         },
         onError: (Object _) {
           if (!_disposed && generation == _generation && stream == _stream) _failover();
@@ -197,8 +209,12 @@ class PlaybackSession extends ChangeNotifier {
       }
       return;
     }
-    if (_status == PlaybackStatus.loading && e.hasVideo) {
+    // "Açılamadı" denmiş olsa da mpv dosyayı açmayı sürdürür: görüntü gelirse
+    // yayın açılmıştır, uyarı görüntünün üstünde kalmaz.
+    final late = _status == PlaybackStatus.failed && _engineOpened;
+    if ((_status == PlaybackStatus.loading || late) && e.hasVideo) {
       _startupTimer?.cancel();
+      if (late) Diagnostics.instance.log('oynatıcı', '${channel.name}: görüntü geç geldi, açıldı');
       _setStatus(PlaybackStatus.playing);
     }
     // Yalnız canlı yayın: filmde yeniden açmak izlenen yeri kaybettirir.
@@ -229,8 +245,18 @@ class PlaybackSession extends ChangeNotifier {
     // gerekirse kendisi yeniden bağlanır.
     if (_status != PlaybackStatus.loading || (_staleTimer?.isActive ?? false)) return;
     _staleTimer = Timer(staleErrorWindow, () {});
+    // Cihazdaki dosyada hata yayını bitirmez: mpv iz açamazsa (ses, görüntü)
+    // sıradaki izi dener, oynatma sürer. Dosya gerçekten açılamıyorsa hemen,
+    // değilse açılış süresi karar verir.
+    if (isLocalMedia(_streams[_stream]) && !_fatalLocal(message)) return;
     _failover();
   }
+
+  /// mpv'nin dosyayı hiç açamadığını söyleyen iletileri.
+  static bool _fatalLocal(String message) =>
+      message.contains('Cannot open file') ||
+      message.contains('Failed to open') ||
+      message.contains('Failed to recognize file format');
 
   /// Sıradaki akışa geç; akış kalmadıysa kanal açılamadı.
   void _failover() {
