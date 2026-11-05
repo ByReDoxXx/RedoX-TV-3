@@ -14,6 +14,7 @@ import 'late_closer.dart';
 import 'mpv_log_ring.dart';
 import 'mpv_probe.dart';
 import 'playback_engine.dart';
+import 'seek_gate.dart';
 import 'seek_queue.dart';
 
 /// media_kit (libmpv) ile oynatma. Uygulama başında
@@ -44,7 +45,9 @@ class MediaKitEngine implements PlaybackEngine {
       s.height.listen((v) => _update(_state.value.copyWith(height: () => v))),
       s.duration.listen((v) => _update(_state.value.copyWith(duration: v))),
       s.position.listen((v) {
-        _position.value = v;
+        // Bekleyen sarma varken gösterge (ve yazılan izleme yeri) onda kalır: 0'a
+        // dönerse çıkınca kaldığı yer silinirdi.
+        if (!_gate.holding) _position.value = v;
         if (!_startLogged && v > Duration.zero) {
           _startLogged = true;
           Diagnostics.instance.log('oynatıcı', 'oynatma başladı, ${_opening.elapsedMilliseconds} ms');
@@ -172,6 +175,9 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> _tune() async {
     final native = _player.platform;
     if (native is! NativePlayer) return;
+    // Deneme (TV): media_kit sesi OpenSL ile veriyor, cihaz tamponu 250 ms (Philips
+    // günlüğü). Kareler oynatıcıdan düzensiz çıkıyor; ses saati kaba olabilir.
+    if (_diagnoseCore) await native.setProperty('ao', 'audiotrack,opensles');
     await native.setProperty('demuxer-lavf-analyzeduration', '1');
     await native.setProperty('network-timeout', '10');
     final settings = AppSettings.instance;
@@ -215,6 +221,7 @@ class MediaKitEngine implements PlaybackEngine {
     const names = [
       'video-codec',
       'current-vo',
+      'current-ao',
       'hwdec',
       'hwdec-current',
       'current-tracks/video/codec',
@@ -253,8 +260,51 @@ class MediaKitEngine implements PlaybackEngine {
       final native = _player.platform;
       if (native is NativePlayer) await _hdrToSdr();
     }
+    if (_gate.closed && (width ?? 0) > 0) {
+      unawaited(_settleSurface(width));
+      return;
+    }
     _update(_state.value.copyWith(width: () => width));
     unawaited(_logVideo(width));
+  }
+
+  /// Bekletilen sarmanın kapısı: TV'de her açılışta kapanır, görüntü yüzeyi
+  /// oturunca açılır.
+  late final _gate = SeekGate(_seeks.seek);
+  bool _settling = false;
+  int? _heldWidth;
+
+  /// Yüzey bu açılışta yeniden bağlandı (aynı boyutta bağlanmaz, süre dolar).
+  Completer<void> _surfaceAttached = Completer();
+
+  /// media_kit yüzeyi bağlayıp çözücüyü kurana dek sarma yapılmaz. "Görüntü geldi"
+  /// de bekler: kaldığı yerden sürecek film bu arada baştan görünmesin.
+  Future<void> _settleSurface(int? width) async {
+    _heldWidth = width;
+    if (_settling) return;
+    _settling = true;
+    final id = _openId;
+    Future<void> within(Future<void> work, Duration limit) async {
+      try {
+        await work.timeout(limit);
+      } on TimeoutException {
+        // Süre dolunca beklemeden sürer: görüntü sonsuza dek gizli kalmasın.
+      }
+    }
+
+    await within(_surfaceAttached.future, const Duration(seconds: 2));
+    if (id != _openId || _disposed) return;
+    // Sıra media_kit'in kilidinde: kendi yeniden kurma işi bitmiş olur.
+    await within(_locked(() async {}), const Duration(seconds: 3));
+    if (id != _openId || _disposed) return;
+    // Konum yeniden akınca oynatma sürüyordur: boşaltma kurulumun ortasına düşmez.
+    await within(_player.stream.position.first, const Duration(seconds: 3));
+    if (id != _openId || _disposed || _stuck) return;
+    await within(_gate.open(), const Duration(seconds: 2));
+    if (id != _openId || _disposed) return;
+    _settling = false;
+    _update(_state.value.copyWith(width: () => _heldWidth));
+    unawaited(_logVideo(_heldWidth));
   }
 
   /// HDR yayında kopyasız yol pembe görüntü veriyordu (Pixel'de görüldü):
@@ -286,6 +336,7 @@ class MediaKitEngine implements PlaybackEngine {
       final dynamic android = await _video.platform.future;
       _android0 = android;
       (android.wid as ValueNotifier<int?>).addListener(() {
+        if (!_surfaceAttached.isCompleted) _surfaceAttached.complete();
         if (_sdrPath) unawaited(_locked(_applySdrPath));
       });
     } on Object {
@@ -526,6 +577,10 @@ class MediaKitEngine implements PlaybackEngine {
     _capped = false;
     _videoLogged = false;
     _hdrChecked = false;
+    _settling = false;
+    _heldWidth = null;
+    _surfaceAttached = Completer();
+    if (_diagnoseCore) _gate.close();
     if (_sdrPath) {
       _sdrPath = false;
       await _locked(_leaveSdrPath);
@@ -573,7 +628,7 @@ class MediaKitEngine implements PlaybackEngine {
     final end = _state.value.duration;
     final clamped = to < Duration.zero ? Duration.zero : (end > Duration.zero && to > end ? end : to);
     _position.value = clamped;
-    await _seeks.seek(clamped);
+    await _gate.seek(clamped);
   }
 
   /// Art arda basılan ◄► tek sarmada birleşir: her sarma donanım çözücüyü boşaltır
