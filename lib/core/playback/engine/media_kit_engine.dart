@@ -236,7 +236,6 @@ class MediaKitEngine implements PlaybackEngine {
   bool _hdrChecked = false;
 
   Future<void> _onWidth(int? width) async {
-    if ((width ?? 0) > 0) _videoSeen = true;
     if (_android && !_hdrChecked && (width ?? 0) > 0) {
       _hdrChecked = true;
       final native = _player.platform;
@@ -510,7 +509,6 @@ class MediaKitEngine implements PlaybackEngine {
     // Yeni yayında boyut ve izler sıfırlanır: "görüntü geldi" yeniden ölçülür.
     _update(const EngineState());
     _tracks = const Tracks();
-    _videoSeen = false;
     _failedCodecs.clear();
     _lastFallback = null;
     _capped = false;
@@ -566,27 +564,11 @@ class MediaKitEngine implements PlaybackEngine {
     await _seeks.seek(clamped);
   }
 
-  late final _seeks = SeekQueue(_seekNow);
-
-  /// Bu açılışta görüntü geldi: çözücü çalışıyor.
-  bool _videoSeen = false;
-
-  /// TV: sarmada donanım çözücü boşaltılmaz, kapatılıp yeniden açılır. Philips'te
-  /// boşaltma oynatıcı çekirdeğini kilitledi (► basıldıktan 66 ms sonra çözücü
-  /// durdu, çekirdek bir daha yanıt vermedi; günlükte görüldü).
-  Future<void> _seekNow(Duration to) async {
-    final native = _player.platform;
-    if (!_android || !_tv || _sdrPath || !_videoSeen || native is! NativePlayer) {
-      await _player.seek(to);
-      return;
-    }
-    final watch = Stopwatch()..start();
-    final track = _player.state.track.video.id;
-    await native.setProperty('vid', 'no');
-    await _player.seek(to);
-    await native.setProperty('vid', track == EngineState.noTrack ? EngineState.autoTrack : track);
-    Diagnostics.instance.log('oynatıcı', 'sarma: çözücü yeniden açıldı, ${watch.elapsedMilliseconds} ms');
-  }
+  /// Art arda basılan ◄► tek sarmada birleşir: her sarma donanım çözücüyü boşaltır
+  /// ve Philips'te boşaltma çekirdeği kilitleyebiliyor (► sonrası günlükte görüldü).
+  /// Kapatıp yeniden açmak da kilitledi; üstelik `setProperty` arayüzü beklettiği
+  /// için uygulama dondu. Burada yalnız zaman uyumsuz komut kullanılır.
+  late final _seeks = SeekQueue(_player.seek);
 
   @override
   Future<void> setMuted(bool muted) async {
