@@ -110,6 +110,9 @@ void main() {
     await tester.tap(find.text('Hakkında').first);
     await _settle(tester);
     expect(find.text('RedoX TV $appVersion'), findsOneWidget);
+    expect(find.text('RedoX ne demek?'), findsOneWidget);
+    expect(find.textContaining('Red + oX, yani kırmızı boğa'), findsOneWidget);
+    expect(find.textContaining('yanma'), findsOneWidget);
     await maybeSnapshot(tester, key, 'build/ayarlar/tv-hakkinda.png', pixelRatio: 2);
 
     await tester.pumpWidget(

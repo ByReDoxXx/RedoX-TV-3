@@ -139,6 +139,7 @@ class _AboutSettingsState extends State<AboutSettings> {
         title: 'Hakkında',
         padding: widget.padding,
         children: [
+          const _BrandMeaning(),
           const InfoRow(label: 'Uygulama', value: 'RedoX TV $appVersion'),
           InfoRow(label: 'Cihaz', value: _device),
           if (guide != null) ...[
@@ -177,12 +178,36 @@ class _AboutSettingsState extends State<AboutSettings> {
             onPressed: () => unawaited(_saveReport()),
           ),
           Text(
-            "RedoX = Red + Ox: \"kızıl boğa\". Bu sürüm eski RedoX TV'den ayrı bir uygulamadır; ayarları ve "
-            'verileri paylaşılmaz.',
+            "Bu sürüm eski RedoX TV'den ayrı bir uygulamadır; ayarları ve verileri paylaşılmaz.",
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Adın anlamı. Sayfanın başında: yazı odak almaz, kumandayla sayfa sonuna inilemeyebilir.
+class _BrandMeaning extends StatelessWidget {
+  const _BrandMeaning();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'RedoX ne demek?',
+          style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Redoks, yanmayı da oluşturan kimyasal bir tepkimedir: yanma, redoks tepkimesinin bilinen bir örneğidir. '
+          'Ad aynı zamanda Red + oX, yani kırmızı boğa anlamına gelir; logodaki alevli boğa da buradan gelir.',
+          style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
