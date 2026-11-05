@@ -13,6 +13,7 @@ import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
+import '../../core/ui/decoded_size.dart';
 import '../../core/ui/desktop_back_button.dart';
 import '../../core/ui/category_chip.dart';
 import '../../core/ui/focus_glow.dart';
@@ -87,7 +88,12 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
           final info = snap.data;
           final bg = Theme.of(context).scaffoldBackgroundColor;
           final backdrop = switch (info?.backdrop) {
-            final b? => Image.network(b, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+            final b? => Image.network(
+              b,
+              fit: BoxFit.cover,
+              cacheWidth: decodedSize(context, MediaQuery.sizeOf(context).width),
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
             null => null,
           };
           // Telefonda görsel içerikle birlikte kayar (sabit kalınca bölüm

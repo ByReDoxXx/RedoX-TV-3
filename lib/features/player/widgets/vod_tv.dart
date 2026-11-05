@@ -9,6 +9,7 @@ import '../../../core/content/watch_progress.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_shapes.dart';
 import '../../../core/ui/artwork_fallback.dart';
+import '../../../core/ui/decoded_size.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_progress_bar.dart';
 import '../../../core/ui/status_badge.dart';
@@ -227,6 +228,7 @@ class _EpisodeTile extends StatelessWidget {
                         Image.network(
                           url,
                           fit: BoxFit.cover,
+                          cacheHeight: decodedSize(context, EpisodeStrip.thumbHeight),
                           errorBuilder: (_, _, _) => ArtworkFallback(name: ep?.series ?? episode.name),
                         )
                       else

@@ -7,6 +7,7 @@ import '../../core/layout/form_factor.dart';
 import '../../core/theme/redox_colors.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/theme/redox_shapes.dart';
+import '../../core/ui/decoded_size.dart';
 import '../../core/ui/desktop_back_button.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
@@ -95,7 +96,12 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
             fit: StackFit.expand,
             children: [
               if (backdrop != null)
-                Image.network(backdrop, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+                Image.network(
+                  backdrop,
+                  fit: BoxFit.cover,
+                  cacheWidth: decodedSize(context, MediaQuery.sizeOf(context).width),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

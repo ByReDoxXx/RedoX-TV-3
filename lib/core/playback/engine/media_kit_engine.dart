@@ -344,6 +344,13 @@ class MediaKitEngine implements PlaybackEngine {
     final fps = values['estimated-vf-fps'];
     final path = !_sdrPath ? 'kopyasız' : (_copyHwdec == 'no' ? 'yazılım' : 'kopyalı');
     Diagnostics.instance.log('görüntü', '$path yol 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
+    // Grafik belleği dolunca sistem uygulamayı kapatıyor: görsellerin payı görünsün.
+    final images = PaintingBinding.instance.imageCache;
+    final megabytes = images.currentSizeBytes ~/ (1024 * 1024);
+    Diagnostics.instance.log(
+      'bellek',
+      'görsel önbelleği $megabytes MB, ${images.currentSize} görsel, ${images.liveImageCount} canlı',
+    );
   }
 
   /// HDR/HEVC için kopyalı, ton eşlemeli yol; eski MPEG-4'te yazılım çözücüyle.
