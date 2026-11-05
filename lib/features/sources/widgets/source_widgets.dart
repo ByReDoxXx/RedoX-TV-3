@@ -105,51 +105,72 @@ String updatedLabel(DateTime at, {DateTime? now}) {
 }
 
 /// Kaynak kartı (Kaynaklar): solda nereden eklendiğinin ikonu türün
-/// rengiyle, ad, kayıt sayısı (birimi türü söyler), altta ekleme yolu ve
-/// güncelleme zamanı. Kartlar eşit yükseklikte.
+/// rengiyle, ad, türün renginde kayıt sayısı (birimi türü söyler), altta
+/// ekleme yolu ve güncelleme zamanı; kilitliyse adın yanında kilit.
 class FolderCard extends StatelessWidget {
-  const FolderCard({super.key, required this.source, required this.onPressed, this.autofocus = false});
+  const FolderCard({
+    super.key,
+    required this.source,
+    required this.onPressed,
+    this.autofocus = false,
+    this.locked = false,
+  });
 
   final UserSource source;
   final VoidCallback onPressed;
   final bool autofocus;
+  final bool locked;
 
-  static const height = 104.0;
+  static const height = 112.0;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final s = source;
+    // Koyu zeminde kızıl yazı okunmuyor: açık birincil renk.
+    final accent = s.kind == SourceKind.live ? RedoxRoles.primary : s.tint;
     return CardShell(
       autofocus: autofocus,
       onPressed: onPressed,
       builder: (active) => Row(
         children: [
-          IconTile(icon: s.icon, tint: s.tint, active: active, size: 46),
-          const SizedBox(width: 12),
+          IconTile(icon: s.icon, tint: s.tint, active: active, size: 56),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  s.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        s.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    if (locked) ...[
+                      const SizedBox(width: 6),
+                      const RedoxIcon(RedoxIcons.lock, size: 16, color: RedoxRoles.onSurfaceVariant),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 2),
-                // Birim türü söyler: kanal (Canlı TV), film, bölüm (Dizi).
-                Text(
-                  s.countLabel,
-                  maxLines: 1,
-                  style: t.bodyMedium!.copyWith(
-                    // Koyu zeminde kızıl yazı okunmuyor: açık birincil renk.
-                    color: s.kind == SourceKind.live ? RedoxRoles.primary : s.tint,
-                    fontWeight: FontWeight.w700,
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: s.tint.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(RedoxRadius.full),
+                  ),
+                  child: Text(
+                    s.countLabel,
+                    maxLines: 1,
+                    style: t.bodySmall!.copyWith(color: accent, fontWeight: FontWeight.w700),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
                 Text(
                   '${s.origin.label} · ${updatedLabel(s.updated)}',
                   maxLines: 1,
@@ -165,23 +186,32 @@ class FolderCard extends StatelessWidget {
   }
 }
 
-/// İlk kart: yeni kaynak (Ayarlar › Kaynak ekle).
-class AddSourceCard extends StatelessWidget {
-  const AddSourceCard({super.key, required this.onPressed, this.autofocus = false});
+/// Aramada listenin içinde bulunan kayıt: ad, altında liste ve kategori; OK oynatır.
+class SourceHitRow extends StatelessWidget {
+  const SourceHitRow({
+    super.key,
+    required this.name,
+    required this.detail,
+    required this.source,
+    required this.onPressed,
+  });
 
-  final VoidCallback onPressed;
-  final bool autofocus;
+  final String name;
+  final String detail;
+  final UserSource source;
+  final VoidCallback? onPressed;
+
+  static const height = 68.0;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return CardShell(
-      autofocus: autofocus,
+      height: height,
       onPressed: onPressed,
-      dashed: true,
       builder: (active) => Row(
         children: [
-          IconTile(icon: RedoxIcons.add, tint: RedoxSeeds.crimson, active: active, size: 46),
+          IconTile(icon: RedoxIcons.play, tint: source.tint, active: active, size: 40),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -189,13 +219,14 @@ class AddSourceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kaynak ekle',
-                  style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyLarge!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  'Liste, hesap, dosya, USB/SSD',
-                  maxLines: 2,
+                  detail,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
                 ),

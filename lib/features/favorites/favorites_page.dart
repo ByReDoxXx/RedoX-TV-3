@@ -21,6 +21,7 @@ import '../../core/ui/long_press_select.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
 import '../../core/ui/scroll_hint_row.dart';
+import '../../core/ui/search_box.dart';
 import '../library/film_detail_page.dart';
 import '../library/series_detail_page.dart';
 import '../library/widgets/tmdb_poster.dart';
@@ -30,7 +31,6 @@ import '../settings/widgets/setting_tiles.dart';
 import 'widgets/favorite_poster_grid.dart';
 import 'widgets/favorite_row.dart';
 import 'widgets/favorites_empty.dart';
-import 'widgets/favorites_search.dart';
 
 /// Favori sırası. "Sıram" elle dizilen; Film ve Dizi'de eklenme sırasıdır.
 enum FavoriteSort {
@@ -591,8 +591,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
             : _posters
             ? 'Uzun OK: favorilerden çıkar'
             : 'Uzun OK: sırayı değiştir';
-        final search = FavoritesSearch(
+        final search = SearchBox(
           query: _query,
+          hint: 'Favorilerde ara',
           onChanged: (q) => setState(() {
             _query = q;
             _moving = null;

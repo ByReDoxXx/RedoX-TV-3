@@ -2,30 +2,33 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/layout/mouse_mode.dart';
-import '../../../core/platform/system_text_input.dart';
-import '../../../core/theme/redox_colors.dart';
-import '../../../core/theme/redox_shapes.dart';
-import '../../../core/ui/redox_buttons.dart';
-import '../../../core/ui/redox_icon.dart';
+import '../layout/mouse_mode.dart';
+import '../platform/system_text_input.dart';
+import '../theme/redox_colors.dart';
+import '../theme/redox_shapes.dart';
+import 'redox_buttons.dart';
+import 'redox_icon.dart';
 
-/// Favorilerde arama. TV: düğme cihazın klavyesini açar, boş onay aramayı
-/// temizler. Dokunmatik ve masaüstü: kutu, yazdıkça süzer.
-class FavoritesSearch extends StatefulWidget {
-  const FavoritesSearch({super.key, required this.query, required this.onChanged});
+/// Sayfa içi arama (Favoriler, Kaynaklar). TV: düğme cihazın klavyesini açar,
+/// boş onay aramayı temizler. Dokunmatik ve masaüstü: kutu, yazdıkça süzer.
+class SearchBox extends StatefulWidget {
+  const SearchBox({super.key, required this.query, required this.hint, required this.onChanged});
 
   final String query;
+
+  /// Kutunun ipucu, TV'de klavye penceresinin başlığı.
+  final String hint;
   final ValueChanged<String> onChanged;
 
   @override
-  State<FavoritesSearch> createState() => _FavoritesSearchState();
+  State<SearchBox> createState() => _SearchBoxState();
 }
 
-class _FavoritesSearchState extends State<FavoritesSearch> {
+class _SearchBoxState extends State<SearchBox> {
   late final _text = TextEditingController(text: widget.query);
 
   @override
-  void didUpdateWidget(FavoritesSearch old) {
+  void didUpdateWidget(SearchBox old) {
     super.didUpdateWidget(old);
     // Sayfadaki "Aramayı temizle" kutuyu da boşaltır.
     if (widget.query != _text.text) _text.text = widget.query;
@@ -38,7 +41,7 @@ class _FavoritesSearchState extends State<FavoritesSearch> {
   }
 
   Future<void> _ask() async {
-    final q = await SystemTextInput.ask(title: 'Favorilerde ara', value: widget.query);
+    final q = await SystemTextInput.ask(title: widget.hint, value: widget.query);
     if (q != null && mounted) widget.onChanged(q.trim());
   }
 
@@ -46,7 +49,7 @@ class _FavoritesSearchState extends State<FavoritesSearch> {
   Widget build(BuildContext context) {
     if (usesSystemTextInput(context)) {
       return GlassButton(
-        // Uzun arama metni sekmeleri ekrandan itmesin.
+        // Uzun arama metni yandaki düğmeleri ekrandan itmesin.
         label: switch (widget.query) {
           '' => 'Ara',
           final q when q.length > 12 => '${q.substring(0, 12)}…',
@@ -64,7 +67,7 @@ class _FavoritesSearchState extends State<FavoritesSearch> {
       textInputAction: TextInputAction.search,
       style: t.bodyMedium!.copyWith(color: RedoxRoles.onSurface),
       decoration: InputDecoration(
-        hintText: 'Favorilerde ara',
+        hintText: widget.hint,
         hintStyle: t.bodyMedium!.copyWith(color: RedoxRoles.onSurfaceVariant),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(vertical: 10),

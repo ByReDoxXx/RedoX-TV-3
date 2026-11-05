@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:redox_tv/core/ui/redox_buttons.dart';
 import 'package:redox_tv/core/content/favorites.dart';
 import 'package:redox_tv/core/content/live_channel.dart';
 import 'package:redox_tv/core/content/user_sources.dart';
@@ -255,7 +256,7 @@ void main() {
         key = GlobalKey();
         await open(AppSection.sources, key);
         await shot('sources', key, {
-          'sources.add': find.byType(AddSourceCard),
+          'sources.add': find.widgetWithText(PrimaryButton, 'Kaynak ekle'),
           'sources.card': find.byType(FolderCard).first,
         });
 

@@ -373,6 +373,9 @@ void main() {
       ),
     );
     await _settle(tester);
+    // Listeler türlere göre gruplu: dizi grubu ilk ekranın altında kalabilir.
+    await tester.ensureVisible(find.text('Dizilerim'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Dizilerim'));
     await _settle(tester);
     await tester.pumpAndSettle();
