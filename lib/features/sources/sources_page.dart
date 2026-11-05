@@ -15,6 +15,7 @@ import '../../core/ui/category_chip.dart';
 import '../../core/ui/hiding_header.dart';
 import '../../core/ui/redox_buttons.dart';
 import '../../core/ui/redox_icon.dart';
+import '../../core/ui/scroll_hint_row.dart';
 import '../../core/ui/search_box.dart';
 import '../locks/lock_scope.dart';
 import '../search/search_page.dart';
@@ -204,9 +205,9 @@ class _SourcesPageState extends State<SourcesPage> {
           const SizedBox(height: 20),
           _EmptySources(onAdd: widget.onAdd),
         ] else ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _filters(context, all.length, kinds, kind),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           if (searching) _results(context, phone, kind) else _lists(phone, kinds, kind),
         ],
       ],
@@ -241,30 +242,34 @@ class _SourcesPageState extends State<SourcesPage> {
   /// arama kutusu kendi satırında (telefon) ya da çiplerin yanında.
   Widget _filters(BuildContext context, int total, List<SourceKind> kinds, SourceKind? kind) {
     final box = SearchBox(query: _query, hint: 'Kaynaklarda ara', onChanged: _setQuery);
-    final chips = kinds.length < 2
-        ? null
-        : Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: [
-              CategoryChip(label: 'Tümü', count: total, selected: kind == null, onPressed: () => _setKind(null)),
-              for (final k in kinds)
-                CategoryChip(
-                  label: k.label,
-                  count: _sources.of(k).length,
-                  selected: kind == k,
-                  onPressed: () => _setKind(k),
-                ),
-            ],
-          );
+    final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
+    // Tek satır (kullanıcı isteği); telefonda sığsın diye sayı yalnız seçilide,
+    // yine de sığmazsa satır kayar.
+    List<Widget> chips() => [
+      for (final (i, k) in <SourceKind?>[null, ...kinds].indexed) ...[
+        if (i > 0) const SizedBox(width: 10),
+        CategoryChip(
+          label: k?.label ?? 'Tümü',
+          count: phone && kind != k ? null : (k == null ? total : _sources.of(k).length),
+          selected: kind == k,
+          onPressed: () => _setKind(k),
+        ),
+      ],
+    ];
+    final many = kinds.length > 1;
     if (usesSystemTextInput(context)) {
-      return Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [box, ?chips]);
+      return _ChipRow(
+        children: [
+          box,
+          if (many) ...[const SizedBox(width: 10), ...chips()],
+        ],
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: box),
-        if (chips != null) ...[const SizedBox(height: 10), chips],
+        if (many) ...[const SizedBox(height: 4), _ChipRow(children: chips())],
       ],
     );
   }
@@ -375,6 +380,25 @@ class _SourcesPageState extends State<SourcesPage> {
       ),
     );
   }
+}
+
+/// Tek satır çipler. Kayan satır kenarında keser: odak halkası kesilmesin diye
+/// satır halka payı kadar taşar, içerik yine sayfanın kenarına hizalı kalır.
+class _ChipRow extends StatelessWidget {
+  const _ChipRow({required this.children});
+
+  final List<Widget> children;
+
+  static const _ring = 12.0;
+
+  @override
+  Widget build(BuildContext context) => Transform.translate(
+    offset: const Offset(-_ring, 0),
+    child: ScrollHintRow(
+      padding: const EdgeInsets.fromLTRB(_ring, 6, _ring, 6),
+      child: Row(children: children),
+    ),
+  );
 }
 
 /// Henüz liste yok: ne eklenebileceği ve ekleme düğmesi.

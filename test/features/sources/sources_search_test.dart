@@ -8,6 +8,7 @@ import 'package:redox_tv/core/content/user_sources.dart';
 import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/platform/system_text_input.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
+import 'package:redox_tv/core/ui/category_chip.dart';
 import 'package:redox_tv/features/locks/lock_scope.dart';
 import 'package:redox_tv/features/sources/source_search.dart';
 import 'package:redox_tv/features/sources/sources_page.dart';
@@ -172,6 +173,35 @@ void main() {
     expect(find.text('Tenis'), findsNothing);
     expect(find.textContaining('için sonuç yok'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('telefon: tür çipleri tek satırda; sayı yalnız seçilide', (tester) async {
+    await _size(tester, const Size(412, 915));
+    final s = (await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('redox-kaynak-cip-');
+      addTearDown(() => dir.delete(recursive: true));
+      final s = await UserSources.open(dir);
+      await s.addText('Canlı', _m3u(['A'], 'G'), origin: SourceOrigin.url);
+      await s.addText('Filmler', _m3u(['B'], 'G'), origin: SourceOrigin.file, kind: SourceKind.film);
+      await s.addText('Diziler', _m3u(['C'], 'G'), origin: SourceOrigin.file, kind: SourceKind.series);
+      return s;
+    }))!;
+    await tester.pumpWidget(_page(FormFactor.phone, s));
+    await _scan(tester);
+    expect(tester.takeException(), isNull);
+    final chips = tester.widgetList<CategoryChip>(find.byType(CategoryChip)).toList();
+    expect(chips.map((c) => c.label), ['Tümü', 'Canlı TV', 'Film', 'Dizi']);
+    expect(chips.map((c) => c.count), [3, null, null, null]);
+    final tops = {for (final e in find.byType(CategoryChip).evaluate()) tester.getTopLeft(find.byWidget(e.widget)).dy};
+    expect(tops, hasLength(1));
+    final right = tester.getTopRight(find.byType(CategoryChip).last).dx;
+    expect(right, lessThanOrEqualTo(412), reason: 'Pixel genişliğinde kaydırmadan sığar');
+
+    await tester.tap(find.widgetWithText(CategoryChip, 'Film'));
+    await tester.pump();
+    final after = tester.widgetList<CategoryChip>(find.byType(CategoryChip)).toList();
+    expect(after.map((c) => c.count), [null, null, 1, null]);
+    expect(find.text('Filmler'), findsOneWidget);
   });
 
   testWidgets('boşken yönerge ve ekleme düğmesi; arama yok', (tester) async {
