@@ -175,9 +175,6 @@ class MediaKitEngine implements PlaybackEngine {
   Future<void> _tune() async {
     final native = _player.platform;
     if (native is! NativePlayer) return;
-    // Deneme (TV): media_kit sesi OpenSL ile veriyor, cihaz tamponu 250 ms (Philips
-    // günlüğü). Kareler oynatıcıdan düzensiz çıkıyor; ses saati kaba olabilir.
-    if (_diagnoseCore) await native.setProperty('ao', 'audiotrack,opensles');
     await native.setProperty('demuxer-lavf-analyzeduration', '1');
     await native.setProperty('network-timeout', '10');
     final settings = AppSettings.instance;
@@ -246,6 +243,30 @@ class MediaKitEngine implements PlaybackEngine {
     ];
     Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
     unawaited(_logDrops(id));
+    if (_diagnoseCore) unawaited(_logSync(id));
+  }
+
+  /// TV: kasma incelenirken 30 sn'de bir mpv'nin kendi zamanlama sayaçları. Ekran
+  /// ölçümü yalnız Flutter yüzeyini görüyor; filmin kareleri ondan önce kayboluyor
+  /// olabilir (Philips: ölçüm temizken görüntü "çok kötü kasıyor").
+  Future<void> _logSync(int id) async {
+    const names = [
+      'avsync',
+      'total-avsync-change',
+      'frame-drop-count',
+      'decoder-frame-drop-count',
+      'mistimed-frame-count',
+      'vo-delayed-frame-count',
+      'estimated-vf-fps',
+      'current-ao',
+    ];
+    while (true) {
+      await Future<void>.delayed(const Duration(seconds: 30));
+      if (id != _openId || _disposed || _stuck) return;
+      final values = await _read(names);
+      if (id != _openId || _disposed || values.isEmpty) return;
+      Diagnostics.instance.log('zamanlama', [for (final n in names) '$n=${values[n] ?? '?'}'].join(' '));
+    }
   }
 
   /// İlk görüntü boyutu geldi. Android'de önce yayının HDR olup olmadığına
