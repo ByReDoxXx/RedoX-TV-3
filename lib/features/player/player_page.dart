@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,14 +18,19 @@ import '../../core/playback/engine/playback_engine.dart';
 import '../../core/playback/playback_session.dart';
 import '../../core/playback/sleep_timer.dart';
 import '../../core/playback/stream_probe.dart';
+import 'player_keys.dart';
+import 'vod_progress.dart';
 import 'widgets/channel_drawer.dart';
 import 'widgets/player_bar.dart';
+import 'widgets/player_layers.dart';
 import 'widgets/player_options.dart';
 import 'widgets/player_overlays.dart';
 import 'widgets/seek_bar.dart';
 import 'widgets/touch_controls.dart';
 import 'widgets/vod_title.dart';
 import 'widgets/vod_tv.dart';
+
+export 'player_keys.dart' show PlayerMode;
 
 /// Tam ekran oynatıcı (eski sürümün özellikleriyle). Kumanda:
 /// - OK: alt çubuğu açar, odak oynat/duraklatta.
@@ -39,10 +43,8 @@ import 'widgets/vod_tv.dart';
 /// - Geri: açık menüyü, listeyi, çubuğu kapatır; hiçbiri açık değilse çıkar.
 /// Kanal değişince çubuk ve ipuçları 3,8 sn görünür (eski sürümdeki gibi).
 /// Dokunmatikte videoya dokunmak çubuğu açıp kapatır.
-/// Oynatılan içerik: canlı yayın, film ya da dizi bölümü (film ve dizide
-/// oynatıcı tasarımı farklıdır ve izlenen yer saklanır).
-enum PlayerMode { live, film, series }
-
+/// Oynatılan içerik: [PlayerMode]. Kumanda kuralları [PlayerKeys]'te, izlenen
+/// yer [VodProgress]'te, ekran katmanları widgets/player_layers.dart'ta.
 class PlayerPage extends StatefulWidget {
   const PlayerPage({
     super.key,
@@ -180,8 +182,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     unawaited(FullScreen.enter());
     if (_vod) {
-      _engine.state.addListener(_resume);
-      _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveProgress());
+      _progress = VodProgress(
+        engine: _engine,
+        session: () => _session,
+        store: widget.progress,
+        series: widget.mode == PlayerMode.series,
+        onResumed: (at) => _notify('Kaldığın yerden: ${SeekBar.format(at)}'),
+      )..start();
     }
     // Ayarlar › Telefonda yatay oynatıcı: telefon çevrilince görüntü yüzeyi
     // yeniden kurulup donuyordu (Pixel'de görüldü); oynatıcı yatayda kalır.
@@ -210,11 +217,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     if (_pip) unawaited(PictureInPicture.setEnabled(false));
     WidgetsBinding.instance.removeObserver(this);
     unawaited(FullScreen.leave());
-    if (_vod) {
-      _saveProgress();
-      _progressTimer?.cancel();
-      _engine.state.removeListener(_resume);
-    }
+    _progress?.stop();
     if (_landscape) unawaited(SystemChrome.setPreferredOrientations(const []));
     _barTimer?.cancel();
     _digitTimer?.cancel();
@@ -251,39 +254,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   bool get _vod => widget.mode != PlayerMode.live;
 
-  /// Kaldığı yerden devam: kanalın süresi ilk gelince bir kez sarılır.
-  int? _resumedIndex;
-  Timer? _progressTimer;
-
-  /// İlerlemenin yazılacağı kanal ve son bilinen yeri (kanal değişince eski
-  /// kanalınki kaybolmasın).
-  LiveChannel? _progressOf;
-
-  void _resume() {
-    final e = _engine.state.value;
-    if (!e.seekable || _resumedIndex == _session.index) return;
-    _saveProgress();
-    _resumedIndex = _session.index;
-    _progressOf = _session.channel;
-    final url = _session.channel.streams.firstOrNull;
-    final at = url == null ? null : widget.progress?.resumeAt(url);
-    if (at == null) return;
-    unawaited(_engine.seek(at));
-    _notify('Kaldığın yerden: ${SeekBar.format(at)}');
-  }
-
-  /// İzlenen yeri yazar (10 sn'de bir, kanal değişince ve çıkarken).
-  void _saveProgress() {
-    final c = _progressOf;
-    final e = _engine.state.value;
-    if (c == null || !e.seekable) return;
-    widget.progress?.record(
-      c,
-      position: _engine.position.value,
-      duration: e.duration,
-      series: widget.mode == PlayerMode.series,
-    );
-  }
+  /// Film/dizide izlenen yer; canlı yayında null.
+  VodProgress? _progress;
 
   /// Seçenekler › Uyku zamanlayıcı: sıradaki süre.
   void _cycleSleep() {
@@ -501,84 +473,55 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     });
   }
 
-  static final _digitKeys = {
-    for (var n = 0; n <= 9; n++) ...{
-      LogicalKeyboardKey(LogicalKeyboardKey.digit0.keyId + n): n,
-      LogicalKeyboardKey(LogicalKeyboardKey.numpad0.keyId + n): n,
-    },
-  };
-
-  /// Hiçbir katman açık değilken kumanda tuşları. Katman açıkken tuşlar
-  /// odak gezintisine bırakılır (çubuk, menü, liste düğmeleri).
+  /// Hiçbir katman açık değilken kumanda tuşları (kurallar: [PlayerKeys]).
+  /// Bölüm şeridinde tuşlar şeridin (◄► gezinme, OK, ▼ kapatır).
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (event is KeyUpEvent) return KeyEventResult.ignored;
-    // Bölüm şeridinde tuşlar şeridin (◄► gezinme, OK, ▼ kapatır).
-    if (_episodes) return KeyEventResult.ignored;
-    if (widget.mode == PlayerMode.series &&
-        _keys &&
-        !_options &&
-        !_drawer &&
-        event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      _openEpisodes();
-      return KeyEventResult.handled;
-    }
-    if (_bar && !_hints) _restartBarTimer();
-    // Çubuk kendiliğinden açıkken (açılışta, bölüm değişince) odak kökte
-    // kalıyordu: tuşlar ne oynatıcıya ne çubuğa gidiyordu (Chromecast;
-    // kullanıcı: "seçeneklere gelemiyorum"). İlk basış odağı Oynat'a verir.
-    if (_keys && _bar && !_hints && !_options && !_drawer && node.hasPrimaryFocus && event is KeyDownEvent) {
-      _playFocus.requestFocus();
-      return KeyEventResult.handled;
-    }
-    if (_options || _drawer || (_bar && !_hints && !_desktop)) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    // Açılamadı: ◄► ve OK ekrandaki "Tekrar dene" / "Sonraki kanal"
-    // düğmelerinindir; ▲▼ ve rakamlar yine kanal değiştirir (yoksa kullanıcı
-    // açılmayan kanalda kalıyordu).
-    final zapKey =
-        _digitKeys.containsKey(key) ||
-        key == LogicalKeyboardKey.arrowUp ||
-        key == LogicalKeyboardKey.arrowDown ||
-        key == LogicalKeyboardKey.channelUp ||
-        key == LogicalKeyboardKey.channelDown;
-    // Filmde kanal değiştirme yok (▲▼ ve rakamlar başka filme atlamasın).
-    if (widget.mode == PlayerMode.film && zapKey) return KeyEventResult.handled;
-    if (_session.status == PlaybackStatus.failed && !zapKey) return KeyEventResult.ignored;
-    if (event is KeyRepeatEvent && key != LogicalKeyboardKey.arrowUp && key != LogicalKeyboardKey.arrowDown) {
-      return KeyEventResult.handled;
-    }
-    final digit = _digitKeys[key];
-    if (digit != null) {
-      _digit(digit);
-    } else if (key == LogicalKeyboardKey.select ||
-        key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.numpadEnter ||
-        key == LogicalKeyboardKey.gameButtonA) {
-      if (_desktop && _vod) {
-        unawaited(_engine.playOrPause());
-      } else {
+    if (event is KeyUpEvent || _episodes) return KeyEventResult.ignored;
+    final action = PlayerKeys.resolve(
+      PlayerKeyState(
+        mode: widget.mode,
+        tv: _keys,
+        desktop: _desktop,
+        options: _options,
+        drawer: _drawer,
+        bar: _bar,
+        hints: _hints,
+        rootFocused: node.hasPrimaryFocus,
+        failed: _session.status == PlaybackStatus.failed,
+        seekable: _engine.state.value.seekable,
+      ),
+      event,
+    );
+    if (action != PlayerKeyAction.openEpisodes && _bar && !_hints) _restartBarTimer();
+    switch (action) {
+      case PlayerKeyAction.ignore:
+        return KeyEventResult.ignored;
+      case PlayerKeyAction.consume:
+        break;
+      case PlayerKeyAction.openEpisodes:
+        _openEpisodes();
+      case PlayerKeyAction.focusPlay:
+        _playFocus.requestFocus();
+      case PlayerKeyAction.digit:
+        _digit(PlayerKeys.digitOf(event.logicalKey)!);
+      case PlayerKeyAction.showBar:
         _showBar(focus: true);
-      }
-    } else if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.channelUp) {
-      _session.zap(1);
-    } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.channelDown) {
-      _session.zap(-1);
-    } else if ((key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) &&
-        _engine.state.value.seekable) {
-      // Film/dizi: ◄► 10 sn geri/ileri (kanal listesi çubuktaki düğmede).
-      _keySeek(key == LogicalKeyboardKey.arrowLeft ? -1 : 1);
-    } else if (key == LogicalKeyboardKey.arrowLeft) {
-      _openDrawer();
-    } else if (key == LogicalKeyboardKey.arrowRight) {
-      _session.nextStream();
-    } else if (key == LogicalKeyboardKey.mediaPlayPause || key == LogicalKeyboardKey.space) {
-      unawaited(_engine.playOrPause());
-    } else if (key == LogicalKeyboardKey.contextMenu) {
-      // Menü (telefon kumandası, klavye): Seçenekler.
-      _openOptions();
-    } else {
-      return KeyEventResult.ignored;
+      case PlayerKeyAction.playPause:
+        unawaited(_engine.playOrPause());
+      case PlayerKeyAction.zapNext:
+        _session.zap(1);
+      case PlayerKeyAction.zapPrevious:
+        _session.zap(-1);
+      case PlayerKeyAction.seekBack:
+        _keySeek(-1);
+      case PlayerKeyAction.seekForward:
+        _keySeek(1);
+      case PlayerKeyAction.openDrawer:
+        _openDrawer();
+      case PlayerKeyAction.nextStream:
+        _session.nextStream();
+      case PlayerKeyAction.openOptions:
+        _openOptions();
     }
     return KeyEventResult.handled;
   }
@@ -665,32 +608,83 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     );
   }
 
+  /// Canlı yayın, dokunmatik denetimler.
+  Widget _liveTouch(EngineState e, PlaybackSession s) => TouchControls(
+    channel: s.channel,
+    playing: e.playing,
+    showCenter: s.status == PlaybackStatus.playing,
+    resolution: e.hasVideo ? '${e.height}p' : null,
+    streamIndex: s.streamIndex,
+    streamCount: s.streamCount,
+    scaleLabel: _scale.label,
+    clock: widget.clock,
+    onClose: () => Navigator.of(context).pop(),
+    onPlayPause: () {
+      _restartBarTimer();
+      unawaited(_engine.playOrPause());
+    },
+    onPreviousChannel: () => s.zap(-1),
+    onNextChannel: () => s.zap(1),
+    onChannelList: _openDrawer,
+    onNextStream: s.nextStream,
+    onScale: () => _setScale(VideoScale.values[(_scale.index + 1) % VideoScale.values.length]),
+    onOptions: _openOptions,
+    onSeekBy: e.seekable ? _seekBy : null,
+    seekBar: _vodSeekBar(e),
+  );
+
+  /// Canlı yayın, TV çubuğu.
+  Widget _liveBar(EngineState e, PlaybackSession s) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (e.seekable) ...[SeekBar(position: _engine.position, duration: e.duration), const SizedBox(height: 8)],
+      PlayerBar(
+        channel: s.channel,
+        playing: e.playing,
+        resolution: e.hasVideo ? '${e.height}p' : null,
+        streamIndex: s.streamIndex,
+        streamCount: s.streamCount,
+        playFocusNode: _playFocus,
+        onPlayPause: () => unawaited(_engine.playOrPause()),
+        onPreviousChannel: () => s.zap(-1),
+        onNextChannel: () => s.zap(1),
+        onChannelList: _openDrawer,
+        onNextStream: s.nextStream,
+        onOptions: _openOptions,
+      ),
+    ],
+  );
+
+  /// Görüntü: dokunma ve (dokunmatikte) hareketler.
+  Widget _surface(EngineState e, PlaybackSession s) {
+    void toggleBar() => _bar ? _hideBar() : _showBar();
+    final view = _engine.view(fit: _scale.fit);
+    if (_keys) {
+      return GestureDetector(behavior: HitTestBehavior.opaque, onTap: toggleBar, child: view);
+    }
+    return PlayerGestures(
+      onTap: toggleBar,
+      // Ayarlar › Dokunma hareketleri kapalıysa yalnız dokunma.
+      onDoubleTap: !_gestures
+          ? null
+          : () => _setScale(_scale == VideoScale.fill ? VideoScale.original : VideoScale.fill),
+      onPinch: !_gestures ? null : (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
+      onZap: _gestures && widget.mode != PlayerMode.film ? s.zap : null,
+      adjust: _gestures,
+      // Film/dizi: sağa/sola çift dokunma ±10 sn.
+      onSeekSide: _gestures && e.seekable ? _seekBy : null,
+      child: view,
+    );
+  }
+
   /// Görüntü ve üstündeki katmanlar; küçük pencerede ([pip]) yalnız görüntü.
   Widget _layers(BuildContext context, EngineState e, bool pip) {
     final s = _session;
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (_keys)
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _bar ? _hideBar() : _showBar(),
-            child: _engine.view(fit: _scale.fit),
-          )
-        else
-          PlayerGestures(
-            onTap: () => _bar ? _hideBar() : _showBar(),
-            // Ayarlar › Dokunma hareketleri kapalıysa yalnız dokunma.
-            onDoubleTap: !_gestures
-                ? null
-                : () => _setScale(_scale == VideoScale.fill ? VideoScale.original : VideoScale.fill),
-            onPinch: !_gestures ? null : (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
-            onZap: _gestures && widget.mode != PlayerMode.film ? s.zap : null,
-            adjust: _gestures,
-            // Film/dizi: sağa/sola çift dokunma ±10 sn.
-            onSeekSide: _gestures && e.seekable ? _seekBy : null,
-            child: _engine.view(fit: _scale.fit),
-          ),
+        _surface(e, s),
         Visibility(
           visible: !pip,
           maintainState: true,
@@ -698,173 +692,43 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
             fit: StackFit.expand,
             children: [
               if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
-              if (_bar && !_keys && _vod) _vodTouch(e, s),
-              if (_bar && !_keys && !_vod)
-                TouchControls(
+              if (_bar && !_keys) _vod ? _vodTouch(e, s) : _liveTouch(e, s),
+              if (_bar && !_keys && _options)
+                TouchOptionsLayer(panel: _optionsPanel(e, s, closable: true), onClose: _closeOptions),
+              if (_keys && _seekShown && !_bar && e.seekable)
+                TvSeekToast(
+                  seekBar: SeekBar(position: _engine.position, duration: e.duration),
+                ),
+              if (_keys && _vod && s.status == PlaybackStatus.playing && (_bar || !e.playing))
+                TvVodInfoLayer(
                   channel: s.channel,
+                  series: widget.mode == PlayerMode.series,
+                  tmdb: widget.tmdb,
                   playing: e.playing,
-                  showCenter: s.status == PlaybackStatus.playing,
-                  resolution: e.hasVideo ? '${e.height}p' : null,
-                  streamIndex: s.streamIndex,
-                  streamCount: s.streamCount,
-                  scaleLabel: _scale.label,
+                ),
+              if (_bar && _keys)
+                TvPlayerPanel(
                   clock: widget.clock,
-                  onClose: () => Navigator.of(context).pop(),
-                  onPlayPause: () {
-                    _restartBarTimer();
-                    unawaited(_engine.playOrPause());
-                  },
-                  onPreviousChannel: () => s.zap(-1),
-                  onNextChannel: () => s.zap(1),
-                  onChannelList: _openDrawer,
-                  onNextStream: s.nextStream,
-                  onScale: () => _setScale(VideoScale.values[(_scale.index + 1) % VideoScale.values.length]),
-                  onOptions: _openOptions,
-                  onSeekBy: e.seekable ? _seekBy : null,
-                  seekBar: e.seekable
-                      ? SeekBar(
-                          position: _engine.position,
-                          duration: e.duration,
-                          onSeek: (to) {
-                            _restartBarTimer();
-                            unawaited(_engine.seek(to));
-                          },
-                          // Sürüklerken çubuk kapanmasın.
-                          onDragging: (dragging) => dragging ? _barTimer?.cancel() : _restartBarTimer(),
+                  options: _options ? _optionsPanel(e, s) : null,
+                  hints: _hints
+                      ? PlayerHints(multiStream: s.streamCount > 1, previous: s.previousChannel != null)
+                      : null,
+                  episodes: _episodes
+                      ? FocusScope(
+                          child: EpisodeStrip(
+                            episodes: s.channels,
+                            current: s.index,
+                            progress: widget.progress,
+                            onClose: _closeEpisodes,
+                            onSelect: (i) {
+                              _closeEpisodes();
+                              if (i != s.index) s.openAt(i);
+                            },
+                          ),
                         )
                       : null,
+                  bar: _vod ? _vodBar(e, s) : _liveBar(e, s),
                 ),
-              // Dokunmatikte panelin dışına dokunmak Seçenekler'i kapatır
-              // (önceden kapatacak yer yoktu).
-              if (_bar && !_keys && _options)
-                Positioned.fill(
-                  child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _closeOptions),
-                ),
-              if (_bar && !_keys && _options)
-                Positioned(
-                  right: 16,
-                  bottom: 16,
-                  child: SafeArea(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-                        maxWidth: math.min(360, MediaQuery.sizeOf(context).width - 32),
-                      ),
-                      child: _optionsPanel(e, s, closable: true),
-                    ),
-                  ),
-                ),
-              if (_keys && _seekShown && !_bar && e.seekable)
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: 24,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(color: const Color(0xCC000000), borderRadius: BorderRadius.circular(16)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: SeekBar(position: _engine.position, duration: e.duration),
-                    ),
-                  ),
-                ),
-              // TV film/dizi: duraklatınca solda afiş, ad ve özet; oynarken
-              // çubukla birlikte yalnız ad (B tasarımı).
-              if (_keys && _vod && s.status == PlaybackStatus.playing && (_bar || !e.playing)) ...[
-                const IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        stops: [0, 0.4, 0.7],
-                        colors: [Color(0xF00B0B20), Color(0xB30B0B20), Color(0x000B0B20)],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 36,
-                  top: 40,
-                  width: e.playing ? 420 : 480,
-                  child: VodInfo(
-                    channel: s.channel,
-                    series: widget.mode == PlayerMode.series,
-                    tmdb: widget.tmdb,
-                    full: !e.playing,
-                  ),
-                ),
-              ],
-              if (_bar && _keys) ...[
-                Positioned(top: 16, right: 24, child: PlayerClock(widget.clock)),
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: 16,
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_options) ...[
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
-                              child: _optionsPanel(e, s),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        if (_hints) ...[
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: PlayerHints(multiStream: s.streamCount > 1, previous: s.previousChannel != null),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                        if (_episodes) ...[
-                          FocusScope(
-                            child: EpisodeStrip(
-                              episodes: s.channels,
-                              current: s.index,
-                              progress: widget.progress,
-                              onClose: _closeEpisodes,
-                              onSelect: (i) {
-                                _closeEpisodes();
-                                if (i != s.index) s.openAt(i);
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
-                        if (_vod)
-                          _vodBar(e, s)
-                        else ...[
-                          if (e.seekable) ...[
-                            SeekBar(position: _engine.position, duration: e.duration),
-                            const SizedBox(height: 8),
-                          ],
-                          PlayerBar(
-                            channel: s.channel,
-                            playing: e.playing,
-                            resolution: e.hasVideo ? '${e.height}p' : null,
-                            streamIndex: s.streamIndex,
-                            streamCount: s.streamCount,
-                            playFocusNode: _playFocus,
-                            onPlayPause: () => unawaited(_engine.playOrPause()),
-                            onPreviousChannel: () => s.zap(-1),
-                            onNextChannel: () => s.zap(1),
-                            onChannelList: _openDrawer,
-                            onNextStream: s.nextStream,
-                            onOptions: _openOptions,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ],
               if (_drawer)
                 Positioned(
                   left: 0,
