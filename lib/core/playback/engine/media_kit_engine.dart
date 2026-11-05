@@ -10,6 +10,7 @@ import '../../content/diagnostics.dart';
 import '../../layout/form_factor.dart';
 import '../subtitle_look.dart';
 import 'audio_fallback.dart';
+import 'late_closer.dart';
 import 'mpv_probe.dart';
 import 'playback_engine.dart';
 
@@ -346,6 +347,7 @@ class MediaKitEngine implements PlaybackEngine {
     Diagnostics.instance.log('görüntü', '$path yol 10 sn: atlanan kare $drops, çözücü $decoderDrops, fps $fps');
     // Grafik belleği dolunca sistem uygulamayı kapatıyor: görsellerin payı görünsün.
     final images = PaintingBinding.instance.imageCache;
+    Diagnostics.instance.log('bellek', 'kapanmamış oynatıcı: ${LateCloser.open}');
     final megabytes = images.currentSizeBytes ~/ (1024 * 1024);
     Diagnostics.instance.log(
       'bellek',
@@ -652,15 +654,16 @@ class MediaKitEngine implements PlaybackEngine {
     // Kapatmadan önce çekirdek yanıt veriyor mu: takılıysa kapatma çağrısı da
     // arayüzü dondurur (Geri ile çıkarken). O zaman oynatıcı bırakılır; uygulama
     // yeniden açılınca sistem temizler.
-    if (_android && !_stuck) {
+    var responsive = !_stuck;
+    if (_android && responsive) {
       try {
         await Future.wait([
           ..._reads,
           MpvProbe.read(library: 'libmpv.so', handle: await _player.handle, names: const ['time-pos']),
         ]).timeout(_disposeProbe);
       } on TimeoutException {
-        _stuck = true;
-        Diagnostics.instance.log('görüntü', 'oynatıcı kapanırken yanıt vermedi, bırakıldı');
+        responsive = false;
+        Diagnostics.instance.log('görüntü', 'oynatıcı kapanırken yanıt vermedi');
       } on Object {
         // Okuma hatası takılma değildir.
       }
@@ -673,7 +676,24 @@ class MediaKitEngine implements PlaybackEngine {
     await _audioFallbacks.close();
     _state.dispose();
     _position.dispose();
-    if (!_stuck) await _player.dispose();
+    if (responsive) {
+      await _player.dispose();
+    } else if (_android) {
+      unawaited(_closeLate());
+    }
+  }
+
+  /// Meşgul çekirdeğe önce durmasını söyler: arkada oynamayı sürdürmesin.
+  /// Komut da okuma da ayrı isolate'ta: takılan yalnız onlar olur.
+  Future<void> _closeLate() async {
+    final handle = await _player.handle;
+    await LateCloser.closeWhenReady(
+      ready: () async {
+        await MpvProbe.stop(library: 'libmpv.so', handle: handle);
+        await MpvProbe.read(library: 'libmpv.so', handle: handle, names: const ['time-pos']);
+      },
+      close: _player.dispose,
+    );
   }
 
   static const _disposeProbe = Duration(seconds: 2);

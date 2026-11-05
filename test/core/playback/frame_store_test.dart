@@ -85,6 +85,24 @@ void main() {
     expect(store.frameOf(_b), isNull);
   });
 
+  test('pause: kesilen alımda ikinci akış denenmez', () async {
+    final gate = Completer<Uint8List?>();
+    final calls = <String>[];
+    const channel = LiveChannel(name: 'A', number: 9, category: 'TV', streams: ['x1', 'x2']);
+    final store = FrameStore(
+      grabber: (url) {
+        calls.add(url);
+        return gate.future;
+      },
+    );
+    store.request(const [channel]);
+    await pumpEventQueue();
+    store.pause();
+    gate.complete(null);
+    await pumpEventQueue();
+    expect(calls, ['x1']);
+  });
+
   test('kare gelince dinleyiciler haber alır', () async {
     final store = FrameStore(grabber: (url) async => _jpeg(1));
     var notified = 0;

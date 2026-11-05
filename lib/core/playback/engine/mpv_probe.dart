@@ -7,6 +7,8 @@ import 'package:ffi/ffi.dart';
 typedef _GetC = Pointer<Utf8> Function(Pointer<Void>, Pointer<Utf8>);
 typedef _FreeC = Void Function(Pointer<Void>);
 typedef _FreeDart = void Function(Pointer<Void>);
+typedef _CommandC = Int32 Function(Pointer<Void>, Pointer<Utf8>);
+typedef _CommandDart = int Function(Pointer<Void>, Pointer<Utf8>);
 
 /// libmpv özelliklerini ayrı isolate'ta okur. `mpv_get_property_string` mpv'nin
 /// çekirdeğinden yanıt gelene dek bekler; Android'de Dart ana iş parçacığında
@@ -21,6 +23,14 @@ abstract final class MpvProbe {
     required int handle,
     required List<String> names,
   }) => Isolate.run(() => _read(library, handle, names));
+
+  /// Oynatmayı durdurur (`stop`); çekirdek takılıysa yalnız bu isolate bekler.
+  static Future<void> stop({required String library, required int handle}) => Isolate.run(() => _stop(library, handle));
+
+  static void _stop(String library, int handle) {
+    final command = DynamicLibrary.open(library).lookupFunction<_CommandC, _CommandDart>('mpv_command_string');
+    using((arena) => command(Pointer<Void>.fromAddress(handle), 'stop'.toNativeUtf8(allocator: arena)));
+  }
 
   static Map<String, String?> _read(String library, int handle, List<String> names) {
     final lib = DynamicLibrary.open(library);
