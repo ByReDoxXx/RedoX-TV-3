@@ -24,7 +24,8 @@ void main() {
 
     gates[1].complete();
     await pumpEventQueue();
-    await queue.seek(const Duration(seconds: 40));
+    unawaited(queue.seek(const Duration(seconds: 40)));
+    await pumpEventQueue();
     expect(done, [10, 30, 40]);
     gates[2].complete();
   });
