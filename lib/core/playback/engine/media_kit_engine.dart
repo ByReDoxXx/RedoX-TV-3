@@ -11,6 +11,7 @@ import '../../layout/form_factor.dart';
 import '../subtitle_look.dart';
 import 'audio_fallback.dart';
 import 'late_closer.dart';
+import 'mpv_log_ring.dart';
 import 'mpv_probe.dart';
 import 'playback_engine.dart';
 import 'seek_queue.dart';
@@ -31,6 +32,7 @@ class MediaKitEngine implements PlaybackEngine {
     }
     final s = _player.stream;
     _subscriptions.addAll([
+      if (_diagnoseCore) s.log.listen((l) => _mpvLog.add('${l.prefix}: ${l.text}'.trim())),
       s.playing.listen((v) {
         if (!_startLogged) {
           Diagnostics.instance.log('oynatıcı', 'açılışta oynuyor=$v, ${_opening.elapsedMilliseconds} ms');
@@ -64,8 +66,15 @@ class MediaKitEngine implements PlaybackEngine {
     ]);
   }
 
-  final _player = Player();
+  final _player = Player(
+    configuration: PlayerConfiguration(logLevel: _diagnoseCore ? MPVLogLevel.v : MPVLogLevel.error),
+  );
   late final VideoController _video;
+
+  /// TV'de çekirdek takılması (Philips) çözülene dek: mpv'nin ayrıntılı günlüğü
+  /// bellekte tutulur, takılınca tanılamaya yazılır.
+  static bool get _diagnoseCore => _android && _tv;
+  final _mpvLog = MpvLogRing();
 
   /// Oynatıcı ayarları bitti: ilk yayın bunlarla açılsın.
   late final Future<void> _tuned;
@@ -129,6 +138,9 @@ class MediaKitEngine implements PlaybackEngine {
     if (_stuck || _disposed) return;
     _stuck = true;
     Diagnostics.instance.log('görüntü', 'oynatıcı yanıt vermiyor (donanım çözücü takılmış olabilir)');
+    for (final line in _mpvLog.lines) {
+      Diagnostics.instance.log('mpv', line);
+    }
     _update(_state.value.copyWith(stuck: true));
   }
 

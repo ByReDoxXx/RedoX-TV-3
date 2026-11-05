@@ -23,6 +23,8 @@ import 'core/content/tmdb.dart';
 import 'core/content/user_sources.dart';
 import 'core/content/watch_history.dart';
 import 'core/content/watch_progress.dart';
+import 'core/platform/device_controls.dart';
+import 'core/playback/engine/late_closer.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/layout/form_factor.dart';
@@ -48,6 +50,7 @@ Future<void> main() async {
   };
   // Oynatıcı (libmpv) yerel kütüphanesi.
   MediaKit.ensureInitialized();
+  LateCloser.onLeftoverChanged = DeviceControls.setLeftoverPlayer;
   // TV'de dokunma yok, odak her an görünür olmalı. Android varsayılanı "touch"
   // kipidir ve halka ilk tuşa kadar gizli kalır (emülatörde doğrulandı).
   if (FormFactor.current == FormFactor.tv) {

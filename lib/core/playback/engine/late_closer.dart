@@ -7,7 +7,19 @@ import '../../content/diagnostics.dart';
 /// tutar (Philips: film oynarken ikinci çözücü dakikalarca açık kaldı; ölçüldü).
 abstract final class LateCloser {
   /// Şu an kapanmamış oynatıcı sayısı.
-  static int open = 0;
+  static int get open => _open;
+  static int _open = 0;
+
+  static set open(int value) {
+    final before = _open > 0;
+    _open = value;
+    if ((value > 0) != before) onLeftoverChanged?.call(value > 0);
+  }
+
+  /// Kapanmamış oynatıcı var/yok değişince. Android'de uygulama çıkarken süreç
+  /// kapatılsın diye: böyle bir oynatıcı Dart tarafı kapandıktan sonra geri çağrı
+  /// yaparsa uygulama düşüyor (`Callback invoked after it has been deleted`).
+  static void Function(bool leftover)? onLeftoverChanged;
 
   /// Çekirdek yanıt verince ([ready]) oynatıcıyı kapatır ([close]). [wait]
   /// içinde yanıt gelmezse oynatıcı bırakılır: kapatma çağrısı takılı çekirdekte

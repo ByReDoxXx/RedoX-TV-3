@@ -7,6 +7,7 @@ import '../../core/content/app_settings.dart';
 import '../../core/content/channel_folder.dart';
 import '../../core/content/live_channel.dart';
 import '../../core/content/tmdb.dart';
+import '../../core/content/diagnostics.dart';
 import '../../core/content/watch_progress.dart';
 import '../../core/layout/form_factor.dart';
 import '../../core/platform/device_controls.dart';
@@ -58,7 +59,16 @@ class PlayerPage extends StatefulWidget {
     this.mode = PlayerMode.live,
     this.progress,
     this.tmdb,
+    this.onStuck,
+    this.reopened = false,
   });
+
+  /// Oynatıcı çekirdeği takıldı; verilen dizinle yeniden açılabilir. null ise
+  /// "açılamadı" ekranında kalır. [route] verir.
+  final ValueChanged<int>? onStuck;
+
+  /// Bu sayfa takılan oynatıcının yerine açıldı: ekranda belirtilir.
+  final bool reopened;
 
   final PlayerMode mode;
 
@@ -97,19 +107,27 @@ class PlayerPage extends StatefulWidget {
     WatchProgress? progress,
     Tmdb? tmdb,
   }) => MaterialPageRoute(
-    builder: (_) => PlayerPage(
-      channels: channels,
+    builder: (_) => _ReopeningPlayer(
       initialIndex: initialIndex,
-      clock: clock,
-      engineFactory: engineFactory,
-      rank: rank,
-      onWatched: onWatched,
-      resolve: resolve,
-      mode: mode,
-      progress: progress,
-      tmdb: tmdb,
+      builder: (index, onStuck, {required reopened}) => PlayerPage(
+        channels: channels,
+        initialIndex: index,
+        clock: clock,
+        engineFactory: engineFactory,
+        rank: rank,
+        onWatched: onWatched,
+        resolve: resolve,
+        mode: mode,
+        progress: progress,
+        tmdb: tmdb,
+        onStuck: onStuck,
+        reopened: reopened,
+      ),
     ),
   );
+
+  /// Takılan oynatıcı en çok bu kadar yeniden açılır: her biri bir çözücü tutar.
+  static const maxReopens = 2;
 
   /// Kanal değişince çubuğun ve ipuçlarının görünme süresi.
   static const announceDuration = Duration(milliseconds: 3800);
@@ -122,6 +140,39 @@ class PlayerPage extends StatefulWidget {
 
   @override
   State<PlayerPage> createState() => _PlayerPageState();
+}
+
+/// Takılan oynatıcının yerine aynı rotada yenisini açar (yeni anahtar: yeni motor,
+/// film kaldığı yerden sürer). Rota kapanmaz: açan sayfa oynatıcı bitti sanıp kare
+/// almaya başlamasın.
+class _ReopeningPlayer extends StatefulWidget {
+  const _ReopeningPlayer({required this.initialIndex, required this.builder});
+
+  final int initialIndex;
+  final PlayerPage Function(int index, ValueChanged<int>? onStuck, {required bool reopened}) builder;
+
+  @override
+  State<_ReopeningPlayer> createState() => _ReopeningPlayerState();
+}
+
+class _ReopeningPlayerState extends State<_ReopeningPlayer> {
+  late int _index = widget.initialIndex;
+  int _reopens = 0;
+
+  void _reopen(int index) {
+    if (!mounted) return;
+    Diagnostics.instance.log('oynatıcı', 'takılan oynatıcının yerine yenisi açılıyor');
+    setState(() {
+      _index = index;
+      _reopens++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => KeyedSubtree(
+    key: ValueKey(_reopens),
+    child: widget.builder(_index, _reopens < PlayerPage.maxReopens ? _reopen : null, reopened: _reopens > 0),
+  );
 }
 
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
@@ -201,6 +252,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       );
     }
     _session.addListener(_onSession);
+    if (widget.reopened) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _notify('Oynatıcı takıldı, yeniden açıldı', duration: const Duration(seconds: 5));
+      });
+    }
     _audioFallbacks = _engine.audioFallbacks.listen(_onAudioFallback);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onSession());
     // Telefon/tablet: Ana ekrana çıkınca yayın küçük pencerede sürer.
@@ -362,8 +418,15 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   }
 
   /// Kanal veya akış değişince çubuğu ve ipuçlarını kısa süre göster.
+  bool _reopening = false;
+
   void _onSession() {
     if (!mounted) return;
+    if (_engine.state.value.stuck && !_reopening && widget.onStuck != null) {
+      _reopening = true;
+      widget.onStuck!(_session.index);
+      return;
+    }
     if (_session.status == PlaybackStatus.playing && _session.channel.number != _watched) {
       _watched = _session.channel.number;
       widget.onWatched?.call(_session.channel);

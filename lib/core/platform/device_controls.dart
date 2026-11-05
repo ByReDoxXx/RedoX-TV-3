@@ -21,6 +21,18 @@ abstract final class DeviceControls {
   /// null: sistemin parlaklığına dön (oynatıcıdan çıkınca).
   static Future<void> setBrightness(double? v) => _set('parlaklikVer', 'parlaklik', v?.clamp(0, 1).toDouble());
 
+  /// Kapanmamış oynatıcı var: uygulama çıkarken süreç de kapatılsın
+  /// ([LateCloser.onLeftoverChanged]).
+  static Future<void> setLeftoverPlayer(bool leftover) async {
+    try {
+      await _channel.invokeMethod<void>('artikOynatici', leftover);
+    } on MissingPluginException {
+      // Masaüstü: gerekmiyor.
+    } on PlatformException {
+      // Bildirilemedi: eski davranış sürer.
+    }
+  }
+
   static Future<double?> _get(String method, String key) async {
     if (debugValues case final d?) return d[key];
     try {

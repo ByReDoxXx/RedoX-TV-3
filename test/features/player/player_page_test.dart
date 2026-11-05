@@ -80,6 +80,60 @@ Future<void> _key(WidgetTester tester, LogicalKeyboardKey key) async {
 PlayerBar _bar(WidgetTester tester) => tester.widget<PlayerBar>(find.byType(PlayerBar));
 
 void main() {
+  testWidgets('takılan oynatıcının yerine yenisi açılır, sınır dolunca açılmaz', (tester) async {
+    final engines = <FakeEngine>[];
+    var closed = false;
+    await loadSora(tester);
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RedoxTheme.dark(formFactor: FormFactor.tv),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              await Navigator.of(context).push(
+                PlayerPage.route(
+                  channels: _channels,
+                  initialIndex: 1,
+                  clock: '20:45',
+                  engineFactory: () {
+                    final e = FakeEngine();
+                    engines.add(e);
+                    return e;
+                  },
+                ),
+              );
+              closed = true;
+            },
+            child: const Text('aç'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('aç'));
+    await _settle(tester);
+    expect(engines, hasLength(1));
+
+    engines.last.freeze();
+    await _settle(tester);
+    expect(engines, hasLength(2));
+    expect(engines.first.disposed, isTrue);
+    expect(engines.last.opened.last, _channels[1].streams.first, reason: 'aynı kanal');
+    expect(closed, isFalse, reason: 'açan sayfa oynatıcı bitti sanmasın');
+    expect(find.text('Oynatıcı takıldı, yeniden açıldı'), findsOneWidget);
+
+    engines.last.freeze();
+    await _settle(tester);
+    expect(engines, hasLength(3));
+
+    engines.last.freeze();
+    await _settle(tester);
+    expect(engines, hasLength(3), reason: 'sınır: her biri bir çözücü tutar');
+    await _settle(tester, const Duration(seconds: 6));
+  });
+
   testWidgets('çözülemeyen ses izi ekranda 5 sn bildirilir', (tester) async {
     final e = await _open(tester);
     e.emitAudioFallback(const AudioFallback(MediaTrack('2', 'English')));

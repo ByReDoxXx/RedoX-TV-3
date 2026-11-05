@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.media.AudioManager
 import android.os.Build
+import android.os.Process
 import android.provider.Settings
 import android.text.InputFilter
 import android.text.InputType
@@ -24,6 +25,9 @@ class MainActivity : FlutterActivity() {
     /** Oynatıcı açık (telefon/tablet): Ana ekrana çıkınca küçük pencere. */
     private var pipEnabled = false
     private var pipChannel: MethodChannel? = null
+
+    /** Takılı oynatıcı kapatılamadı: Dart tarafından uzun yaşayamaz. */
+    private var leftoverPlayer = false
 
     private val pipSupported: Boolean
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
@@ -67,6 +71,10 @@ class MainActivity : FlutterActivity() {
             val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
             when (call.method) {
+                "artikOynatici" -> {
+                    leftoverPlayer = call.arguments as Boolean
+                    result.success(null)
+                }
                 "sesAl" -> result.success(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toDouble() / max)
                 "sesVer" -> {
                     val v = (call.arguments as Double).coerceIn(0.0, 1.0)
@@ -91,6 +99,16 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    /**
+     * Takılı oynatıcı varken Dart kapanırsa libmpv silinmiş geri çağrıyı çalıştırıp
+     * uygulamayı düşürüyor; aynı süreçte yeniden açılış da eski oynatıcıya `quit`
+     * gönderiyor. Süreç Dart'tan önce kapatılır; çözücüyü sistem bırakır.
+     */
+    override fun onDestroy() {
+        if (leftoverPlayer && !isChangingConfigurations) Process.killProcess(Process.myPid())
+        super.onDestroy()
     }
 
     private fun pipParams(): PictureInPictureParams {
