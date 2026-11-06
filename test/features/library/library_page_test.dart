@@ -284,12 +284,16 @@ void main() {
       await maybeSnapshot(tester, key, 'build/kutuphane/dizi-sayfa-${f.name}.png', pixelRatio: 2);
       await tester.tap(find.text('Bölüm 2'));
       expect(watched!.$2, 1);
-      expect([for (final c in watched!.$1) c.streams.single], ['http://ornek/kg11.mp4', 'http://ornek/kg12.mp4']);
+      expect(
+        [for (final c in watched!.$1) c.streams.single],
+        ['http://ornek/kg11.mp4', 'http://ornek/kg12.mp4', 'http://ornek/kg21.mp4'],
+      );
       await tester.tap(find.text('Sezon 2'));
       await tester.pump();
       expect(find.text('Bölüm 2'), findsNothing);
       await tester.tap(find.text('Bölüm 1'));
-      expect(watched!.$1.single.streams.single, 'http://ornek/kg21.mp4');
+      // Oynatıcı bütün sezonları alır: sezon sekmeleri, sezon bitince sonraki sezon.
+      expect(watched!.$1[watched!.$2].streams.single, 'http://ornek/kg21.mp4');
       await tester.tap(find.textContaining('İzle'));
       expect(watched!.$1.first.streams.single, 'http://ornek/kg11.mp4', reason: 'İzle: ilk sezonun ilk bölümü');
     });

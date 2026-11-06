@@ -9,6 +9,7 @@ import '../../../core/layout/form_factor.dart';
 import '../../../core/theme/redox_colors.dart';
 import '../../../core/theme/redox_metrics.dart';
 import '../../../core/theme/redox_shapes.dart';
+import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../library/widgets/tmdb_poster.dart';
 import 'touch_controls.dart';
@@ -34,7 +35,8 @@ class TouchSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final phone = _isPhone(context);
     final panel = Material(
-      color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.96),
+      // Saydam olmaz: alttaki çubuğun ve saatin yazıları panelde okunmasın.
+      color: RedoxRoles.surfaceContainerLowest,
       borderRadius: phone
           ? const BorderRadius.vertical(top: Radius.circular(RedoxRadius.lg))
           : const BorderRadius.horizontal(left: Radius.circular(RedoxRadius.lg)),
@@ -103,34 +105,52 @@ class ChoiceColumn {
 
 /// Yan yana seçim sütunları; her seçim tek dokunuşla uygulanır.
 class ChoicePanel extends StatelessWidget {
-  const ChoicePanel({super.key, required this.columns});
+  const ChoicePanel({super.key, required this.columns, this.footer});
 
   final List<ChoiceColumn> columns;
+
+  /// Sütunların altında (altyazı boyutu).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    // Kumandada odak açılışta ilk sütunun seçilisinde; dokunmatikte odak yok.
+    final tv = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
     return SingleChildScrollView(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (i, c) in columns.indexed) ...[
-            if (i > 0) const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (columns.length > 1)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
-                      child: Text(c.title, style: t.labelLarge!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (i, c) in columns.indexed) ...[
+                if (i > 0) const SizedBox(width: 16),
+                Expanded(
+                  child: FocusTraversalGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (columns.length > 1)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+                            child: Text(c.title, style: t.labelLarge!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                          ),
+                        for (final (id, label) in c.choices)
+                          _ChoiceRow(
+                            label: label,
+                            checked: id == c.selected,
+                            autofocus: tv && i == 0 && id == c.selected,
+                            onTap: () => c.onSelect(id),
+                          ),
+                      ],
                     ),
-                  for (final (id, label) in c.choices)
-                    _ChoiceRow(label: label, checked: id == c.selected, onTap: () => c.onSelect(id)),
-                ],
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          ?footer,
         ],
       ),
     );
@@ -138,36 +158,112 @@ class ChoicePanel extends StatelessWidget {
 }
 
 class _ChoiceRow extends StatelessWidget {
-  const _ChoiceRow({required this.label, required this.checked, required this.onTap});
+  const _ChoiceRow({required this.label, required this.checked, required this.onTap, this.autofocus = false});
 
   final String label;
   final bool checked;
+  final bool autofocus;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = checked ? RedoxRoles.tertiary : RedoxRoles.onSurface;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(RedoxRadius.md),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge!.copyWith(color: color),
-                ),
+    final radius = BorderRadius.circular(RedoxRadius.md);
+    return FocusGlow(
+      borderRadius: radius,
+      scale: 1,
+      builder: (context, active) => Material(
+        color: active ? RedoxRoles.surfaceContainerHigh : Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          autofocus: autofocus,
+          borderRadius: radius,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge!.copyWith(color: color),
+                    ),
+                  ),
+                  if (checked) RedoxIcon(RedoxIcons.check, color: color, size: 20),
+                ],
               ),
-              if (checked) RedoxIcon(RedoxIcons.check, color: color, size: 20),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Yan yana küçük seçim (altyazı boyutu): seçim hemen uygulanır.
+class PillChoices extends StatelessWidget {
+  const PillChoices({
+    super.key,
+    required this.title,
+    required this.choices,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String title;
+  final List<(String, String)> choices;
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(RedoxRadius.full);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: t.labelLarge!.copyWith(color: RedoxRoles.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (id, label) in choices)
+                FocusGlow(
+                  borderRadius: radius,
+                  builder: (context, active) => Material(
+                    color: id == selected
+                        ? Colors.white
+                        : (active ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainerHigh),
+                    borderRadius: radius,
+                    child: InkWell(
+                      onTap: () => onSelect(id),
+                      borderRadius: radius,
+                      focusColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Text(
+                          label,
+                          style: t.labelLarge!.copyWith(
+                            color: id == selected ? RedoxRoles.surface : RedoxRoles.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -269,19 +365,27 @@ class NextEpisodeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 16),
-            FilledButton(
-              onPressed: onPlay,
-              style: FilledButton.styleFrom(
-                backgroundColor: RedoxRoles.primaryContainer,
-                foregroundColor: Colors.white,
+            // Kumandada odak "Şimdi oynat"ta gelir.
+            FocusGlow(
+              borderRadius: BorderRadius.circular(RedoxRadius.full),
+              builder: (context, active) => FilledButton(
+                onPressed: onPlay,
+                autofocus: true,
+                style: FilledButton.styleFrom(
+                  backgroundColor: RedoxRoles.primaryContainer,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Şimdi oynat'),
               ),
-              child: const Text('Şimdi oynat'),
             ),
             const SizedBox(width: 4),
-            TextButton(
-              onPressed: onCancel,
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-              child: const Text('İptal'),
+            FocusGlow(
+              borderRadius: BorderRadius.circular(RedoxRadius.full),
+              builder: (context, active) => TextButton(
+                onPressed: onCancel,
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                child: const Text('İptal'),
+              ),
             ),
           ],
         ),

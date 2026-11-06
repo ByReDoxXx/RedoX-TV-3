@@ -6,7 +6,10 @@ import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/category_chip.dart';
 import '../../../core/ui/channel_logo.dart';
+import '../../../core/layout/form_factor.dart';
+import '../../../core/theme/redox_metrics.dart';
 import '../../../core/ui/focus_glow.dart';
+import '../../../core/ui/redox_progress_bar.dart';
 import '../../../core/ui/scroll_hint_row.dart';
 import '../../../core/ui/status_badge.dart';
 
@@ -23,6 +26,9 @@ class ChannelDrawer extends StatefulWidget {
   final ValueChanged<int> onSelect;
 
   static const width = 340.0;
+
+  /// TV: sonraki program da yazılır.
+  static const wideWidth = 440.0;
 
   @override
   State<ChannelDrawer> createState() => _ChannelDrawerState();
@@ -41,8 +47,9 @@ class _ChannelDrawerState extends State<ChannelDrawer> {
         if (_category == null || c.category == _category) i,
     ];
     final current = widget.channels[widget.currentIndex];
+    final tv = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.tv;
     return Container(
-      width: ChannelDrawer.width,
+      width: tv ? ChannelDrawer.wideWidth : ChannelDrawer.width,
       color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.96),
       child: SafeArea(
         right: false,
@@ -52,9 +59,17 @@ class _ChannelDrawerState extends State<ChannelDrawer> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Text(
-                  'Hızlı kanal listesi (${widget.channels.length})',
-                  style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Kanallar  '),
+                      TextSpan(
+                        text: '${widget.channels.length}',
+                        style: const TextStyle(color: RedoxRoles.tertiary, fontFeatures: RedoxType.tabular),
+                      ),
+                    ],
+                  ),
+                  style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w800),
                 ),
               ),
               ScrollHintRow(
@@ -83,6 +98,7 @@ class _ChannelDrawerState extends State<ChannelDrawer> {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: _Row(
                         channel: c,
+                        showNext: tv,
                         current: identical(c, current),
                         // Açılışta şimdiki kanal odakta (başka kategoride
                         // değilse); yoksa listenin ilki.
@@ -102,9 +118,16 @@ class _ChannelDrawerState extends State<ChannelDrawer> {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.channel, required this.current, required this.autofocus, required this.onPressed});
+  const _Row({
+    required this.channel,
+    required this.showNext,
+    required this.current,
+    required this.autofocus,
+    required this.onPressed,
+  });
 
   final LiveChannel channel;
+  final bool showNext;
   final bool current;
   final bool autofocus;
   final VoidCallback onPressed;
@@ -166,14 +189,38 @@ class _Row extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        '${c.streams.length} akış · ${c.programTitle ?? c.category}',
+                        c.programTitle == null
+                            ? '${c.streams.length} akış · ${c.category}'
+                            : [?c.timeRange, c.programTitle!].join(' '),
                         style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (c.progress case final progress?) ...[
+                        const SizedBox(height: 4),
+                        RedoxProgressBar(value: progress, height: 3),
+                      ],
                     ],
                   ),
                 ),
+                if (showNext && c.next != null) ...[
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 110,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Sonra', style: RedoxType.labelSm.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                        Text(
+                          c.next!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (c.live)
                   const SizedBox(
                     height: 14,

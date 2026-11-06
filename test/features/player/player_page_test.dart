@@ -414,6 +414,36 @@ void main() {
     expect(find.byType(SeekBar), findsNothing);
   });
 
+  testWidgets('TV canlı: program ve sonraki yayın çubukta; Ses ve altyazı paneli kumandayla', (tester) async {
+    final key = GlobalKey();
+    final e = await _open(tester, boundary: key);
+    await tester.pump(PlayerPage.announceDuration);
+    await _settle(tester);
+    await _key(tester, LogicalKeyboardKey.select);
+    final c = _channels.first;
+    expect(find.textContaining(c.programTitle!, findRichText: true), findsOneWidget);
+    expect(find.text(c.next!), findsOneWidget);
+    expect(find.text('Kanallar'), findsOneWidget);
+    await maybeSnapshot(tester, key, 'build/oynatici/tv-canli.png', pixelRatio: 2);
+
+    await tester.tap(find.text('Ses ve altyazı'));
+    await _settle(tester);
+    expect(find.text('Altyazı boyutu'), findsOneWidget);
+    await maybeSnapshot(tester, key, 'build/oynatici/tv-ses-altyazi.png', pixelRatio: 2);
+    await _key(tester, LogicalKeyboardKey.arrowUp);
+    expect(find.text('Altyazı boyutu'), findsOneWidget, reason: 'panelde yukarı kanal değiştirmez');
+    expect(e.opened, hasLength(1));
+    await tester.tap(find.text('English'));
+    await _settle(tester);
+    expect(e.audioSelections, ['2']);
+    await tester.binding.handlePopRoute();
+    await _settle(tester);
+    expect(find.text('Altyazı boyutu'), findsNothing);
+    expect(find.byType(PlayerBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pump(PlayerPage.barTimeout);
+  });
+
   testWidgets('OK çubuğu açar (odak oynat/duraklatta); Geri katmanları sırayla kapatır, sonra çıkar', (tester) async {
     final e = await _open(tester);
     await tester.pump(PlayerPage.announceDuration);
@@ -422,7 +452,7 @@ void main() {
     await _key(tester, LogicalKeyboardKey.select);
     expect(find.byType(PlayerBar), findsOneWidget);
     expect(find.byType(PlayerHints), findsNothing);
-    expect(find.text('Duraklat'), findsOneWidget, reason: 'odaktaki düğmenin adı');
+    expect(find.bySemanticsLabel('Duraklat'), findsOneWidget);
     await _key(tester, LogicalKeyboardKey.select);
     expect(e.state.value.playing, isFalse);
 
@@ -497,6 +527,7 @@ void main() {
       await _key(tester, LogicalKeyboardKey.arrowLeft);
       expect(tester.takeException(), isNull);
       await maybeSnapshot(tester, key, 'build/player/oynatici-kanal-listesi-4k.png', pixelRatio: 4);
+      await maybeSnapshot(tester, key, 'build/oynatici/tv-kanallar.png', pixelRatio: 2);
     }),
   );
 

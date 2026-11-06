@@ -365,7 +365,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   int? _nextIn;
 
   void _onPosition() {
-    if (!mounted || _keys) return;
+    if (!mounted) return;
     final s = _session;
     if (s.index != _countdownIndex) {
       _countdownIndex = s.index;
@@ -380,7 +380,23 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void _playNext() {
     _countdown.reset();
     setState(() => _nextIn = null);
+    _focusAfterLayer();
     _session.zap(1);
+  }
+
+  void _cancelNext() {
+    _countdown.cancel();
+    setState(() => _nextIn = null);
+    _focusAfterLayer();
+  }
+
+  /// Katman kapandı: kumanda odağı çubukta ya da kökte kalsın.
+  void _focusAfterLayer() {
+    if (!_keys) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      (_bar ? _playFocus : _rootFocus).requestFocus();
+    });
   }
 
   /// Oynatma hızı (dokunmatik; film/dizi).
@@ -394,21 +410,27 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       _speed = v;
       _touchPanel = null;
     });
+    _focusAfterLayer();
     unawaited(_engine.setRate(v));
     _notify('Hız ${_speedLabel(v)}');
     _restartBarTimer();
   }
 
-  /// Dokunmatikte açık panel.
+  /// Açık panel (Ses ve altyazı, hız; dokunmatikte Bölümler).
   _TouchPanel? _touchPanel;
 
   void _openTouchPanel(_TouchPanel panel) {
     _barTimer?.cancel();
-    setState(() => _touchPanel = panel);
+    setState(() {
+      _touchPanel = panel;
+      _bar = true;
+      _hints = false;
+    });
   }
 
   void _closeTouchPanel() {
     setState(() => _touchPanel = null);
+    _focusAfterLayer();
     _restartBarTimer();
   }
 
@@ -417,6 +439,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       title: 'Ses ve altyazı',
       onClose: _closeTouchPanel,
       child: ChoicePanel(
+        footer: PillChoices(
+          title: 'Altyazı boyutu',
+          choices: [for (final v in SubtitleSize.values) (v.name, v.label)],
+          selected: AppSettings.instance.subtitleSize.name,
+          onSelect: (id) => setState(() => AppSettings.instance.subtitleSize = SubtitleSize.values.byName(id)),
+        ),
         columns: [
           ChoiceColumn(
             title: 'Ses',
@@ -542,13 +570,19 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     return VodBar(
       playing: e.playing,
       seekBar: e.seekable ? SeekBar(position: _engine.position, duration: e.duration, remaining: true) : null,
+      endTime: e.seekable ? EndTimeLabel(position: _engine.position, duration: e.duration, speed: _speed) : null,
       playFocusNode: _playFocus,
       resolution: e.hasVideo ? '${e.height}p' : null,
       nextLabel: _nextLabel(s),
+      speedLabel: e.seekable ? _speedLabel(_speed) : null,
       onPlayPause: () => unawaited(_engine.playOrPause()),
       onSeekBy: e.seekable ? _seekBy : null,
       onNext: () => s.zap(1),
       onOptions: _openOptions,
+      onTracks: () => _openTouchPanel(_TouchPanel.tracks),
+      onSpeed: () => _openTouchPanel(_TouchPanel.speed),
+      onEpisodes: widget.mode == PlayerMode.series && s.channels.length > 1 ? _openEpisodes : null,
+      onRestart: e.seekable && !e.playing ? _restart : null,
     );
   }
 
@@ -712,7 +746,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         mode: widget.mode,
         tv: _keys,
         desktop: _desktop,
-        options: _options,
+        // Panel ve sonraki bölüm kartı da seçenekler gibi: tuşlar odak gezintisine.
+        options: _options || _touchPanel != null || _nextIn != null,
         drawer: _drawer,
         bar: _bar,
         hints: _hints,
@@ -762,6 +797,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       _showUnlock();
     } else if (_touchPanel != null) {
       _closeTouchPanel();
+    } else if (_nextIn != null) {
+      _cancelNext();
     } else if (_episodes) {
       _closeEpisodes();
     } else if (_options) {
@@ -884,6 +921,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         streamIndex: s.streamIndex,
         streamCount: s.streamCount,
         playFocusNode: _playFocus,
+        lastChannelName: s.previousChannel?.name,
+        onLastChannel: () => s.openPrevious(),
+        onTracks: () => _openTouchPanel(_TouchPanel.tracks),
         onPlayPause: () => unawaited(_engine.playOrPause()),
         onPreviousChannel: () => s.zap(-1),
         onNextChannel: () => s.zap(1),
@@ -959,25 +999,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                   ),
                 ),
               if (_bar && !_keys && !_locked) _vod ? _vodTouch(e, s) : _liveTouch(e, s),
-              if (!_keys && _nextIn != null)
-                Positioned(
-                  right: 16,
-                  bottom: _bar ? 100 : 16,
-                  child: SafeArea(
-                    child: NextEpisodeCard(
-                      label: _nextLabel(s) ?? '',
-                      seconds: _nextIn!,
-                      onPlay: _playNext,
-                      onCancel: () {
-                        _countdown.cancel();
-                        setState(() => _nextIn = null);
-                      },
-                    ),
-                  ),
-                ),
               if (_bar && !_keys && _options)
                 TouchOptionsLayer(panel: _optionsPanel(e, s, closable: true), onClose: _closeOptions),
-              if (_touchPanel case final panel? when !_keys) _touchPanelView(panel, e, s),
               if (_locked) ScreenLockLayer(showUnlock: _unlockShown, onTouch: _showUnlock, onUnlock: _unlock),
               if (_keys && _seekShown && !_bar && e.seekable)
                 TvSeekToast(
@@ -1013,6 +1036,22 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                       : null,
                   bar: _vod ? _vodBar(e, s) : _liveBar(e, s),
                 ),
+              if (_nextIn != null)
+                Positioned(
+                  right: 16,
+                  bottom: !_bar ? 16 : (_keys ? 170 : 100),
+                  child: SafeArea(
+                    child: FocusScope(
+                      child: NextEpisodeCard(
+                        label: _nextLabel(s) ?? '',
+                        seconds: _nextIn!,
+                        onPlay: _playNext,
+                        onCancel: _cancelNext,
+                      ),
+                    ),
+                  ),
+                ),
+              if (_touchPanel case final panel?) FocusScope(child: _touchPanelView(panel, e, s)),
               // Dokunmatikte listenin dışına dokunmak kapatır.
               if (_drawer && !_keys)
                 Positioned.fill(

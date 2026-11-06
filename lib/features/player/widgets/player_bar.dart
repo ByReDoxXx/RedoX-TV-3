@@ -9,13 +9,12 @@ import '../../../core/ui/channel_logo.dart';
 import '../../../core/ui/focus_glow.dart';
 import '../../../core/ui/key_hint.dart';
 import '../../../core/ui/redox_icon.dart';
+import '../../../core/ui/redox_progress_bar.dart';
 import '../../../core/ui/status_badge.dart';
 
-/// Oynatıcının alt çubuğu (eski sürümün düzeni): solda kanal kimliği
-/// (logo + numara rozeti, ad, CANLI, çözünürlük, "Akış 1/2"), ortada önceki
-/// kanal · oynat/duraklat · sonraki kanal, sağda kanal listesi, sonraki akış
-/// ve Seçenekler. Odaktaki düğmenin adı üstünde yazar. Dar ekranda (telefon)
-/// kimlik üstte, düğmeler altta iki satırdır.
+/// TV canlı yayın çubuğu: üstte kanal, şimdiki program, ilerleme ve sonraki
+/// program; altta önceki kanal · oynat/duraklat (odak) · sonraki kanal, Kanallar,
+/// Ses ve altyazı, son kanal, sonraki akış ve Seçenekler.
 class PlayerBar extends StatelessWidget {
   const PlayerBar({
     super.key,
@@ -25,12 +24,15 @@ class PlayerBar extends StatelessWidget {
     required this.streamIndex,
     required this.streamCount,
     required this.playFocusNode,
+    this.lastChannelName,
     this.onPlayPause,
     this.onPreviousChannel,
     this.onNextChannel,
     this.onChannelList,
     this.onNextStream,
     this.onOptions,
+    this.onTracks,
+    this.onLastChannel,
   });
 
   final LiveChannel channel;
@@ -43,86 +45,48 @@ class PlayerBar extends StatelessWidget {
 
   /// OK ile çubuk açılınca odak buraya gelir (oynat/duraklat).
   final FocusNode playFocusNode;
+
+  /// Bir önceki izlenen kanal; yoksa düğme yok.
+  final String? lastChannelName;
   final VoidCallback? onPlayPause;
   final VoidCallback? onPreviousChannel;
   final VoidCallback? onNextChannel;
   final VoidCallback? onChannelList;
   final VoidCallback? onNextStream;
   final VoidCallback? onOptions;
+  final VoidCallback? onTracks;
+  final VoidCallback? onLastChannel;
 
   @override
   Widget build(BuildContext context) {
-    final controls = Row(
-      mainAxisSize: MainAxisSize.min,
+    return _BarShell(
       children: [
-        _BarButton(icon: RedoxIcons.previous, label: 'Önceki kanal', onPressed: onPreviousChannel),
-        const SizedBox(width: 10),
-        _BarButton(
-          icon: playing ? RedoxIcons.pause : RedoxIcons.play,
-          label: playing ? 'Duraklat' : 'Oynat',
-          onPressed: onPlayPause,
-          focusNode: playFocusNode,
-          primary: true,
+        _Identity(channel: channel, resolution: resolution, streamIndex: streamIndex, streamCount: streamCount),
+        const SizedBox(height: 12),
+        _ControlRow(
+          left: [
+            _BarButton(icon: RedoxIcons.previous, label: 'Önceki kanal', onPressed: onPreviousChannel),
+            _PlayButton(playing: playing, focusNode: playFocusNode, onPressed: onPlayPause),
+            _BarButton(icon: RedoxIcons.next, label: 'Sonraki kanal', onPressed: onNextChannel),
+          ],
+          pills: [
+            _BarPill(icon: RedoxIcons.television, label: 'Kanallar', onPressed: onChannelList),
+            _BarPill(icon: RedoxIcons.subtitles, label: 'Ses ve altyazı', onPressed: onTracks),
+            if (lastChannelName case final name?)
+              _BarPill(icon: RedoxIcons.history, label: 'Son: $name', onPressed: onLastChannel),
+            if (streamCount > 1)
+              _BarPill(icon: RedoxIcons.sync, label: 'Akış ${streamIndex + 1}/$streamCount', onPressed: onNextStream),
+          ],
+          onOptions: onOptions,
         ),
-        const SizedBox(width: 10),
-        _BarButton(icon: RedoxIcons.next, label: 'Sonraki kanal', onPressed: onNextChannel),
       ],
-    );
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _BarButton(icon: RedoxIcons.television, label: 'Kanal listesi', onPressed: onChannelList),
-        if (streamCount > 1) ...[
-          const SizedBox(width: 10),
-          _BarButton(icon: RedoxIcons.sync, label: 'Sonraki akış', onPressed: onNextStream),
-        ],
-        const SizedBox(width: 10),
-        _BarButton(icon: RedoxIcons.moreHorizontal, label: 'Seçenekler', onPressed: onOptions),
-      ],
-    );
-    final identity = _Identity(
-      channel: channel,
-      resolution: resolution,
-      streamIndex: streamIndex,
-      streamCount: streamCount,
-    );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(RedoxRadius.xl),
-        border: Border.fromBorderSide(RedoxElevation.restingBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: LayoutBuilder(
-          builder: (context, box) => box.maxWidth < 640
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    identity,
-                    const SizedBox(height: 12),
-                    Row(children: [controls, const Spacer(), actions]),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Expanded(child: identity),
-                    controls,
-                    Expanded(
-                      child: Align(alignment: Alignment.centerRight, child: actions),
-                    ),
-                  ],
-                ),
-        ),
-      ),
     );
   }
 }
 
-/// TV film/dizi çubuğu (B tasarımı): tek satır cam kart; solda 10 sn geri,
-/// oynat/duraklat (odak), 10 sn ileri; ortada sarma çubuğu (kalan süre);
-/// sağda sonraki bölüm (dizide) ve Seçenekler. Ad ve bilgi sol üstte
+/// TV film/dizi çubuğu: üstte tam genişlik sarma çubuğu ve bitiş saati; altta 10 sn
+/// geri, oynat/duraklat (odak), 10 sn ileri, dizide Bölümler ve sonraki bölüm, Ses
+/// ve altyazı, hız, duraklatınca Baştan başla, Seçenekler. Ad ve bilgi sol üstte
 /// (VodInfo).
 class VodBar extends StatelessWidget {
   const VodBar({
@@ -130,75 +94,142 @@ class VodBar extends StatelessWidget {
     required this.playing,
     required this.seekBar,
     required this.playFocusNode,
+    this.endTime,
     this.resolution,
     this.nextLabel,
+    this.speedLabel,
     this.onPlayPause,
     this.onSeekBy,
     this.onNext,
     this.onOptions,
+    this.onEpisodes,
+    this.onTracks,
+    this.onSpeed,
+    this.onRestart,
   });
 
   final bool playing;
   final Widget? seekBar;
   final FocusNode playFocusNode;
+
+  /// Film bu saatte biter.
+  final Widget? endTime;
   final String? resolution;
   final String? nextLabel;
+
+  /// "1,25x"; sarılamayan yayında null.
+  final String? speedLabel;
   final VoidCallback? onPlayPause;
   final ValueChanged<int>? onSeekBy;
   final VoidCallback? onNext;
   final VoidCallback? onOptions;
+  final VoidCallback? onEpisodes;
+  final VoidCallback? onTracks;
+  final VoidCallback? onSpeed;
+
+  /// Duraklatınca görünür; yoksa düğme yok.
+  final VoidCallback? onRestart;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: RedoxRoles.surfaceContainer.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(RedoxRadius.xl),
-        border: Border.fromBorderSide(RedoxElevation.restingBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
+    return _BarShell(
+      children: [
+        Row(
           children: [
-            _BarButton(
-              icon: RedoxIcons.replay10,
-              label: '10 sn geri',
-              onPressed: onSeekBy == null ? null : () => onSeekBy!(-1),
-            ),
-            const SizedBox(width: 10),
-            _BarButton(
-              icon: playing ? RedoxIcons.pause : RedoxIcons.play,
-              label: playing ? 'Duraklat' : 'Oynat',
-              onPressed: onPlayPause,
-              focusNode: playFocusNode,
-              primary: true,
-              compact: true,
-            ),
-            const SizedBox(width: 10),
-            _BarButton(
-              icon: RedoxIcons.forward10,
-              label: '10 sn ileri',
-              onPressed: onSeekBy == null ? null : () => onSeekBy!(1),
-            ),
-            const SizedBox(width: 16),
             Expanded(
               child:
                   seekBar ??
                   Text(resolution ?? '', style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant)),
             ),
-            const SizedBox(width: 12),
-            if (nextLabel case final next?) ...[
-              _BarButton(icon: RedoxIcons.next, label: 'Sonraki bölüm · $next', onPressed: onNext),
-              const SizedBox(width: 10),
-            ],
-            _BarButton(icon: RedoxIcons.moreHorizontal, label: 'Seçenekler', onPressed: onOptions),
+            if (endTime case final end?) ...[const SizedBox(width: 16), end],
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        _ControlRow(
+          left: [
+            _BarButton(
+              icon: RedoxIcons.replay10,
+              label: '10 sn geri',
+              onPressed: onSeekBy == null ? null : () => onSeekBy!(-1),
+            ),
+            _PlayButton(playing: playing, focusNode: playFocusNode, onPressed: onPlayPause),
+            _BarButton(
+              icon: RedoxIcons.forward10,
+              label: '10 sn ileri',
+              onPressed: onSeekBy == null ? null : () => onSeekBy!(1),
+            ),
+          ],
+          pills: [
+            if (onEpisodes case final episodes?)
+              _BarPill(icon: RedoxIcons.series, label: 'Bölümler', onPressed: episodes),
+            if (nextLabel case final next?) _BarPill(icon: RedoxIcons.next, label: 'Sonraki: $next', onPressed: onNext),
+            _BarPill(icon: RedoxIcons.subtitles, label: 'Ses ve altyazı', onPressed: onTracks),
+            if (speedLabel case final speed?) _BarPill(label: 'Hız $speed', onPressed: onSpeed),
+            if (onRestart case final restart?)
+              _BarPill(icon: RedoxIcons.history, label: 'Baştan başla', onPressed: restart),
+          ],
+          onOptions: onOptions,
+        ),
+      ],
     );
   }
 }
 
+class _BarShell extends StatelessWidget {
+  const _BarShell({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: RedoxRoles.surfaceContainerLowest.withValues(alpha: 0.93),
+      borderRadius: BorderRadius.circular(RedoxRadius.xl),
+      border: Border.fromBorderSide(RedoxElevation.restingBorder),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    ),
+  );
+}
+
+/// Düğme satırı: oynatma düğmeleri, ince ayraç, yazılı düğmeler (sığmazsa kayar,
+/// odak görünür alana getirir), sağda Seçenekler.
+class _ControlRow extends StatelessWidget {
+  const _ControlRow({required this.left, required this.pills, required this.onOptions});
+
+  final List<Widget> left;
+  final List<Widget> pills;
+  final VoidCallback? onOptions;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      for (final (i, w) in left.indexed) ...[if (i > 0) const SizedBox(width: 10), w],
+      const SizedBox(width: 14),
+      Container(width: 1, height: 28, color: RedoxRoles.outlineVariant),
+      const SizedBox(width: 6),
+      Expanded(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          // Odak parıltısı kesilmesin.
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          clipBehavior: Clip.hardEdge,
+          child: Row(
+            children: [
+              for (final (i, w) in pills.indexed) ...[if (i > 0) const SizedBox(width: 10), w],
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(width: 6),
+      _BarButton(icon: RedoxIcons.moreHorizontal, label: 'Seçenekler', onPressed: onOptions),
+    ],
+  );
+}
+
+/// Kanal, şimdiki program, ilerleme ve sonraki program.
 class _Identity extends StatelessWidget {
   const _Identity({
     required this.channel,
@@ -219,179 +250,253 @@ class _Identity extends StatelessWidget {
     final meta = [resolution ?? '—', if (streamCount > 0) 'Akış ${streamIndex + 1}/$streamCount'].join(' · ');
     return Row(
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(RedoxRadius.md),
-              child: SizedBox.square(
-                dimension: 48,
-                child: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 1, alignment: Alignment.center),
-              ),
-            ),
-            Positioned(
-              left: -6,
-              top: -6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: RedoxRoles.primaryContainer,
-                  borderRadius: BorderRadius.circular(RedoxRadius.full),
-                ),
-                child: Text(
-                  '${c.number}',
-                  style: RedoxType.labelSm.copyWith(
-                    color: RedoxRoles.onPrimaryContainer,
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: RedoxType.tabular,
-                  ),
-                ),
-              ),
-            ),
-          ],
+        ClipRRect(
+          borderRadius: BorderRadius.circular(RedoxRadius.md),
+          child: SizedBox.square(
+            dimension: 56,
+            child: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 1, alignment: Alignment.center),
+          ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                c.name,
-                style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
               Row(
                 children: [
-                  if (c.live) ...[
-                    const SizedBox(
-                      height: 16,
-                      child: FittedBox(child: StatusBadge(label: 'CANLI', pulse: true)),
+                  Text(
+                    '${c.number}',
+                    style: t.titleMedium!.copyWith(
+                      color: RedoxRoles.tertiary,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: RedoxType.tabular,
                     ),
-                    const SizedBox(width: 8),
-                  ],
+                  ),
+                  const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      meta,
-                      style: RedoxType.bodySm.copyWith(
-                        color: RedoxRoles.onSurfaceVariant,
-                        fontFeatures: RedoxType.tabular,
-                      ),
+                      c.name,
+                      style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w800),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (c.live) ...[
+                    const SizedBox(width: 10),
+                    const SizedBox(
+                      height: 16,
+                      child: FittedBox(child: StatusBadge(label: 'CANLI', pulse: true)),
+                    ),
+                  ],
+                  const SizedBox(width: 10),
+                  Text(
+                    meta,
+                    style: RedoxType.bodySm.copyWith(
+                      color: RedoxRoles.onSurfaceVariant,
+                      fontFeatures: RedoxType.tabular,
+                    ),
+                    maxLines: 1,
+                  ),
                 ],
               ),
+              if (c.programTitle case final program?) ...[
+                const SizedBox(height: 2),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (c.timeRange case final range?)
+                        TextSpan(
+                          text: '$range  ',
+                          style: const TextStyle(color: RedoxRoles.tertiary, fontFeatures: RedoxType.tabular),
+                        ),
+                      TextSpan(text: program),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                ),
+              ],
+              if (c.progress case final progress?) ...[
+                const SizedBox(height: 6),
+                RedoxProgressBar(value: progress, height: 4),
+              ],
             ],
           ),
         ),
+        if (c.next case final next?) ...[
+          const SizedBox(width: 16),
+          Container(width: 1, height: 44, color: RedoxRoles.outlineVariant),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 180,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Sonra', style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                Text(
+                  next,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: RedoxType.labelMd.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-/// Çubuk düğmesi: yuvarlak, yalnız ikon; odakta adı üstünde yazar (eski
-/// sürümdeki "Duraklat" etiketi). [primary]: büyük kızıl oynat/duraklat;
-/// satırda [primaryRowHeight] yer kaplar, çubuğun üstünden ve altından taşar
-/// (kullanıcı isteği).
-class _BarButton extends StatelessWidget {
-  const _BarButton({
-    required this.icon,
-    required this.label,
-    this.onPressed,
-    this.focusNode,
-    this.primary = false,
-    this.compact = false,
-  });
+/// Kızıl oynat/duraklat: çevresinde koyu kırmızı çizgi (kullanıcı isteği). Simgesi
+/// açık: adı yazılmaz, üstündeki bilgi satırının önüne geçmesin.
+class _PlayButton extends StatelessWidget {
+  const _PlayButton({required this.playing, required this.focusNode, this.onPressed});
 
-  /// Küçük oynat düğmesi (film çubuğunun tek satırı).
-  final bool compact;
+  final bool playing;
+  final FocusNode focusNode;
+  final VoidCallback? onPressed;
+
+  static const size = 56.0;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: playing ? 'Duraklat' : 'Oynat',
+    excludeSemantics: true,
+    child: FocusGlow(
+      borderRadius: BorderRadius.circular(RedoxRadius.full),
+      builder: (context, active) => Material(
+        color: RedoxRoles.primaryContainer,
+        shape: const CircleBorder(side: BorderSide(color: RedoxRoles.onPrimaryFixedVariant, width: 4)),
+        child: InkWell(
+          onTap: onPressed,
+          focusNode: focusNode,
+          customBorder: const CircleBorder(),
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: SizedBox.square(
+            dimension: size,
+            child: Center(
+              child: RedoxIcon(
+                playing ? RedoxIcons.pause : RedoxIcons.play,
+                filled: true,
+                color: RedoxRoles.onPrimaryContainer,
+                size: 30,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Yazılı çubuk düğmesi.
+class _BarPill extends StatelessWidget {
+  const _BarPill({required this.label, this.icon, this.onPressed});
+
+  final String label;
+  final RedoxIcons? icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = BorderRadius.circular(RedoxRadius.full);
+    return FocusGlow(
+      borderRadius: shape,
+      builder: (context, active) => Material(
+        color: active ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainerHigh,
+        borderRadius: shape,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: shape,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon case final i?) ...[
+                  RedoxIcon(i, color: RedoxRoles.onSurface, size: 18),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  label,
+                  softWrap: false,
+                  style: RedoxType.labelLg.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Çubuk düğmesi: yuvarlak, yalnız ikon; odakta adı üstünde yazar (eski sürümdeki
+/// etiket).
+class _BarButton extends StatelessWidget {
+  const _BarButton({required this.icon, required this.label, this.onPressed});
 
   final RedoxIcons icon;
   final String label;
   final VoidCallback? onPressed;
-  final FocusNode? focusNode;
-  final bool primary;
 
-  static const primarySize = 92.0;
-  static const primaryRowHeight = 48.0;
+  static const size = 40.0;
 
   @override
-  Widget build(BuildContext context) {
-    final size = primary ? (compact ? 64.0 : primarySize) : 40.0;
-    final shape = BorderRadius.circular(RedoxRadius.full);
-    final button = Semantics(
-      button: true,
-      label: label,
-      excludeSemantics: true,
-      child: FocusGlow(
-        borderRadius: shape,
-        builder: (context, active) => Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Material(
-              color: primary
-                  ? RedoxRoles.primaryContainer
-                  : active
-                  ? RedoxRoles.surfaceContainerHighest
-                  : RedoxRoles.surfaceContainerHigh,
-              // Oynat/duraklatın çevresinde koyu kırmızı çizgi (kullanıcı isteği).
-              shape: primary
-                  ? const CircleBorder(side: BorderSide(color: RedoxRoles.onPrimaryFixedVariant, width: 4))
-                  : const CircleBorder(),
-              child: InkWell(
-                onTap: onPressed,
-                focusNode: focusNode,
-                customBorder: const CircleBorder(),
-                focusColor: Colors.transparent,
-                hoverColor: Colors.transparent,
-                child: SizedBox.square(
-                  dimension: size,
-                  child: Center(
-                    child: RedoxIcon(
-                      icon,
-                      filled: primary,
-                      color: primary ? RedoxRoles.onPrimaryContainer : RedoxRoles.onSurface,
-                      size: primary ? (compact ? 32 : 46) : 22,
-                    ),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    excludeSemantics: true,
+    child: FocusGlow(
+      borderRadius: BorderRadius.circular(RedoxRadius.full),
+      builder: (context, active) => Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Material(
+            color: active ? RedoxRoles.surfaceContainerHighest : RedoxRoles.surfaceContainerHigh,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onPressed,
+              customBorder: const CircleBorder(),
+              focusColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              child: SizedBox.square(
+                dimension: size,
+                child: Center(child: RedoxIcon(icon, color: RedoxRoles.onSurface, size: 22)),
+              ),
+            ),
+          ),
+          if (active)
+            Positioned(
+              bottom: size + 12,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: RedoxRoles.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(RedoxRadius.full),
+                  ),
+                  child: Text(
+                    label,
+                    softWrap: false,
+                    style: RedoxType.labelMd.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
             ),
-            if (active)
-              Positioned(
-                bottom: size + 12,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: RedoxRoles.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(RedoxRadius.full),
-                    ),
-                    child: Text(
-                      label,
-                      softWrap: false,
-                      style: RedoxType.labelMd.copyWith(color: RedoxRoles.tertiary, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
-    );
-    if (!primary) return button;
-    // Satırda daha az yer kaplar; görünür boyu taşar.
-    return SizedBox(
-      width: size,
-      height: primaryRowHeight,
-      child: OverflowBox(maxHeight: size, child: button),
-    );
-  }
+    ),
+  );
 }
 
 /// Kanal değişince çubuğun üstünde kısa süre görünen kumanda ipuçları

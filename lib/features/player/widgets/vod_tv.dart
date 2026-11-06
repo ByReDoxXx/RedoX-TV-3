@@ -98,10 +98,11 @@ class VodInfo extends StatelessWidget {
   }
 }
 
-/// Dizide ▲ ile açılan bölüm şeridi: sezonun bölümleri (oynatıcının
-/// listesi), izlenenler ve oynayan (kızıl çerçeve) işaretli; ◄► gezer, OK
-/// bölümü açar, ▼ ya da Geri kapatır. Odak açılışta sıradaki bölümdedir.
-class EpisodeStrip extends StatelessWidget {
+/// Dizide ▲ ile açılan bölüm şeridi: oynatıcının listesi sezon sezon, izlenenler
+/// ve oynayan (kızıl çerçeve) işaretli. Birden çok sezon varsa üstte sekmeler: ▲
+/// sekmeye çıkar, OK sezonu açar. ◄► gezer, OK bölümü açar, bölümdeyken ▼ ya da
+/// Geri kapatır. Odak açılışta sıradaki bölümdedir.
+class EpisodeStrip extends StatefulWidget {
   const EpisodeStrip({
     super.key,
     required this.episodes,
@@ -121,56 +122,117 @@ class EpisodeStrip extends StatelessWidget {
   static const thumbHeight = 84.0;
 
   @override
+  State<EpisodeStrip> createState() => _EpisodeStripState();
+}
+
+class _EpisodeStripState extends State<EpisodeStrip> {
+  int? _seasonOf(int i) => ChannelFolder.parseEpisode(widget.episodes[i].name)?.season;
+
+  late int? _season = _seasonOf(widget.current);
+
+  @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final season = ChannelFolder.parseEpisode(episodes[current].name)?.season;
-    final focus = current + 1 < episodes.length ? current + 1 : current;
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowDown) {
-          onClose();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: season == null ? 'Bölümler' : 'Sezon $season'),
-                TextSpan(
-                  // Sora'da ok işaretleri yok: sözle.
-                  text: '   Sağ/sol: bölüm · OK: oynat · Aşağı: kapat',
-                  style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
-                ),
-              ],
+    final seasons = {for (var i = 0; i < widget.episodes.length; i++) ?_seasonOf(i)}.toList()..sort();
+    final shown = [
+      for (var i = 0; i < widget.episodes.length; i++)
+        if (_seasonOf(i) == _season) i,
+    ];
+    final current = widget.current;
+    final focus = shown.contains(current + 1) ? current + 1 : (shown.contains(current) ? current : shown.firstOrNull);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            if (seasons.length > 1)
+              for (final n in seasons) ...[
+                _SeasonTab(season: n, selected: n == _season, onPressed: () => setState(() => _season = n)),
+                const SizedBox(width: 8),
+              ]
+            else
+              Text(
+                _season == null ? 'Bölümler' : 'Sezon $_season',
+                style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+              ),
+            const Spacer(),
+            // Sora'da ok işaretleri yok: sözle.
+            Text(
+              'Sağ/sol: bölüm · OK: oynat · Aşağı: kapat',
+              style: t.bodySmall!.copyWith(color: RedoxRoles.onSurfaceVariant),
             ),
-            style: t.titleSmall!.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Sekmedeyken ▼ bölümlere iner: yalnız bölümdeyken kapatır.
+        Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowDown) {
+              widget.onClose();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (var i = 0; i < episodes.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 14),
+                for (final (k, i) in shown.indexed) ...[
+                  if (k > 0) const SizedBox(width: 14),
                   EpisodeTile(
-                    episode: episodes[i],
-                    entry: progress?.of(episodes[i].streams.firstOrNull ?? ''),
+                    key: ValueKey(i),
+                    episode: widget.episodes[i],
+                    entry: widget.progress?.of(widget.episodes[i].streams.firstOrNull ?? ''),
                     playing: i == current,
-                    autofocus: i == focus,
-                    onPressed: () => onSelect(i),
+                    autofocus: i == focus && _season == _seasonOf(current),
+                    onPressed: () => widget.onSelect(i),
                   ),
                 ],
               ],
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SeasonTab extends StatelessWidget {
+  const _SeasonTab({required this.season, required this.selected, required this.onPressed});
+
+  final int season;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(RedoxRadius.full);
+    return FocusGlow(
+      borderRadius: radius,
+      builder: (context, active) => Material(
+        color: selected ? RedoxRoles.tertiary : (active ? RedoxRoles.surfaceContainerHighest : Colors.transparent),
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Text(
+              'Sezon $season',
+              style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                color: selected ? RedoxRoles.onTertiary : RedoxRoles.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -359,7 +359,9 @@ class _RootShellState extends State<RootShell> {
         return;
       }
     }
-    return _watch(context, list[i], from: list, mode: PlayerMode.series);
+    // Oynatıcı bütün sezonları alır (bölüm şeridi sekmeleri, sezon geçişi).
+    final all = [for (final n in series?.seasons ?? const <int>[]) ...season(n)];
+    return _watch(context, list[i], from: all.contains(list[i]) ? all : list, mode: PlayerMode.series);
   }
 
   /// Kanalı tam ekran açar; görüntü gelince geçmişe yazılır. Oynatıcıda ▲▼

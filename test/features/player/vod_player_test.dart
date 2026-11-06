@@ -11,6 +11,7 @@ import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/features/player/next_episode.dart';
 import 'package:redox_tv/features/player/player_page.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
+import 'package:redox_tv/features/player/widgets/seek_bar.dart';
 import 'package:redox_tv/features/player/widgets/touch_controls.dart';
 import 'package:redox_tv/features/player/widgets/vod_touch_panels.dart';
 import 'package:redox_tv/features/player/widgets/vod_tv.dart';
@@ -80,7 +81,104 @@ Future<void> _tapCenter(WidgetTester tester, Size size) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
+const _seasons = [
+  LiveChannel(name: 'Adanalı S01E01', number: 1, category: 'Diziler', streams: ['http://o/s1e1.mkv']),
+  LiveChannel(name: 'Adanalı S02E03 Kan Davası', number: 2, category: 'Diziler', streams: ['http://o/s2e3.mkv']),
+  LiveChannel(name: 'Adanalı S02E04', number: 3, category: 'Diziler', streams: ['http://o/s2e4.mkv']),
+];
+
 void main() {
+  test('bitiş saati kalan süre ve hızdan', () {
+    final now = DateTime(2026, 11, 6, 20, 45);
+    expect(EndTimeLabel.format(now, const Duration(minutes: 95), 1), '22:20');
+    expect(EndTimeLabel.format(now, const Duration(minutes: 30), 1.5), '21:05');
+  });
+
+  testWidgets('TV film: bitiş saati, hız, ses paneli; duraklatınca Baştan başla', (tester) async {
+    final key = GlobalKey();
+    final e = await _open(tester, f: FormFactor.tv, size: const Size(960, 540), mode: PlayerMode.film, boundary: key);
+    e.setDuration(const Duration(minutes: 90), at: const Duration(minutes: 33));
+    await tester.pump(PlayerPage.announceDuration);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('Bitiş '), findsOneWidget);
+    expect(find.text('Bölümler'), findsNothing);
+    expect(find.text('Baştan başla'), findsNothing);
+    await maybeSnapshot(tester, key, 'build/oynatici/tv-film.png', pixelRatio: 2);
+    await tester.tap(find.text('Hız 1x'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('1,5x'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(e.rates, [1.5]);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Baştan başla'), findsOneWidget);
+    await maybeSnapshot(tester, key, 'build/oynatici/tv-film-duraklat.png', pixelRatio: 2);
+    await tester.tap(find.text('Baştan başla'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(e.seeks.last, Duration.zero);
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 10));
+  });
+
+  testWidgets('TV dizi: sezon sekmeleri bölümleri süzer; Bölümler düğmesi şeridi açar', (tester) async {
+    final key = GlobalKey();
+    final e = await _open(
+      tester,
+      f: FormFactor.tv,
+      size: const Size(960, 540),
+      mode: PlayerMode.series,
+      channels: _seasons,
+      boundary: key,
+    );
+    e.setDuration(const Duration(minutes: 45), at: const Duration(minutes: 20));
+    await tester.pump(PlayerPage.announceDuration);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Bölümler'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Sezon 1'), findsOneWidget);
+    expect(find.text('Sezon 2'), findsOneWidget);
+    expect(find.text('B1 · oynatılıyor'), findsOneWidget);
+    expect(find.text('B3'), findsNothing, reason: 'açılışta oynayanın sezonu: S1');
+    await tester.tap(find.text('Sezon 2'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('B1 · oynatılıyor'), findsNothing);
+    expect(find.text('B3'), findsOneWidget);
+    await maybeSnapshot(tester, key, 'build/oynatici/tv-dizi-serit.png', pixelRatio: 2);
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 10));
+  });
+
+  testWidgets('TV dizi: sonraki bölüm kartı odakta gelir, Geri iptal eder, oynatıcıyı kapatmaz', (tester) async {
+    final key = GlobalKey();
+    final e = await _open(tester, f: FormFactor.tv, size: const Size(960, 540), mode: PlayerMode.series, boundary: key);
+    e.setDuration(const Duration(minutes: 45), at: const Duration(minutes: 20));
+    await tester.pump(PlayerPage.announceDuration);
+    await tester.pump(const Duration(milliseconds: 400));
+    await e.seek(const Duration(minutes: 44, seconds: 50));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(NextEpisodeCard), findsOneWidget);
+    await maybeSnapshot(tester, key, 'build/oynatici/tv-sonraki.png', pixelRatio: 2);
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(NextEpisodeCard), findsNothing);
+    expect(find.byType(PlayerPage), findsOneWidget);
+
+    await e.seek(const Duration(minutes: 30));
+    await tester.pump();
+    await e.seek(const Duration(minutes: 44, seconds: 50));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(e.opened.last, 'http://o/s2e4.mkv', reason: 'OK: Şimdi oynat');
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 10));
+  });
+
   test('sonraki bölüm sayacı: son saniyeler, iptal, geri sarma, önceki bölümden taşma', () {
     final c = NextEpisodeCountdown();
     expect(
@@ -359,8 +457,8 @@ void main() {
     expect(find.text('2010 · Bilim kurgu'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await maybeSnapshot(tester, key, 'build/oynatici/film-tv.png');
-    // Oynat'tan sağa: 10 sn ileri, sonra Seçenekler (odak köke kaçmaz).
-    for (var i = 0; i < 2; i++) {
+    // Oynat'tan sağa: 10 sn ileri, Ses ve altyazı, Hız, Seçenekler (odak köke kaçmaz).
+    for (var i = 0; i < 4; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
     }

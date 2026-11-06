@@ -73,8 +73,14 @@ class _SeriesDetailPageState extends State<SeriesDetailPage> {
   late final Future<TmdbInfo?> _info = widget.tmdb?.find(widget.series.name, series: true) ?? Future.value();
 
   void _play(int season, int index) {
-    final list = [for (final e in widget.series.episodes(season)) e.channel];
-    unawaited(widget.onWatch?.call(list, index));
+    // Oynatıcı bütün sezonları alır: sezon sekmeleri, sezon bitince sonraki sezon.
+    final seasons = widget.series.seasons;
+    final list = [
+      for (final n in seasons)
+        for (final e in widget.series.episodes(n)) e.channel,
+    ];
+    final before = seasons.takeWhile((n) => n != season).fold(0, (sum, n) => sum + widget.series.episodes(n).length);
+    unawaited(widget.onWatch?.call(list, before + index));
   }
 
   @override

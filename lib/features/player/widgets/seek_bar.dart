@@ -62,6 +62,10 @@ class _SeekBarState extends State<SeekBar> {
                   trackHeight: 4,
                   activeTrackColor: RedoxRoles.primaryContainer,
                   inactiveTrackColor: Colors.white24,
+                  // Kumandada çubuk yalnız gösterir (onSeek yok): aynı renkler.
+                  disabledActiveTrackColor: RedoxRoles.primaryContainer,
+                  disabledInactiveTrackColor: Colors.white24,
+                  disabledThumbColor: Colors.white,
                   thumbColor: Colors.white,
                   overlayColor: RedoxRoles.primaryContainer.withValues(alpha: 0.25),
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
@@ -95,4 +99,31 @@ class _SeekBarState extends State<SeekBar> {
       },
     );
   }
+}
+
+/// Film/bölüm bu saatte biter ("Bitiş 22:20"): kalan süre ve oynatma hızından.
+class EndTimeLabel extends StatelessWidget {
+  const EndTimeLabel({super.key, required this.position, required this.duration, this.speed = 1});
+
+  final ValueListenable<Duration> position;
+  final Duration duration;
+  final double speed;
+
+  /// Şimdiden [left] sonrası, [speed] hızında ("22:20").
+  @visibleForTesting
+  static String format(DateTime now, Duration left, double speed) {
+    final end = now.add(left * (1 / speed));
+    String two(int n) => '$n'.padLeft(2, '0');
+    return '${two(end.hour)}:${two(end.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: position,
+    builder: (context, at, _) => Text(
+      'Bitiş ${format(DateTime.now(), duration - at, speed)}',
+      style: Theme.of(context).textTheme.labelLarge!
+          .copyWith(color: RedoxRoles.onSurfaceVariant, fontFeatures: RedoxType.tabular),
+    ),
+  );
 }
