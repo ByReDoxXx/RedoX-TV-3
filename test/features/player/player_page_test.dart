@@ -519,6 +519,58 @@ void main() {
       expect(center(tester, 'Önceki kanal').dy, closeTo(play.dy, 1));
     });
 
+    testWidgets('canlı: yayın akışı altta, ses/altyazı paneli, son kanal, kanal listesi dışına dokunma', (
+      tester,
+    ) async {
+      final key = GlobalKey();
+      final e = await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390), boundary: key);
+      final c = _channels.first;
+      expect(find.textContaining(c.programTitle!), findsOneWidget);
+      expect(find.text('Sonra: ${c.next}'), findsOneWidget);
+      expect(find.textContaining('Son:'), findsNothing, reason: 'önceki kanal yokken düğme yok');
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.bySemanticsLabel('Sonraki kanal'));
+      await _settle(tester);
+      await maybeSnapshot(tester, key, 'build/oynatici/canli-telefon.png');
+      await tester.tap(find.text('Son: ${c.name}'));
+      await _settle(tester);
+      expect(e.opened.last, c.streams.first);
+
+      await tester.tap(find.bySemanticsLabel('Ses ve altyazı'));
+      await _settle(tester);
+      await tester.tap(find.text('English'));
+      await _settle(tester);
+      expect(e.audioSelections, ['2']);
+      await tester.tap(find.bySemanticsLabel('Kapat').last);
+      await _settle(tester);
+
+      await tester.tap(find.bySemanticsLabel('Kanal listesi'));
+      await _settle(tester);
+      expect(find.byType(ChannelDrawer), findsOneWidget);
+      await tester.tapAt(const Offset(700, 200));
+      await _settle(tester);
+      expect(find.byType(ChannelDrawer), findsNothing);
+    });
+
+    testWidgets('canlı: kilitliyken kaydırma kanal değiştirmez', (tester) async {
+      final e = await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
+      final opened = e.opened.length;
+      await tester.tap(find.text('Kilit'));
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.byType(TouchControls), findsNothing);
+      final gesture = await tester.startGesture(const Offset(600, 200));
+      await gesture.moveBy(const Offset(-300, 0));
+      await gesture.up();
+      await _settle(tester);
+      expect(e.opened.length, opened);
+      await tester.tapAt(const Offset(400, 200));
+      await _settle(tester);
+      await tester.tap(find.text('Kilidi aç'));
+      await _settle(tester);
+      expect(find.byType(TouchControls), findsOneWidget);
+    });
+
     testWidgets('oynat/duraklat kızıl, koyu kırmızı 4 dp kenarlı', (tester) async {
       await _open(tester, formFactor: FormFactor.phone, size: const Size(844, 390));
       final material = tester.widget<Material>(

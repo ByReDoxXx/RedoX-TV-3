@@ -865,6 +865,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     onOptions: _openOptions,
     onSeekBy: e.seekable ? _seekBy : null,
     seekBar: _vodSeekBar(e),
+    lastChannelName: s.previousChannel?.name,
+    onLastChannel: () => s.openPrevious(),
+    onTracks: () => _openTouchPanel(_TouchPanel.tracks),
+    onLock: _desktop ? null : _lock,
   );
 
   /// Canlı yayın, TV çubuğu.
@@ -1008,6 +1012,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                         )
                       : null,
                   bar: _vod ? _vodBar(e, s) : _liveBar(e, s),
+                ),
+              // Dokunmatikte listenin dışına dokunmak kapatır.
+              if (_drawer && !_keys)
+                Positioned.fill(
+                  child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _closeDrawer),
                 ),
               if (_drawer)
                 Positioned(

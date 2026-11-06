@@ -10,6 +10,7 @@ import '../../../core/theme/redox_shapes.dart';
 import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/channel_logo.dart';
 import '../../../core/ui/redox_icon.dart';
+import '../../../core/ui/redox_progress_bar.dart';
 import '../../../core/ui/status_badge.dart';
 import 'seek_bar.dart';
 
@@ -17,9 +18,10 @@ import 'seek_bar.dart';
 /// kullanıcı isteği: "play/ileri/geri ortada olsun, tema televizyondan farklı
 /// olsun"). TV'nin kızıl alt çubuğu yerine görüntünün üstünde ve altında
 /// karartma; düğmeler beyaz cam daireler, oynat/duraklat ortada kızıl dolu.
-/// Üstte kapat, kanal kimliği, kanal listesi ve Seçenekler; ortada önceki
-/// kanal · oynat/duraklat · sonraki kanal (yalnız görüntü gelince, yoksa
-/// ortada yükleniyor/hata durur); altta ölçek, akış ve çözünürlük.
+/// Üstte kapat, kanal kimliği, kanal listesi, Ses/Altyazı ve Seçenekler; ortada
+/// önceki kanal · oynat/duraklat · sonraki kanal (yalnız görüntü gelince, yoksa
+/// ortada yükleniyor/hata durur); altta yayın akışı (şimdiki program, ilerleme,
+/// sonraki), solda CANLI, çözünürlük ve akış, sağda son kanal, kilit ve ölçek.
 class TouchControls extends StatelessWidget {
   const TouchControls({
     super.key,
@@ -41,7 +43,19 @@ class TouchControls extends StatelessWidget {
     this.onOptions,
     this.seekBar,
     this.onSeekBy,
+    this.lastChannelName,
+    this.onLastChannel,
+    this.onTracks,
+    this.onLock,
   });
+
+  /// Bir önceki izlenen kanalın adı; yoksa düğme yok.
+  final String? lastChannelName;
+  final VoidCallback? onLastChannel;
+  final VoidCallback? onTracks;
+
+  /// Ekran kilidi; yoksa düğme yok (masaüstü).
+  final VoidCallback? onLock;
 
   /// Film/dizi: alt satırın üstünde sarma çubuğu; canlı yayında null.
   final Widget? seekBar;
@@ -75,7 +89,9 @@ class TouchControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final c = channel;
-    final program = c.programTitle;
+    // Yayın akışı varsa program aşağıda ayrıntılı; üstte kategori.
+    final strip = seekBar == null && _ProgramStrip.hasDetail(c);
+    final program = strip ? c.category : c.programTitle;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -138,6 +154,8 @@ class TouchControls extends StatelessWidget {
                     ],
                     GlassCircle(icon: RedoxIcons.television, label: 'Kanal listesi', onPressed: onChannelList),
                     const SizedBox(width: 8),
+                    GlassCircle(icon: RedoxIcons.subtitles, label: 'Ses ve altyazı', onPressed: onTracks),
+                    const SizedBox(width: 8),
                     GlassCircle(icon: RedoxIcons.more, label: 'Seçenekler', onPressed: onOptions),
                   ],
                 ),
@@ -182,25 +200,26 @@ class TouchControls extends StatelessWidget {
                   ),
                 const Spacer(),
                 if (seekBar case final bar?) ...[bar, const SizedBox(height: 4)],
-                Row(
-                  children: [
-                    if (c.live) ...[
+                if (strip) ...[_ProgramStrip(channel: c), const SizedBox(height: 8)],
+                _ChipRow(
+                  left: [
+                    if (c.live)
                       const SizedBox(
                         height: 18,
                         child: FittedBox(child: StatusBadge(label: 'CANLI', pulse: true)),
                       ),
-                      const SizedBox(width: 8),
-                    ],
                     if (resolution case final r?) _Chip(label: r),
-                    const Spacer(),
-                    if (streamCount > 1) ...[
+                    if (streamCount > 1)
                       _Chip(
                         label: 'Akış ${streamIndex + 1}/$streamCount',
                         icon: RedoxIcons.sync,
                         onPressed: onNextStream,
                       ),
-                      const SizedBox(width: 8),
-                    ],
+                  ],
+                  right: [
+                    if (lastChannelName case final name?)
+                      _Chip(label: 'Son: $name', icon: RedoxIcons.history, onPressed: onLastChannel),
+                    if (onLock case final lock?) _Chip(label: 'Kilit', icon: RedoxIcons.lock, onPressed: lock),
                     _Chip(label: scaleLabel, icon: RedoxIcons.aspectRatio, onPressed: onScale),
                   ],
                 ),
@@ -356,45 +375,18 @@ class VodTouchControls extends StatelessWidget {
                 const Spacer(),
                 ?seekBar,
                 const SizedBox(height: 6),
-                // Dar ekranda (dikey telefon) düğmeler sığmazsa kayar.
-                LayoutBuilder(
-                  builder: (context, box) => SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: box.maxWidth),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (onEpisodes case final episodes?) ...[
-                                _Chip(label: 'Bölümler', icon: RedoxIcons.series, onPressed: episodes),
-                                const SizedBox(width: 8),
-                              ],
-                              if (nextLabel case final next?)
-                                _Chip(label: 'Sonraki: $next', icon: RedoxIcons.next, onPressed: onNext),
-                            ],
-                          ),
-                          const SizedBox(width: 16),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (speedLabel case final speed?) ...[
-                                _Chip(label: 'Hız $speed', onPressed: onSpeed),
-                                const SizedBox(width: 8),
-                              ],
-                              if (onLock case final lock?) ...[
-                                _Chip(label: 'Kilit', icon: RedoxIcons.lock, onPressed: lock),
-                                const SizedBox(width: 8),
-                              ],
-                              _Chip(label: scaleLabel, icon: RedoxIcons.aspectRatio, onPressed: onScale),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                _ChipRow(
+                  left: [
+                    if (onEpisodes case final episodes?)
+                      _Chip(label: 'Bölümler', icon: RedoxIcons.series, onPressed: episodes),
+                    if (nextLabel case final next?)
+                      _Chip(label: 'Sonraki: $next', icon: RedoxIcons.next, onPressed: onNext),
+                  ],
+                  right: [
+                    if (speedLabel case final speed?) _Chip(label: 'Hız $speed', onPressed: onSpeed),
+                    if (onLock case final lock?) _Chip(label: 'Kilit', icon: RedoxIcons.lock, onPressed: lock),
+                    _Chip(label: scaleLabel, icon: RedoxIcons.aspectRatio, onPressed: onScale),
+                  ],
                 ),
               ],
             ),
@@ -450,6 +442,85 @@ class GlassCircle extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Canlı yayında şimdiki program: saat, ad, ilerleme ve sonraki program.
+class _ProgramStrip extends StatelessWidget {
+  const _ProgramStrip({required this.channel});
+
+  final LiveChannel channel;
+
+  /// Yalnız program adı varsa üst satır yeter.
+  static bool hasDetail(LiveChannel c) =>
+      c.programTitle != null && (c.timeRange != null || c.progress != null || c.next != null);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final c = channel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                [?c.timeRange, c.programTitle!].join('  '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.titleSmall!.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (c.next case final next?) ...[
+              const SizedBox(width: 16),
+              Flexible(
+                child: Text(
+                  'Sonra: $next',
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall!.copyWith(color: Colors.white70),
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (c.progress case final progress?) ...[
+          const SizedBox(height: 6),
+          RedoxProgressBar(value: progress, height: 4),
+        ],
+      ],
+    );
+  }
+}
+
+/// Alttaki düğme sırası: sol ve sağ küme. Dar ekranda (dikey telefon) sığmazsa kayar.
+class _ChipRow extends StatelessWidget {
+  const _ChipRow({required this.left, required this.right});
+
+  final List<Widget> left;
+  final List<Widget> right;
+
+  static Widget _group(List<Widget> items) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (final (i, w) in items.indexed) ...[if (i > 0) const SizedBox(width: 8), w],
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) => SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: box.maxWidth),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [_group(left), const SizedBox(width: 16), _group(right)],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Chip extends StatelessWidget {
