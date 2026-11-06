@@ -1,6 +1,8 @@
 package com.redoxtv.redox_tv
 
 import android.app.Activity
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.SurfaceHolder
@@ -58,6 +60,8 @@ class VideoSurfaceHost(private val activity: Activity, messenger: BinaryMessenge
             val id = call.argument<Int>("id") ?: 0
             when (call.method) {
                 "ac" -> {
+                    // Film ekranı doldurmayınca kalan alanda pencere arka planı görünür.
+                    activity.window.setBackgroundDrawable(ColorDrawable(Color.BLACK))
                     val entry = Entry(id)
                     entries[id] = entry
                     entry.view.holder.addCallback(entry)
@@ -89,6 +93,7 @@ class VideoSurfaceHost(private val activity: Activity, messenger: BinaryMessenge
                         entry.keep = call.argument<Boolean>("tut") ?: false
                         (entry.view.parent as? ViewGroup)?.removeView(entry.view)
                     }
+                    if (entries.isEmpty()) activity.window.setBackgroundDrawableResource(R.color.redox_obsidian)
                     result.success(null)
                 }
                 else -> result.notImplemented()
