@@ -225,6 +225,7 @@ class MediaKitEngine implements PlaybackEngine {
     }.entries) {
       await native.setProperty(e.key, e.value);
     }
+    await _lockToDisplay(native);
     final first = Completer<void>();
     var attached = false;
     surface.wid.addListener(() {
@@ -241,6 +242,17 @@ class MediaKitEngine implements PlaybackEngine {
     } on TimeoutException {
       Diagnostics.instance.log('görüntü', 'video yüzeyi gelmedi');
     }
+  }
+
+  /// Deneme (TV): mediacodec_embed kareyi yenilemeye hizalamadan "hemen göster" diye
+  /// verir; 24 kare 60 Hz'de 2-3 düzeni kayıyor (Philips ölçümü). Film ekrana kilitlenir
+  /// (24 kare %0,1 hızlanır). Bu çıkış yenilemeyi görmez, mpv'ye ekran hızı bildirilir.
+  Future<void> _lockToDisplay(NativePlayer native) async {
+    final rate = WidgetsBinding.instance.platformDispatcher.displays.firstOrNull?.refreshRate ?? 0;
+    if (rate <= 0) return;
+    // Paketteki libmpv'de seçeneğin adı bu; yeni sürümlerde display-fps-override.
+    await native.setProperty('override-display-fps', '$rate');
+    await native.setProperty('video-sync', 'display-resample');
   }
 
   /// Sıradaki yüzey değişikliği öncekinin üstüne binmesin.
@@ -323,6 +335,13 @@ class MediaKitEngine implements PlaybackEngine {
       'vo-delayed-frame-count',
       'estimated-vf-fps',
       'current-ao',
+      'video-sync',
+      'display-sync-active',
+      'display-fps',
+      'vsync-ratio',
+      'vsync-jitter',
+      'video-speed-correction',
+      'audio-speed-correction',
     ];
     while (true) {
       await Future<void>.delayed(const Duration(seconds: 30));
