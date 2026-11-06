@@ -19,6 +19,7 @@ import '../../core/playback/engine/playback_engine.dart';
 import '../../core/playback/playback_session.dart';
 import '../../core/playback/sleep_timer.dart';
 import '../../core/playback/stream_probe.dart';
+import 'next_episode.dart';
 import 'player_keys.dart';
 import 'vod_progress.dart';
 import 'widgets/channel_drawer.dart';
@@ -29,6 +30,7 @@ import 'widgets/player_overlays.dart';
 import 'widgets/seek_bar.dart';
 import 'widgets/touch_controls.dart';
 import 'widgets/vod_title.dart';
+import 'widgets/vod_touch_panels.dart';
 import 'widgets/vod_tv.dart';
 
 export 'player_keys.dart' show PlayerMode;
@@ -175,6 +177,9 @@ class _ReopeningPlayerState extends State<_ReopeningPlayer> {
   );
 }
 
+/// Dokunmatik oynatıcı panelleri (film/dizi).
+enum _TouchPanel { tracks, speed, episodes }
+
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   // TV'de tam ekran film ayrı yüzeyde; küçük önizlemeler dokuda kalır.
   late final PlaybackEngine _engine =
@@ -254,6 +259,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       );
     }
     _session.addListener(_onSession);
+    if (widget.mode == PlayerMode.series) _engine.position.addListener(_onPosition);
     if (widget.reopened) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _notify('Oynatıcı takıldı, yeniden açıldı', duration: const Duration(seconds: 5));
@@ -286,6 +292,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _sleepWarning?.cancel();
     unawaited(_audioFallbacks.cancel());
     _session.removeListener(_onSession);
+    _engine.position.removeListener(_onPosition);
+    _unlockTimer?.cancel();
     _session.dispose();
     unawaited(_engine.dispose());
     _rootFocus.dispose();
@@ -351,10 +359,148 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     return e == null ? next.name : 'S${e.season} · B${e.episode}';
   }
 
+  /// Dizi, dokunmatik: bölüm biterken sonraki bölüme kalan saniye; kart yoksa null.
+  final _countdown = NextEpisodeCountdown();
+  int _countdownIndex = -1;
+  int? _nextIn;
+
+  void _onPosition() {
+    if (!mounted || _keys) return;
+    final s = _session;
+    if (s.index != _countdownIndex) {
+      _countdownIndex = s.index;
+      _countdown.reset();
+    }
+    final e = _engine.state.value;
+    final next = e.seekable && _nextLabel(s) != null ? _countdown.update(e.duration - _engine.position.value) : null;
+    if (next != _nextIn) setState(() => _nextIn = next);
+    if (next == 0) _playNext();
+  }
+
+  void _playNext() {
+    _countdown.reset();
+    setState(() => _nextIn = null);
+    _session.zap(1);
+  }
+
+  /// Oynatma hızı (dokunmatik; film/dizi).
+  static const _speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+  double _speed = 1;
+
+  static String _speedLabel(double v) => '${v == v.truncateToDouble() ? v.toInt() : v}x'.replaceAll('.', ',');
+
+  void _setSpeed(double v) {
+    setState(() {
+      _speed = v;
+      _touchPanel = null;
+    });
+    unawaited(_engine.setRate(v));
+    _notify('Hız ${_speedLabel(v)}');
+    _restartBarTimer();
+  }
+
+  /// Dokunmatikte açık panel.
+  _TouchPanel? _touchPanel;
+
+  void _openTouchPanel(_TouchPanel panel) {
+    _barTimer?.cancel();
+    setState(() => _touchPanel = panel);
+  }
+
+  void _closeTouchPanel() {
+    setState(() => _touchPanel = null);
+    _restartBarTimer();
+  }
+
+  Widget _touchPanelView(_TouchPanel panel, EngineState e, PlaybackSession s) => switch (panel) {
+    _TouchPanel.tracks => TouchSheet(
+      title: 'Ses ve altyazı',
+      onClose: _closeTouchPanel,
+      child: ChoicePanel(
+        columns: [
+          ChoiceColumn(
+            title: 'Ses',
+            choices: [(EngineState.autoTrack, 'Otomatik'), for (final t in e.audioTracks) (t.id, t.label)],
+            selected: e.audioTrack,
+            onSelect: (id) => unawaited(_engine.selectAudioTrack(id)),
+          ),
+          ChoiceColumn(
+            title: 'Altyazı',
+            choices: [(EngineState.noTrack, 'Kapalı'), for (final t in e.subtitleTracks) (t.id, t.label)],
+            // mpv'de altyazı "auto" iken çoğu yayında gösterilmez: "Kapalı" sayılır.
+            selected: e.subtitleTrack == EngineState.autoTrack ? EngineState.noTrack : e.subtitleTrack,
+            onSelect: (id) => unawaited(_engine.selectSubtitleTrack(id)),
+          ),
+        ],
+      ),
+    ),
+    _TouchPanel.speed => TouchSheet(
+      title: 'Oynatma hızı',
+      onClose: _closeTouchPanel,
+      child: ChoicePanel(
+        columns: [
+          ChoiceColumn(
+            title: 'Hız',
+            choices: [for (final v in _speeds) ('$v', _speedLabel(v))],
+            selected: '$_speed',
+            onSelect: (id) => _setSpeed(double.parse(id)),
+          ),
+        ],
+      ),
+    ),
+    _TouchPanel.episodes => TouchSheet(
+      title: 'Bölümler',
+      onClose: _closeTouchPanel,
+      child: EpisodePanel(
+        episodes: s.channels,
+        current: s.index,
+        progress: widget.progress,
+        onSelect: (i) {
+          _closeTouchPanel();
+          if (i != s.index) s.openAt(i);
+        },
+      ),
+    ),
+  };
+
+  /// Ekran kilidi: dokunmalar yutulur (cepte, yatarken).
+  bool _locked = false;
+  bool _unlockShown = false;
+  Timer? _unlockTimer;
+
+  void _lock() {
+    _barTimer?.cancel();
+    setState(() {
+      _locked = true;
+      _touchPanel = null;
+      _options = false;
+      _bar = false;
+    });
+    _showUnlock();
+  }
+
+  void _showUnlock() {
+    _unlockTimer?.cancel();
+    setState(() => _unlockShown = true);
+    _unlockTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _unlockShown = false);
+    });
+  }
+
+  void _unlock() {
+    _unlockTimer?.cancel();
+    setState(() {
+      _locked = false;
+      _unlockShown = false;
+    });
+    _showBar();
+  }
+
   Widget? _vodSeekBar(EngineState e) => e.seekable
       ? SeekBar(
           position: _engine.position,
           duration: e.duration,
+          remaining: _vod,
           onSeek: (to) {
             _restartBarTimer();
             unawaited(_engine.seek(to));
@@ -372,8 +518,14 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       showCenter: s.status == PlaybackStatus.playing,
       seekBar: _vodSeekBar(e),
       scaleLabel: _scale.label,
-      resolution: e.hasVideo ? '${e.height}p' : null,
       nextLabel: _nextLabel(s),
+      speedLabel: e.seekable ? _speedLabel(_speed) : null,
+      onTracks: () => _openTouchPanel(_TouchPanel.tracks),
+      onEpisodes: widget.mode == PlayerMode.series && s.channels.length > 1
+          ? () => _openTouchPanel(_TouchPanel.episodes)
+          : null,
+      onSpeed: () => _openTouchPanel(_TouchPanel.speed),
+      onLock: _desktop ? null : _lock,
       onClose: () => Navigator.of(context).pop(),
       onPlayPause: () {
         _restartBarTimer();
@@ -450,7 +602,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void _restartBarTimer([Duration duration = PlayerPage.barTimeout]) {
     _barTimer?.cancel();
     _barTimer = Timer(duration, () {
-      if (mounted && !_options && !_drawer && !_episodes) _hideBar();
+      if (mounted && !_options && !_drawer && !_episodes && _touchPanel == null) _hideBar();
     });
   }
 
@@ -606,7 +758,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   /// Geri: en üstteki katmanı kapatır; hiçbiri yoksa oynatıcıdan çıkar.
   void _back() {
-    if (_episodes) {
+    if (_locked) {
+      _showUnlock();
+    } else if (_touchPanel != null) {
+      _closeTouchPanel();
+    } else if (_episodes) {
       _closeEpisodes();
     } else if (_options) {
       if (_optionsKey.currentState?.handleBack() ?? false) return;
@@ -748,7 +904,18 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           ? null
           : () => _setScale(_scale == VideoScale.fill ? VideoScale.original : VideoScale.fill),
       onPinch: !_gestures ? null : (bigger) => _setScale(bigger ? VideoScale.fill : VideoScale.original),
-      onZap: _gestures && widget.mode != PlayerMode.film ? s.zap : null,
+      // Film/dizide yatay kaydırma sarar: dizide yanlışlıkla bölüm atlanmasın.
+      onZap: _gestures && !_vod ? s.zap : null,
+      scrub: _gestures && _vod && e.seekable
+          ? ScrubTarget(
+              position: _engine.position,
+              duration: e.duration,
+              onSeek: (to) {
+                if (_bar) _restartBarTimer();
+                unawaited(_engine.seek(to));
+              },
+            )
+          : null,
       adjust: _gestures,
       // Film/dizi: sağa/sola çift dokunma ±10 sn.
       onSeekSide: _gestures && e.seekable ? _seekBy : null,
@@ -770,9 +937,44 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
             fit: StackFit.expand,
             children: [
               if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
-              if (_bar && !_keys) _vod ? _vodTouch(e, s) : _liveTouch(e, s),
+              if (!_keys &&
+                  _vod &&
+                  !e.playing &&
+                  s.status == PlaybackStatus.playing &&
+                  _touchPanel == null &&
+                  !_options)
+                Positioned(
+                  left: 16,
+                  top: 72,
+                  child: SafeArea(
+                    child: VodPauseInfo(
+                      channel: s.channel,
+                      series: widget.mode == PlayerMode.series,
+                      tmdb: widget.tmdb,
+                    ),
+                  ),
+                ),
+              if (_bar && !_keys && !_locked) _vod ? _vodTouch(e, s) : _liveTouch(e, s),
+              if (!_keys && _nextIn != null)
+                Positioned(
+                  right: 16,
+                  bottom: _bar ? 100 : 16,
+                  child: SafeArea(
+                    child: NextEpisodeCard(
+                      label: _nextLabel(s) ?? '',
+                      seconds: _nextIn!,
+                      onPlay: _playNext,
+                      onCancel: () {
+                        _countdown.cancel();
+                        setState(() => _nextIn = null);
+                      },
+                    ),
+                  ),
+                ),
               if (_bar && !_keys && _options)
                 TouchOptionsLayer(panel: _optionsPanel(e, s, closable: true), onClose: _closeOptions),
+              if (_touchPanel case final panel? when !_keys) _touchPanelView(panel, e, s),
+              if (_locked) ScreenLockLayer(showUnlock: _unlockShown, onTouch: _showUnlock, onUnlock: _unlock),
               if (_keys && _seekShown && !_bar && e.seekable)
                 TvSeekToast(
                   seekBar: SeekBar(position: _engine.position, duration: e.duration),

@@ -159,7 +159,7 @@ class EpisodeStrip extends StatelessWidget {
               children: [
                 for (var i = 0; i < episodes.length; i++) ...[
                   if (i > 0) const SizedBox(width: 14),
-                  _EpisodeTile(
+                  EpisodeTile(
                     episode: episodes[i],
                     entry: progress?.of(episodes[i].streams.firstOrNull ?? ''),
                     playing: i == current,
@@ -176,12 +176,14 @@ class EpisodeStrip extends StatelessWidget {
   }
 }
 
-class _EpisodeTile extends StatelessWidget {
-  const _EpisodeTile({
+/// Bölüm karosu (kumandada şerit, dokunmatikte panel).
+class EpisodeTile extends StatelessWidget {
+  const EpisodeTile({
+    super.key,
     required this.episode,
     required this.playing,
-    required this.autofocus,
     required this.onPressed,
+    this.autofocus = false,
     this.entry,
   });
 

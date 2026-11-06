@@ -107,6 +107,12 @@ class FakeEngine implements PlaybackEngine {
   @override
   Future<void> playOrPause() async => _state.value = _state.value.copyWith(playing: !_state.value.playing);
 
+  /// Seçilen oynatma hızları, sırasıyla.
+  final rates = <double>[];
+
+  @override
+  Future<void> setRate(double rate) async => rates.add(rate);
+
   /// Ses kapalı mı (Bölünmüş Ekran).
   bool muted = false;
 

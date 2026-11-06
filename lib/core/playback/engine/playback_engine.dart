@@ -171,6 +171,9 @@ abstract class PlaybackEngine {
   /// Konuma sar (süre içinde kırpılır).
   Future<void> seek(Duration to);
 
+  /// Oynatma hızı (1: normal).
+  Future<void> setRate(double rate);
+
   /// Sesi kapatır/açar (Bölünmüş Ekran: yalnız odaktaki karo duyulur).
   Future<void> setMuted(bool muted);
 

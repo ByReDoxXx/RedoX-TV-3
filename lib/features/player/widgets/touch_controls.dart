@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/content/live_channel.dart';
@@ -10,6 +11,7 @@ import '../../../core/theme/redox_type.dart';
 import '../../../core/ui/channel_logo.dart';
 import '../../../core/ui/redox_icon.dart';
 import '../../../core/ui/status_badge.dart';
+import 'seek_bar.dart';
 
 /// Dokunmatik oynatıcı katmanı (telefon, tablet, açık katlanabilir telefon;
 /// kullanıcı isteği: "play/ileri/geri ortada olsun, tema televizyondan farklı
@@ -213,10 +215,10 @@ class TouchControls extends StatelessWidget {
 
 /// Film ve dizi oynatıcısı (dokunmatik; kullanıcı isteği: "Film ve Dizi
 /// kısmında oynatıcı tasarımı farklı olsun"): sinema düzeni. Üstte kapat,
-/// büyük başlık ve sezon/bölüm satırı, Seçenekler; ortada 10 sn geri ·
-/// oynat/duraklat · 10 sn ileri; altta tam genişlik sarma çubuğu, altında
-/// çözünürlük, (dizide) sonraki bölüm ve ölçek. Kanal numarası, CANLI ve
-/// kanal listesi yok.
+/// büyük başlık ve sezon/bölüm satırı, Ses/Altyazı, Seçenekler; ortada 10 sn geri ·
+/// oynat/duraklat · 10 sn ileri; altta tam genişlik sarma çubuğu (kalan süreyle),
+/// altında (dizide) Bölümler ve sonraki bölüm, sağda hız, kilit ve ölçek. Kanal
+/// numarası, CANLI ve kanal listesi yok.
 class VodTouchControls extends StatelessWidget {
   const VodTouchControls({
     super.key,
@@ -226,15 +228,19 @@ class VodTouchControls extends StatelessWidget {
     required this.showCenter,
     required this.seekBar,
     required this.scaleLabel,
-    this.resolution,
     this.poster,
     this.nextLabel,
+    this.speedLabel,
     this.onClose,
     this.onPlayPause,
     this.onSeekBy,
     this.onNext,
     this.onScale,
     this.onOptions,
+    this.onTracks,
+    this.onEpisodes,
+    this.onSpeed,
+    this.onLock,
   });
 
   final String title;
@@ -243,8 +249,18 @@ class VodTouchControls extends StatelessWidget {
   final bool showCenter;
   final Widget? seekBar;
   final String scaleLabel;
-  final String? resolution;
   final String? poster;
+
+  /// "1,25x"; sarılamayan yayında null.
+  final String? speedLabel;
+  final VoidCallback? onTracks;
+
+  /// Dizi: bölüm paneli; yoksa düğme yok.
+  final VoidCallback? onEpisodes;
+  final VoidCallback? onSpeed;
+
+  /// Ekran kilidi; yoksa düğme yok (masaüstü).
+  final VoidCallback? onLock;
 
   /// Dizide sonraki bölümün kısa adı ("S2 · B4"); yoksa düğme yok.
   final String? nextLabel;
@@ -304,6 +320,8 @@ class VodTouchControls extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    GlassCircle(icon: RedoxIcons.subtitles, label: 'Ses ve altyazı', onPressed: onTracks),
+                    const SizedBox(width: 8),
                     GlassCircle(icon: RedoxIcons.more, label: 'Seçenekler', onPressed: onOptions),
                   ],
                 ),
@@ -338,16 +356,45 @@ class VodTouchControls extends StatelessWidget {
                 const Spacer(),
                 ?seekBar,
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    if (resolution case final r?) _Chip(label: r),
-                    const Spacer(),
-                    if (nextLabel case final next?) ...[
-                      _Chip(label: 'Sonraki: $next', icon: RedoxIcons.next, onPressed: onNext),
-                      const SizedBox(width: 8),
-                    ],
-                    _Chip(label: scaleLabel, icon: RedoxIcons.aspectRatio, onPressed: onScale),
-                  ],
+                // Dar ekranda (dikey telefon) düğmeler sığmazsa kayar.
+                LayoutBuilder(
+                  builder: (context, box) => SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: box.maxWidth),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (onEpisodes case final episodes?) ...[
+                                _Chip(label: 'Bölümler', icon: RedoxIcons.series, onPressed: episodes),
+                                const SizedBox(width: 8),
+                              ],
+                              if (nextLabel case final next?)
+                                _Chip(label: 'Sonraki: $next', icon: RedoxIcons.next, onPressed: onNext),
+                            ],
+                          ),
+                          const SizedBox(width: 16),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (speedLabel case final speed?) ...[
+                                _Chip(label: 'Hız $speed', onPressed: onSpeed),
+                                const SizedBox(width: 8),
+                              ],
+                              if (onLock case final lock?) ...[
+                                _Chip(label: 'Kilit', icon: RedoxIcons.lock, onPressed: lock),
+                                const SizedBox(width: 8),
+                              ],
+                              _Chip(label: scaleLabel, icon: RedoxIcons.aspectRatio, onPressed: onScale),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -439,10 +486,20 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// Yatay kaydırmayla sarma (film/dizi).
+class ScrubTarget {
+  const ScrubTarget({required this.position, required this.duration, required this.onSeek});
+
+  final ValueListenable<Duration> position;
+  final Duration duration;
+  final ValueChanged<Duration> onSeek;
+}
+
 /// Oynatıcı jestleri (dokunmatik): dokunma katmanı açar/kapar; çift dokunma
 /// ve iki parmakla açma/kapama ekranı doldurur/sığdırır (film/dizide sağa
-/// çift dokunma 10 sn ileri, sola geri sarar); yatay kaydırma
-/// kanal değiştirir (sola: sonraki); solda dikey kaydırma parlaklık, sağda
+/// çift dokunma 10 sn ileri, sola geri sarar); yatay kaydırma canlıda
+/// kanal değiştirir (sola: sonraki), film/dizide gidilecek zamanı gösterip
+/// bırakınca sarar; solda dikey kaydırma parlaklık, sağda
 /// ses (cihaz sesi, [DeviceControls]). Ayarlanan değer ortada gösterilir.
 class PlayerGestures extends StatefulWidget {
   const PlayerGestures({
@@ -454,7 +511,14 @@ class PlayerGestures extends StatefulWidget {
     this.onPinch,
     this.adjust = true,
     this.onSeekSide,
+    this.scrub,
   });
+
+  /// Verilirse yatay kaydırma sarar ([onZap] yerine).
+  final ScrubTarget? scrub;
+
+  /// Ekran genişliğince kaydırmanın sardığı süre.
+  static const scrubRange = Duration(minutes: 2);
 
   /// Film/dizi: ekranın sağ üçte birine çift dokunma ileri (+1), sol üçte
   /// birine geri (-1) sarar; ortası [onDoubleTap]. Null ise her yer
@@ -506,6 +570,10 @@ class PlayerGesturesState extends State<PlayerGestures> {
   Offset? _doubleTapAt;
   ({int side, int seconds})? seekFlash;
   Timer? _seekHide;
+
+  /// Kaydırmanın başındaki konum ve gidilecek yer.
+  Duration? _scrubFrom;
+  Duration? scrubTo;
 
   void _onDoubleTap() {
     final side = widget.onSeekSide;
@@ -566,10 +634,19 @@ class PlayerGesturesState extends State<PlayerGestures> {
           ? _Drag.brightness
           : _Drag.volume;
       if (!widget.adjust && _drag != _Drag.horizontal) _drag = _Drag.ignored;
+      if (_drag == _Drag.horizontal) _scrubFrom = widget.scrub?.position.value;
       if (_drag == _Drag.brightness || _drag == _Drag.volume) {
         final v = _drag == _Drag.volume ? await DeviceControls.volume() : await DeviceControls.brightness();
         _base = v ?? 0.5;
       }
+    }
+    if (_drag == _Drag.horizontal) {
+      final scrub = widget.scrub;
+      final from = _scrubFrom;
+      if (scrub == null || from == null) return;
+      final to = from + PlayerGestures.scrubRange * (_total.dx / size.width);
+      setState(() => scrubTo = to < Duration.zero ? Duration.zero : (to > scrub.duration ? scrub.duration : to));
+      return;
     }
     final base = _base;
     if (base == null || !(_drag == _Drag.brightness || _drag == _Drag.volume)) return;
@@ -585,8 +662,13 @@ class PlayerGesturesState extends State<PlayerGestures> {
   }
 
   void _onEnd(ScaleEndDetails d) {
+    final to = scrubTo;
+    if (to != null) {
+      setState(() => scrubTo = null);
+      if ((to - _scrubFrom!).abs() >= const Duration(seconds: 1)) widget.scrub?.onSeek(to);
+    }
     switch (_drag) {
-      case _Drag.horizontal when _total.dx.abs() >= PlayerGestures.zapDistance:
+      case _Drag.horizontal when widget.scrub == null && _total.dx.abs() >= PlayerGestures.zapDistance:
         widget.onZap?.call(_total.dx < 0 ? 1 : -1);
       case _Drag.pinch when _scale > 1.15 || _scale < 0.87:
         widget.onPinch?.call(_scale > 1);
@@ -603,6 +685,7 @@ class PlayerGesturesState extends State<PlayerGestures> {
   @override
   Widget build(BuildContext context) {
     final l = level;
+    final to = scrubTo;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
@@ -649,6 +732,31 @@ class PlayerGesturesState extends State<PlayerGestures> {
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+          if (to != null)
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC000000),
+                  borderRadius: BorderRadius.circular(RedoxRadius.lg),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      SeekBar.format(to),
+                      style: Theme.of(context).textTheme.headlineSmall!
+                          .copyWith(color: Colors.white, fontWeight: FontWeight.w700, fontFeatures: RedoxType.tabular),
+                    ),
+                    Text(
+                      '${to < _scrubFrom! ? '−' : '+'}${SeekBar.format((to - _scrubFrom!).abs())}',
+                      style: Theme.of(context).textTheme.titleSmall!
+                          .copyWith(color: Colors.white70, fontFeatures: RedoxType.tabular),
+                    ),
+                  ],
                 ),
               ),
             ),

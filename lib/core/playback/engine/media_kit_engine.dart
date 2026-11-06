@@ -723,6 +723,11 @@ class MediaKitEngine implements PlaybackEngine {
   late final _seeks = SeekQueue(_player.seek);
 
   @override
+  Future<void> setRate(double rate) async {
+    if (!_stuck) await _player.setRate(rate);
+  }
+
+  @override
   Future<void> setMuted(bool muted) async {
     if (!_stuck) await _player.setVolume(muted ? 0 : 100);
   }
