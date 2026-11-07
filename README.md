@@ -28,9 +28,13 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 |---|---|
 | ![Kanallar](docs/images/tv-kanallar.webp) | ![Radyo kadranı](docs/images/tv-kadran.webp) |
 
-| Film | Oynatıcı |
+| Film ayrıntısı | Canlı yayın oynatıcısı |
 |---|---|
-| ![Film ayrıntısı](docs/images/tv-film-ayrinti.webp) | ![Oynatıcı](docs/images/tv-oynatici-film.webp) |
+| ![Film ayrıntısı](docs/images/tv-film-ayrinti.webp) | ![Canlı yayın oynatıcısı](docs/images/tv-oynatici-canli.webp) |
+
+| Film oynatıcısı | Dizi: bölüm şeridi |
+|---|---|
+| ![Film oynatıcısı](docs/images/tv-oynatici-film.webp) | ![Bölüm şeridi](docs/images/tv-bolum-seridi.webp) |
 
 | Kaynak ekleme | Öğretici hikâyeler |
 |---|---|
@@ -40,6 +44,10 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 |---|---|
 | ![Tablet](docs/images/tablet-anasayfa.webp) | <img src="docs/images/tel-anasayfa.webp" alt="Telefon" width="240"> |
 
+| Tablet: bölümler paneli | Telefon: dizi oynatıcısı |
+|---|---|
+| ![Tablet bölümler](docs/images/tablet-bolumler.webp) | ![Telefon dizi oynatıcısı](docs/images/tel-oynatici-dizi.webp) |
+
 > Görüntülerdeki kanal, film ve dizi adları örnek veridir. Daha fazlası için [Wiki](https://github.com/ByReDoxXx/RedoX-TV-3/wiki).
 
 ### Özellikler
@@ -48,7 +56,11 @@ RedoX TV; canlı TV, radyo, film ve dizi listelerinizi tek uygulamada toplayan b
 - **Radyo:** Türlere ayrılmış liste, kadran, şarkı adı, son çalan şarkılar, başka bölümde gezerken çalmaya devam.
 - **Film ve dizi:** Afişler ve TMDB bilgileri (kendi TMDB anahtarınızla), IMDb puanı (kendi OMDb anahtarınızla); kategori, tür ve yıl süzgeci; sezon ve bölüm düzeni; kaldığın yerden devam.
 - **Arama:** Kanal, program, radyo, film ve dizide tek kutudan; Türkçe harf yazmasan da bulur.
-- **Oynatıcı:** media_kit tabanlı; kalite, ses ve altyazı seçimi, uyku zamanlayıcısı.
+- **Oynatıcı:** media_kit (libmpv) tabanlı.
+  - **TV:** Alt çubukta yayın akışı ve "Sonra" bilgisi, bitiş saati, Kanallar / Bölümler / Sonraki / Ses ve altyazı / Hız / Baştan başla düğmeleri.
+  - **Dokunmatik:** Ortada oynat ve sarma düğmeleri, yatay kaydırmayla sarma, parlaklık ve ses kaydırması, ekran kilidi, hız seçimi.
+  - **Diziler:** Tüm sezonların bölüm paneli; bölüm bitmeden 15 saniye önce "Sonraki bölüm" kartı ve geri sayım.
+  - **Görüntü:** Film dışında kalan alan siyah. Android TV'de ekran filmin kare hızına geçer (23,976 fps film 23,976 Hz'de; ekran destekliyorsa). Yamalı libmpv ile derlenince kareler gösterim zamanıyla verilir ve Chromecast'teki kare kaybı önlenir (GitHub Actions derlemeleri henüz yamasız).
 - **Bölünmüş ekran:** Aynı anda 2 ya da 4 kanal.
 - **Kaynaklar:** M3U/M3U8, JSON, HTML sayfası, toplu liste (GitHub klasörü), Xtream, MAC/STB portal, dosya, USB/SSD klasörü, telefondan QR ile gönderme.
 - **Profiller:** Çocuk profili, ebeveyn PIN'i, kilitli içerik.
@@ -98,6 +110,7 @@ flutter build linux --release --dart-define-from-file=keys.json
 - TMDB anahtarı derlemeye girmez; her kullanıcı kendi anahtarını uygulamada **Ayarlar › Veriler**'den girer. Girilmezse afiş ve özet gelmez. IMDb puanı için OMDb anahtarı da aynı yerden girilir.
 - Windows derlemesi NTFS sürücü ister; exFAT'ta sembolik bağlantı hatası verir.
 - Sürüm imzası `key.properties` dosyasından okunur; dosya yoksa debug imzası kullanılır.
+- **Yamalı libmpv (isteğe bağlı):** `third_party/media_kit_libs_android_video` paketin yerel kopyasıdır. `android/local.properties` dosyasına `redox.libmpv.dir=<klasör>` yazılırsa o klasördeki `default-<abi>.jar` dosyaları kullanılır; yazılmazsa paketin kendi kütüphanesi gelir. Yama ve derleme adımları: [`third_party/media_kit_libs_android_video/REDOX.md`](third_party/media_kit_libs_android_video/REDOX.md).
 
 ### Test
 
@@ -130,7 +143,7 @@ RedoX TV bir oynatıcıdır. Eklediğiniz listelerden ve bunların içeriğinden
 
 RedoX TV is an IPTV player that brings your live TV, radio, movie and series lists into one app. Each device gets its own interface: remote control on TV, touch on tablet and phone, mouse and keyboard on Windows.
 
-The screenshots above show live TV, radio, movie details, the player, adding a source and the tutorial stories, followed by the tablet and phone layouts. The interface is in Turkish; channel, movie and series names are sample data. See the [English guide](https://github.com/ByReDoxXx/RedoX-TV-3/wiki/English-Guide) for more.
+The screenshots above show live TV, radio, movie details, the live TV, movie and series players, adding a source and the tutorial stories, followed by the tablet and phone layouts with the touch player. The interface is in Turkish; channel, movie and series names are sample data. See the [English guide](https://github.com/ByReDoxXx/RedoX-TV-3/wiki/English-Guide) for more.
 
 ### Features
 
@@ -138,7 +151,11 @@ The screenshots above show live TV, radio, movie details, the player, adding a s
 - **Radio:** Stations by genre, tuning dial, song titles, recently played songs, playback while you browse the app.
 - **Movies and series:** Posters and TMDB details (with your own TMDB key), IMDb rating (with your own OMDb key); category, genre and year filters; seasons and episodes; resume where you left off.
 - **Search:** One box for channels, programs, radio, movies and series; works without typing Turkish letters.
-- **Player:** Built on media_kit; quality, audio and subtitle selection, sleep timer.
+- **Player:** Built on media_kit (libmpv).
+  - **TV:** The bottom bar shows the program guide with "Up next", the end time, and Channels / Episodes / Next / Audio and subtitles / Speed / Start over buttons.
+  - **Touch:** Play and skip buttons in the center, swipe to seek, brightness and volume swipes, screen lock, playback speed.
+  - **Series:** An episode panel across all seasons; a "Next episode" card with a countdown 15 seconds before the end.
+  - **Picture:** The area outside the video is black. On Android TV the display switches to the video's frame rate (23.976 fps films play at 23.976 Hz when the TV supports it). When built with the patched libmpv, frames are queued with their presentation time, which prevents the dropped frames seen on Chromecast (GitHub Actions builds do not include the patch yet).
 - **Split screen:** 2 or 4 channels at once.
 - **Sources:** M3U/M3U8, JSON, HTML page, bulk lists (GitHub folder), Xtream, MAC/STB portal, file, USB/SSD folder, sending from your phone by QR code.
 - **Profiles:** Kids profile, parental PIN, locked content.
@@ -188,6 +205,7 @@ flutter build linux --release --dart-define-from-file=keys.json
 - The TMDB key is not built into the app; each user enters their own in the app under **Ayarlar › Veriler** (Settings › Data). Without it, movie and series details are not loaded. The OMDb key for IMDb ratings is entered in the same place.
 - The Windows build needs an NTFS drive; exFAT fails with a symlink error.
 - Release signing reads `key.properties`; without it, the debug signature is used.
+- **Patched libmpv (optional):** `third_party/media_kit_libs_android_video` is a local copy of the package. If `android/local.properties` contains `redox.libmpv.dir=<folder>`, the `default-<abi>.jar` files in that folder are used; otherwise the package's own library is used. Patch and build steps (in Turkish): [`third_party/media_kit_libs_android_video/REDOX.md`](third_party/media_kit_libs_android_video/REDOX.md).
 
 ### Testing
 
