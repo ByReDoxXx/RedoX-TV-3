@@ -10,6 +10,7 @@ import '../../content/diagnostics.dart';
 import '../../layout/form_factor.dart';
 import '../subtitle_look.dart';
 import 'audio_fallback.dart';
+import 'display_rate.dart';
 import 'late_closer.dart';
 import 'mpv_log_ring.dart';
 import 'mpv_probe.dart';
@@ -275,6 +276,7 @@ class MediaKitEngine implements PlaybackEngine {
     _videoLogged = true;
     final id = _openId;
     Diagnostics.instance.log('görüntü', 'ilk boyut $width, ${_opening.elapsedMilliseconds} ms');
+    unawaited(_matchRate(id));
     // Görüntü yüzeyi bağlanınca media_kit çıkışı ve çözücüyü yeniden kurar:
     // ölçüm ondan sonra.
     await Future<void>.delayed(const Duration(seconds: 6));
@@ -308,6 +310,20 @@ class MediaKitEngine implements PlaybackEngine {
     Diagnostics.instance.log('görüntü', '${width}p-genişlik ${parts.join(' ')}');
     unawaited(_logDrops(id));
     if (_diagnoseCore) unawaited(_logSync(id));
+  }
+
+  /// TV: ekran filmin kare hızına geçer ([DisplayRate]). Hız kaptan okunur; kap
+  /// bildirmiyorsa mpv'nin ölçtüğü değer.
+  Future<void> _matchRate(int id) async {
+    if (_surface == null) return;
+    final values = await _read(const ['container-fps', 'estimated-vf-fps']);
+    if (id != _openId || _disposed) return;
+    final fps = [
+      for (final name in const ['container-fps', 'estimated-vf-fps']) double.tryParse(values[name] ?? ''),
+    ].firstWhere((v) => v != null && v > 1, orElse: () => null);
+    if (fps == null) return;
+    final mode = await DisplayRate.match(this, fps);
+    Diagnostics.instance.log('görüntü', 'kare hızı $fps, ekran ${mode ?? 'değişmedi'}');
   }
 
   /// TV: kasma incelenirken 30 sn'de bir mpv'nin kendi zamanlama sayaçları. Ekran
@@ -858,6 +874,7 @@ class MediaKitEngine implements PlaybackEngine {
     } else if (_android) {
       unawaited(_closeLate());
     }
+    if (_surface != null) await DisplayRate.release(this);
     await _surface?.close(keep: !responsive);
   }
 
