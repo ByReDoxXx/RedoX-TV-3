@@ -322,7 +322,11 @@ class MediaKitEngine implements PlaybackEngine {
       for (final name in const ['container-fps', 'estimated-vf-fps']) double.tryParse(values[name] ?? ''),
     ].firstWhere((v) => v != null && v > 1, orElse: () => null);
     if (fps == null) return;
-    final mode = await DisplayRate.match(this, fps);
+    final mode = await DisplayRate.match(
+      this,
+      fps,
+      onRetry: (attempt) => Diagnostics.instance.log('görüntü', 'ekran geri döndü, mod yeniden istendi ($attempt)'),
+    );
     Diagnostics.instance.log('görüntü', 'kare hızı $fps, ekran ${mode ?? 'değişmedi'}');
   }
 

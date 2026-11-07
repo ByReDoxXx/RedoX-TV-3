@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
@@ -15,16 +17,51 @@ class DisplayRate {
   /// (takılan oynatıcının yerine yenisi açılırken ikisi bir arada olur).
   static Object? _owner;
 
-  /// Seçilen mod; uygun mod yoksa ya da okunamazsa null.
-  static Future<DisplayMode?> match(Object owner, double fps) async {
+  /// Geçiş sonrası kontrol aralığı ve en çok yeniden istek sayısı.
+  static const _check = Duration(seconds: 3);
+  static const _retries = 3;
+
+  /// Seçilen mod; uygun mod yoksa ya da okunamazsa null. [onRetry]: ekran geri
+  /// döndüğü için mod yeniden istendi (günlük için).
+  ///
+  /// Chromecast'te mod değişince TV (Philips) HDMI bağlantısını kısa süre
+  /// kesiyor; bağlantı dönünce Chromecast modları yeni numaralarla yeniden
+  /// tanıyıp kendi varsayılanına (60 Hz) dönüyor ve istenen numara geçersiz
+  /// kalıyor. Bu yüzden geçişten sonra ekran birkaç kez kontrol edilir; geri
+  /// dönmüşse mod yeni numarasıyla yeniden istenir.
+  static Future<DisplayMode?> match(Object owner, double fps, {void Function(int attempt)? onRetry}) async {
     try {
-      final mode = pickRate(await FlutterDisplayMode.supported, await FlutterDisplayMode.active, fps);
+      final mode = await _request(owner, fps);
       if (mode == null) return null;
-      _owner = owner;
-      await FlutterDisplayMode.setPreferredMode(mode);
+      unawaited(_keep(owner, fps, onRetry));
       return mode;
     } on PlatformException {
       return null;
+    }
+  }
+
+  static Future<DisplayMode?> _request(Object owner, double fps) async {
+    final mode = pickRate(await FlutterDisplayMode.supported, await FlutterDisplayMode.active, fps);
+    if (mode == null) return null;
+    _owner = owner;
+    await FlutterDisplayMode.setPreferredMode(mode);
+    return mode;
+  }
+
+  static Future<void> _keep(Object owner, double fps, void Function(int attempt)? onRetry) async {
+    var attempt = 0;
+    for (var i = 0; i < 5 && attempt < _retries; i++) {
+      await Future<void>.delayed(_check);
+      if (!identical(_owner, owner)) return;
+      try {
+        final active = await FlutterDisplayMode.active;
+        if (pickRate([active], active, fps) != null) continue;
+        attempt++;
+        if (await _request(owner, fps) == null) return;
+        onRetry?.call(attempt);
+      } on PlatformException {
+        return;
+      }
     }
   }
 
