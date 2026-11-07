@@ -15,6 +15,7 @@ import '../../core/platform/full_screen.dart';
 import '../../core/platform/picture_in_picture.dart';
 import '../../core/theme/redox_metrics.dart';
 import '../../core/playback/engine/media_kit_engine.dart';
+import '../../core/playback/engine/native_video_surface.dart';
 import '../../core/playback/engine/playback_engine.dart';
 import '../../core/playback/playback_session.dart';
 import '../../core/playback/sleep_timer.dart';
@@ -181,9 +182,11 @@ class _ReopeningPlayerState extends State<_ReopeningPlayer> {
 enum _TouchPanel { tracks, speed, episodes }
 
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
-  // TV'de tam ekran film ayrı yüzeyde; küçük önizlemeler dokuda kalır.
+  // TV'de tam ekran film ayrı yüzeyde (Chromecast hariç: NativeVideoSurface.supported);
+  // küçük önizlemeler dokuda kalır.
   late final PlaybackEngine _engine =
-      (widget.engineFactory ?? () => MediaKitEngine(nativeSurface: FormFactor.current == FormFactor.tv))();
+      (widget.engineFactory ??
+      () => MediaKitEngine(nativeSurface: FormFactor.current == FormFactor.tv && NativeVideoSurface.supported))();
   late final PlaybackSession _session = PlaybackSession(
     engine: _engine,
     channels: widget.channels,
