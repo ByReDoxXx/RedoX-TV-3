@@ -34,18 +34,6 @@ class NativeVideoSurface {
     });
   }
 
-  /// Bu cihazda ayrı yüzey var mı ([checkSupport] açılışta doldurur).
-  static bool supported = false;
-
-  /// Yerel taraf kanalı kurduysa (TV, Chromecast hariç) ayrı yüzey kullanılır.
-  static Future<void> checkSupport() async {
-    try {
-      supported = await _channel.invokeMethod<bool>('destek') ?? false;
-    } on MissingPluginException {
-      supported = false;
-    }
-  }
-
   final int _id;
 
   /// mpv'ye verilecek yüzey başvurusu; yüzey yokken (arka planda) null.

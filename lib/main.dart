@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -25,7 +24,6 @@ import 'core/content/watch_history.dart';
 import 'core/content/watch_progress.dart';
 import 'core/platform/device_controls.dart';
 import 'core/playback/engine/late_closer.dart';
-import 'core/playback/engine/native_video_surface.dart';
 import 'core/playback/frame_grabber.dart';
 import 'core/playback/radio_controller.dart';
 import 'core/layout/form_factor.dart';
@@ -51,7 +49,6 @@ Future<void> main() async {
   };
   // Oynatıcı (libmpv) yerel kütüphanesi.
   MediaKit.ensureInitialized();
-  if (defaultTargetPlatform == TargetPlatform.android) await NativeVideoSurface.checkSupport();
   LateCloser.onLeftoverChanged = DeviceControls.setLeftoverPlayer;
   // TV'de dokunma yok, odak her an görünür olmalı. Android varsayılanı "touch"
   // kipidir ve halka ilk tuşa kadar gizli kalır (emülatörde doğrulandı).

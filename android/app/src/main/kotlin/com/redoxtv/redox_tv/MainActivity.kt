@@ -37,20 +37,13 @@ class MainActivity : FlutterActivity() {
     private val isTv: Boolean
         get() = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 
-    /**
-     * TV: film Flutter'ın arkasındaki yüzeyde ([VideoSurfaceHost]); yüzey saydam.
-     * Chromecast hariç: ayrı yüzeyde karelerin %0,7'si ekrana gelmedi (aynı ölçümde
-     * Philips'te kayıp yok); orada film eskisi gibi Flutter dokusunda.
-     */
-    private val videoSurface: Boolean
-        get() = isTv && Build.MODEL != "Chromecast"
-
+    /** TV: film Flutter'ın arkasındaki yüzeyde ([VideoSurfaceHost]); yüzey saydam. */
     override fun getTransparencyMode(): TransparencyMode =
-        if (videoSurface) TransparencyMode.transparent else TransparencyMode.opaque
+        if (isTv) TransparencyMode.transparent else TransparencyMode.opaque
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        if (videoSurface) VideoSurfaceHost(this, flutterEngine.dartExecutor.binaryMessenger)
+        if (isTv) VideoSurfaceHost(this, flutterEngine.dartExecutor.binaryMessenger)
         // Resim içinde resim: oynatıcı "etkin" der; Android 12+ kendiliğinden
         // girer (setAutoEnterEnabled), öncesinde onUserLeaveHint'te girilir.
         // Pencere kipi değişince Dart'a "kip" (oynatıcı denetimleri gizler).

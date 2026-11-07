@@ -59,8 +59,6 @@ class VideoSurfaceHost(private val activity: Activity, messenger: BinaryMessenge
         channel.setMethodCallHandler { call, result ->
             val id = call.argument<Int>("id") ?: 0
             when (call.method) {
-                // Dart açılışta sorar: kanal yoksa (Chromecast, telefon) film dokuda.
-                "destek" -> result.success(true)
                 "ac" -> {
                     // Film ekranı doldurmayınca kalan alanda pencere arka planı görünür.
                     activity.window.setBackgroundDrawable(ColorDrawable(Color.BLACK))
