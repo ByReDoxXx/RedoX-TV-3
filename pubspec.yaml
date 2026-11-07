@@ -62,3 +62,8 @@ flutter:
     - family: Sora
       fonts:
         - asset: assets/fonts/Sora-Variable.ttf
+
+# Yamalı libmpv için yerel kopya (third_party/media_kit_libs_android_video/REDOX.md).
+dependency_overrides:
+  media_kit_libs_android_video:
+    path: third_party/media_kit_libs_android_video

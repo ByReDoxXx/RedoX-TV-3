@@ -1,0 +1,66 @@
+--- a/video/out/vo_mediacodec_embed.c
++++ b/video/out/vo_mediacodec_embed.c
+@@ -19,7 +19,10 @@
+ #include <libavutil/hwcontext.h>
+ #include <libavutil/hwcontext_mediacodec.h>
+ 
++#include <time.h>
++
+ #include "common/common.h"
++#include "osdep/timer.h"
+ #include "vo.h"
+ #include "video/mp_image.h"
+ #include "video/hwdec.h"
+@@ -65,27 +68,38 @@
+     return 0;
+ }
+ 
++// RedoX: frames are handed to MediaCodec with their display time instead of
++// "render now". The compositor then shows each frame on the right vsync; with
++// immediate release a slow device (Chromecast with Google TV) let the next
++// frame replace one before it was shown (~0.7% of frames lost).
++static int64_t monotonic_ns(void)
++{
++    struct timespec ts;
++    clock_gettime(CLOCK_MONOTONIC, &ts);
++    return (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
++}
++
+ static void flip_page(struct vo *vo)
+ {
+-    struct priv *p = vo->priv;
+-    if (!p->next_image)
+-        return;
+-
+-    AVMediaCodecBuffer *buffer = (AVMediaCodecBuffer *)p->next_image->planes[3];
+-    av_mediacodec_release_buffer(buffer, 1);
+-    mp_image_unrefp(&p->next_image);
++    // The frame was already queued with its display time in draw_frame().
+ }
+ 
+ static void draw_frame(struct vo *vo, struct vo_frame *frame)
+ {
+-    struct priv *p = vo->priv;
++    if (!frame->current || frame->redraw || frame->repeat)
++        return;
+ 
+-    mp_image_t *mpi = NULL;
+-    if (!frame->redraw && !frame->repeat)
+-        mpi = mp_image_new_ref(frame->current);
+-
+-    talloc_free(p->next_image);
+-    p->next_image = mpi;
++    AVMediaCodecBuffer *buffer = (AVMediaCodecBuffer *)frame->current->planes[3];
++    // frame->pts is in mp_time_ns() units (CLOCK_MONOTONIC_RAW based);
++    // MediaCodec expects System.nanoTime() (CLOCK_MONOTONIC). The offset is
++    // measured for every frame, so clock drift does not accumulate.
++    int64_t now = monotonic_ns();
++    int64_t ahead = frame->pts > 0 ? frame->pts - mp_time_ns() : 0;
++    if (frame->still || ahead <= 0 || ahead > 1000000000LL) {
++        av_mediacodec_release_buffer(buffer, 1);
++    } else {
++        av_mediacodec_render_buffer_at_time(buffer, now + ahead);
++    }
+ }
+ 
+ static int query_format(struct vo *vo, int format)
