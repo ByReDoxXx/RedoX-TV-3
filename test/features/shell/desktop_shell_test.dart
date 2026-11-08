@@ -207,6 +207,8 @@ void main() {
       expect(find.byType(PlayerPage), findsNothing, reason: 'tam ekran açılmaz');
       expect(engines, hasLength(1));
       expect(history.value.first, 1, reason: 'görüntü gelince geçmişe yazılır');
+      await settleAssets(tester, rounds: 2);
+      await maybeSnapshot(tester, key, 'build/desktop/mini-oynatici-anasayfa.png');
 
       // Gezinirken çalmaya devam eder.
       await tester.tap(find.descendant(of: find.byType(DesktopLibraryPanel), matching: find.text('Film')));
