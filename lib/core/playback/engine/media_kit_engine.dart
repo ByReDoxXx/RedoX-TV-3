@@ -749,7 +749,24 @@ class MediaKitEngine implements PlaybackEngine {
 
   @override
   Future<void> setMuted(bool muted) async {
-    if (!_stuck) await _player.setVolume(muted ? 0 : 100);
+    _audio.value = AudioLevel(level: _audio.value.level, muted: muted);
+    await _applyVolume();
+  }
+
+  final _audio = ValueNotifier(const AudioLevel());
+
+  @override
+  ValueListenable<AudioLevel> get audio => _audio;
+
+  @override
+  Future<void> setVolume(double level) async {
+    _audio.value = AudioLevel(level: level.clamp(0, 1), muted: _audio.value.muted);
+    await _applyVolume();
+  }
+
+  Future<void> _applyVolume() async {
+    final a = _audio.value;
+    if (!_stuck) await _player.setVolume(a.muted ? 0 : a.level * 100);
   }
 
   @override

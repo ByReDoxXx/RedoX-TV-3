@@ -48,6 +48,9 @@ import '../sources/sources_page.dart';
 import '../split_screen/split_screen.dart';
 import '../split_screen/split_screen_page.dart';
 import '../tv/tv_page.dart';
+import 'desktop/desktop_now_playing.dart';
+import 'desktop/desktop_playback.dart';
+import 'desktop/desktop_shell.dart';
 import 'section_placeholder.dart';
 
 /// Uygulamanın kökü: bölümler arası geçiş. TV/tablet/masaüstünde sol ray,
@@ -76,7 +79,12 @@ class RootShell extends StatefulWidget {
     this.guide,
     this.openLastChannel = false,
     this.progress,
+    this.desktop,
   });
+
+  /// Masaüstü kabuğu (üst çubuk, kitaplık paneli); null ise Windows/Linux
+  /// derlemesinde açık. Android TV'de fare kipi tablet düzeninde kalır.
+  final bool? desktop;
 
   /// TV: telefon kumandası sunucusu (Ayarlar › Telefon kumandası).
   final RemoteHost? remote;
@@ -152,10 +160,19 @@ class _RootShellState extends State<RootShell> {
   /// akışı" ile gelinince EPG).
   TvView _tvView = TvView.cards;
 
-  void _go(AppSection section, {TvView tvView = TvView.cards}) {
+  /// Masaüstü üst çubuğunun geri/ileri geçmişi (bölümler arası).
+  final _past = <(AppSection, TvView)>[];
+  final _future = <(AppSection, TvView)>[];
+
+  void _go(AppSection section, {TvView tvView = TvView.cards, bool fromHistory = false}) {
     // Ayarlar'dan çıkınca "Kaynak ekle" açılışı unutulur (menüden gelince bölüm listesi).
     if (section != AppSection.settings) _settingsSection = null;
     if (section != _section || tvView != _tvView) {
+      if (!fromHistory) {
+        _past.add((_section, _tvView));
+        if (_past.length > 50) _past.removeAt(0);
+        _future.clear();
+      }
       setState(() {
         _section = section;
         _tvView = tvView;
@@ -172,6 +189,8 @@ class _RootShellState extends State<RootShell> {
     super.initState();
     widget.history?.addListener(_syncFrames);
     widget.homeRequests?.addListener(_remoteHome);
+    _playback.addListener(_onPlayback);
+    widget.radio?.addListener(_onRadio);
     Tmdb.key.current.addListener(_tmdbChanged);
     _reminderTimer = Timer.periodic(const Duration(seconds: 20), (_) => unawaited(_checkReminders()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -184,6 +203,10 @@ class _RootShellState extends State<RootShell> {
   void dispose() {
     widget.history?.removeListener(_syncFrames);
     widget.homeRequests?.removeListener(_remoteHome);
+    widget.radio?.removeListener(_onRadio);
+    _playback
+      ..removeListener(_onPlayback)
+      ..dispose();
     Tmdb.key.current.removeListener(_tmdbChanged);
     _reminderTimer?.cancel();
     _split.dispose();
@@ -263,6 +286,107 @@ class _RootShellState extends State<RootShell> {
     if (!mounted) return;
     Navigator.of(context).popUntil((r) => r.isFirst);
     _go(AppSection.home);
+  }
+
+  void _historyBack() {
+    if (_past.isEmpty) return;
+    _future.add((_section, _tvView));
+    final (s, v) = _past.removeLast();
+    _go(s, tvView: v, fromHistory: true);
+  }
+
+  void _historyForward() {
+    if (_future.isEmpty) return;
+    _past.add((_section, _tvView));
+    final (s, v) = _future.removeLast();
+    _go(s, tvView: v, fromHistory: true);
+  }
+
+  /// Masaüstü kitaplık paneli açık mı (oturum boyunca)?
+  bool _panelOpen = true;
+
+  /// Masaüstü: canlı kanal alttaki oynatma çubuğunda çalar (gezinirken sürer).
+  late final _playback = DesktopPlayback(engineFactory: widget.engineFactory, rank: widget.rank);
+
+  /// Sağdaki "Şimdi oynatılan" paneli açık mı?
+  bool _nowPanel = true;
+
+  void _onPlayback() {
+    if (!mounted) return;
+    if (_watching != _playback.active) {
+      _watching = _playback.active;
+      _syncFrames();
+    }
+  }
+
+  /// Radyo çalmaya başlayınca alttaki kanal susar (iki ses üst üste binmesin).
+  void _onRadio() {
+    final s = widget.radio?.status;
+    if ((s == RadioStatus.connecting || s == RadioStatus.playing) && _playback.active) unawaited(_playback.stop());
+  }
+
+  /// Alttaki kanalı tam ekran açar: oynatıcı aynı oturumu ödünç alır, yayın
+  /// yeniden açılmaz; tam ekrandan çıkınca çalmaya devam eder.
+  Future<void> _fullScreen(BuildContext context) async {
+    final s = _playback.session;
+    if (s == null) return;
+    await Navigator.of(
+      context,
+    ).push(PlayerPage.route(channels: s.channels, initialIndex: s.index, clock: _clock, rank: widget.rank, session: s));
+  }
+
+  bool get _desktop => widget.desktop ?? FormFactor.current == FormFactor.desktop;
+
+  /// Masaüstü kabuğu: üst çubuk, kitaplık paneli ve içerik paneli.
+  Widget _desktopFrame(BuildContext context, Widget page) {
+    final shown = {..._rail, ..._footer};
+    List<AppSection> only(List<AppSection> s) => [
+      for (final x in s)
+        if (shown.contains(x)) x,
+    ];
+    final recent = [
+      for (final n in widget.history?.value.take(8) ?? const <int>[])
+        ?_tv.channels.where((c) => c.number == n).firstOrNull,
+    ];
+    return DesktopFrame(
+      topBar: DesktopTopBar(
+        clock: _clock,
+        profileName: _home.profileName,
+        kids: _kids,
+        home: _section == AppSection.home,
+        onBack: _past.isEmpty ? null : _historyBack,
+        onForward: _future.isEmpty ? null : _historyForward,
+        onHome: () => _go(AppSection.home),
+        onProfile: widget.onSwitchProfile,
+      ),
+      library: DesktopLibraryPanel(
+        browse: only(const [AppSection.home, AppSection.tv, AppSection.radio, AppSection.film, AppSection.series]),
+        library: only(const [AppSection.favorites, AppSection.splitScreen, AppSection.sources]),
+        footer: only(AppDestinations.railFooterSections),
+        selected: _section,
+        onSelected: _go,
+        expanded: _panelOpen,
+        onToggle: () => setState(() => _panelOpen = !_panelOpen),
+        recent: recent,
+        onWatch: (c) => _watch(context, c),
+      ),
+      content: page,
+      nowPlaying: _playback.active && _nowPanel
+          ? DesktopNowPlayingPanel(
+              playback: _playback,
+              onFullScreen: () => unawaited(_fullScreen(context)),
+              onClose: () => setState(() => _nowPanel = false),
+            )
+          : null,
+      bottomBar: _playback.active
+          ? DesktopNowPlayingBar(
+              playback: _playback,
+              panelOpen: _nowPanel,
+              onTogglePanel: () => setState(() => _nowPanel = !_nowPanel),
+              onFullScreen: () => unawaited(_fullScreen(context)),
+            )
+          : null,
+    );
   }
 
   bool _onBack() {
@@ -386,9 +510,22 @@ class _RootShellState extends State<RootShell> {
       for (final x in from ?? _tv.channels)
         if (x == c || !_locks.blocks(lockOf(x))) x,
     ];
-    _watching = true;
     // TV kanalı başlayınca radyo susar.
     unawaited(widget.radio?.stop());
+    if (_desktop && mode == PlayerMode.live) {
+      // Masaüstü: kanal altta çalar, uygulamada gezinmek sürer.
+      _playback.play(
+        list,
+        list.indexOf(c),
+        resolve: from == null ? null : widget.sources?.resolve,
+        onWatched: from == null ? (watched) => widget.history?.record(watched.number) : null,
+      );
+      return;
+    }
+    // Film ve dizi tam ekran açılır; alttaki kanal kapanır (iki yayın açık kalmasın).
+    if (_desktop) await _playback.stop();
+    if (!context.mounted) return;
+    _watching = true;
     _syncFrames();
     try {
       await Navigator.of(context).push(
@@ -638,28 +775,40 @@ class _RootShellState extends State<RootShell> {
                 : null,
             // expand: Scaffold gövdeye gevşek kısıt verir; sayfa içeriğe
             // büzülürse ray ekranın altına kadar uzanmaz.
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
-                KeyedSubtree(
-                  key: ValueKey((_section, _tvView)),
-                  child: Builder(builder: _page),
-                ),
-                if (!phone)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: RedoxNavRail(
-                      items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
-                      footer: _kids ? const [] : AppDestinations.footer,
-                      selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
-                      onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
+            body: _desktop
+                ? ListenableBuilder(
+                    // Son izlenenler paneli geçmişle yenilenir.
+                    listenable: Listenable.merge([widget.history, _playback]),
+                    builder: (context, _) => _desktopFrame(
+                      context,
+                      KeyedSubtree(
+                        key: ValueKey((_section, _tvView)),
+                        child: Builder(builder: _page),
+                      ),
                     ),
+                  )
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Bölüm değişince sayfa baştan kurulur (kaydırma ve seçimler sıfırlanır).
+                      KeyedSubtree(
+                        key: ValueKey((_section, _tvView)),
+                        child: Builder(builder: _page),
+                      ),
+                      if (!phone)
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: RedoxNavRail(
+                            items: _kids ? AppDestinations.items(_rail) : AppDestinations.main,
+                            footer: _kids ? const [] : AppDestinations.footer,
+                            selectedIndex: AppDestinations.railIndexOf(_section, main: _rail, footer: _footer),
+                            onSelected: (i) => _go(AppDestinations.railSectionAt(i, main: _rail, footer: _footer)),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
           ),
         ),
       ),

@@ -72,7 +72,10 @@ enum RedoxIcons {
   textSize('text_fields', 'Yazı boyutu'),
   replay10('replay_10', '10 sn geri'),
   forward10('forward_10', '10 sn ileri'),
-  history('restore', 'Son çalanlar');
+  history('restore', 'Son çalanlar'),
+  volumeOff('volume_off', 'Sessiz'),
+  panelOpen('right_panel_open', 'Paneli aç'),
+  panelClose('right_panel_close', 'Paneli kapat');
 
   const RedoxIcons(this.symbol, this.label);
 

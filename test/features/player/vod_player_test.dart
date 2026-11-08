@@ -10,6 +10,7 @@ import 'package:redox_tv/core/layout/form_factor.dart';
 import 'package:redox_tv/core/theme/redox_theme.dart';
 import 'package:redox_tv/features/player/next_episode.dart';
 import 'package:redox_tv/features/player/player_page.dart';
+import 'package:redox_tv/features/player/widgets/desktop_vod_controls.dart';
 import 'package:redox_tv/features/player/widgets/player_bar.dart';
 import 'package:redox_tv/features/player/widgets/seek_bar.dart';
 import 'package:redox_tv/features/player/widgets/touch_controls.dart';
@@ -417,7 +418,7 @@ void main() {
     e.showVideo();
     e.setDuration(const Duration(minutes: 90));
     await tester.pump();
-    expect(find.byType(VodTouchControls), findsOneWidget);
+    expect(find.byType(DesktopVodControls), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     expect(e.seeks, isNotEmpty);

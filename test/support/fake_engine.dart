@@ -117,7 +117,18 @@ class FakeEngine implements PlaybackEngine {
   bool muted = false;
 
   @override
-  Future<void> setMuted(bool muted) async => this.muted = muted;
+  Future<void> setMuted(bool muted) async {
+    this.muted = muted;
+    _audio.value = AudioLevel(level: _audio.value.level, muted: muted);
+  }
+
+  final _audio = ValueNotifier(const AudioLevel());
+
+  @override
+  ValueListenable<AudioLevel> get audio => _audio;
+
+  @override
+  Future<void> setVolume(double level) async => _audio.value = AudioLevel(level: level, muted: _audio.value.muted);
 
   @override
   Future<void> selectVideoTrack(String id) async {

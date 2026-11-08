@@ -23,6 +23,8 @@ import 'next_episode.dart';
 import 'player_keys.dart';
 import 'vod_progress.dart';
 import 'widgets/channel_drawer.dart';
+import 'widgets/desktop_live_controls.dart';
+import 'widgets/desktop_vod_controls.dart';
 import 'widgets/player_bar.dart';
 import 'widgets/player_layers.dart';
 import 'widgets/player_options.dart';
@@ -63,7 +65,13 @@ class PlayerPage extends StatefulWidget {
     this.tmdb,
     this.onStuck,
     this.reopened = false,
+    this.session,
   });
+
+  /// Ödünç oturum (masaüstü: alttaki oynatma çubuğunda çalan kanal tam
+  /// ekrana alınır). Verilirse yayın yeniden açılmaz; oynatıcı kapanınca
+  /// oturum ve motor kapanmaz, çalmaya devam eder.
+  final PlaybackSession? session;
 
   /// Oynatıcı çekirdeği takıldı; verilen dizinle yeniden açılabilir. null ise
   /// "açılamadı" ekranında kalır. [route] verir.
@@ -108,6 +116,7 @@ class PlayerPage extends StatefulWidget {
     PlayerMode mode = PlayerMode.live,
     WatchProgress? progress,
     Tmdb? tmdb,
+    PlaybackSession? session,
   }) => MaterialPageRoute(
     builder: (_) => _ReopeningPlayer(
       initialIndex: initialIndex,
@@ -122,8 +131,10 @@ class PlayerPage extends StatefulWidget {
         mode: mode,
         progress: progress,
         tmdb: tmdb,
-        onStuck: onStuck,
+        // Ödünç oturumun motoru başkasınındır: takılınca burada yenilenmez.
+        onStuck: session == null ? onStuck : null,
         reopened: reopened,
+        session: session,
       ),
     ),
   );
@@ -183,15 +194,18 @@ enum _TouchPanel { tracks, speed, episodes }
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   // TV'de tam ekran film ayrı yüzeyde; küçük önizlemeler dokuda kalır.
   late final PlaybackEngine _engine =
+      widget.session?.engine ??
       (widget.engineFactory ?? () => MediaKitEngine(nativeSurface: FormFactor.current == FormFactor.tv))();
-  late final PlaybackSession _session = PlaybackSession(
-    engine: _engine,
-    channels: widget.channels,
-    initialIndex: widget.initialIndex,
-    rank: widget.rank,
-    resolve: widget.resolve,
-    failover: AppSettings.instance.failover,
-  );
+  late final PlaybackSession _session =
+      widget.session ??
+      PlaybackSession(
+        engine: _engine,
+        channels: widget.channels,
+        initialIndex: widget.initialIndex,
+        rank: widget.rank,
+        resolve: widget.resolve,
+        failover: AppSettings.instance.failover,
+      );
 
   /// Kumanda tuşlarını alan kök. Yön gezintisinde aday değildir: bütün
   /// ekranı kapladığı için çubukta sağa basınca odak Seçenekler yerine köke
@@ -294,8 +308,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _session.removeListener(_onSession);
     _engine.position.removeListener(_onPosition);
     _unlockTimer?.cancel();
-    _session.dispose();
-    unawaited(_engine.dispose());
+    if (widget.session == null) {
+      _session.dispose();
+      unawaited(_engine.dispose());
+    }
     _rootFocus.dispose();
     _playFocus.dispose();
     super.dispose();
@@ -566,6 +582,57 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     );
   }
 
+  /// Masaüstü film/dizi: sinema düzeni, dizide bölüm şeridi düğmelerin üstünde.
+  Widget _vodDesktop(EngineState e, PlaybackSession s) {
+    final series = widget.mode == PlayerMode.series;
+    final t = vodTitle(s.channel, series: series);
+    return DesktopVodControls(
+      series: series,
+      title: t.title,
+      subtitle: t.subtitle,
+      clock: widget.clock,
+      playing: e.playing,
+      audio: _engine.audio,
+      speedLabel: e.seekable ? _speedLabel(_speed) : null,
+      seekBar: _vodSeekBar(e),
+      endTime: e.seekable ? EndTimeLabel(position: _engine.position, duration: e.duration, speed: _speed) : null,
+      onBack: () => Navigator.of(context).pop(),
+      onPlayPause: () {
+        _restartBarTimer();
+        unawaited(_engine.playOrPause());
+      },
+      onToggleMute: _toggleMute,
+      onVolume: (v) {
+        _restartBarTimer();
+        if (_engine.audio.value.muted) unawaited(_engine.setMuted(false));
+        unawaited(_engine.setVolume(v));
+      },
+      onTracks: () => _openTouchPanel(_TouchPanel.tracks),
+      onSpeed: () => _openTouchPanel(_TouchPanel.speed),
+      onOptions: _openOptions,
+      onSeekBy: e.seekable ? _seekBy : null,
+      onRestart: e.seekable ? _restart : null,
+      onEpisodes: series && s.channels.length > 1 ? () => _episodes ? _closeEpisodes() : _openEpisodes() : null,
+      episodesOpen: _episodes,
+      nextLabel: _nextLabel(s),
+      onNext: () => s.zap(1),
+      episodes: _episodes
+          ? FocusScope(
+              child: EpisodeStrip(
+                episodes: s.channels,
+                current: s.index,
+                progress: widget.progress,
+                onClose: _closeEpisodes,
+                onSelect: (i) {
+                  _closeEpisodes();
+                  if (i != s.index) s.openAt(i);
+                },
+              ),
+            )
+          : null,
+    );
+  }
+
   Widget _vodBar(EngineState e, PlaybackSession s) {
     return VodBar(
       playing: e.playing,
@@ -661,7 +728,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _barTimer?.cancel();
     setState(() {
       _drawer = true;
-      _bar = false;
+      // Masaüstünde çubuk liste açıkken de görünür (liste düğmesi çubukta).
+      _bar = _desktop && !_vod;
       _hints = false;
     });
   }
@@ -669,7 +737,50 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void _closeDrawer() {
     setState(() => _drawer = false);
     _rootFocus.requestFocus();
+    if (_bar) _restartBarTimer();
   }
+
+  /// Masaüstü: fare oynayınca çubuk açılır, durunca süresi dolunca kapanır.
+  void _onMouse() {
+    if (_bar) {
+      _restartBarTimer();
+    } else {
+      _showBar();
+    }
+  }
+
+  /// Masaüstü canlı yayın: ince alt çubuk.
+  Widget _liveDesktop(EngineState e, PlaybackSession s) => DesktopLiveControls(
+    channel: s.channel,
+    playing: e.playing,
+    clock: widget.clock,
+    audio: _engine.audio,
+    streamIndex: s.streamIndex,
+    streamCount: s.streamCount,
+    channelListOpen: _drawer,
+    resolution: e.hasVideo ? '${e.height}p' : null,
+    onClose: () => Navigator.of(context).pop(),
+    onPlayPause: () {
+      _restartBarTimer();
+      unawaited(_engine.playOrPause());
+    },
+    onPreviousChannel: () => s.zap(-1),
+    onNextChannel: () => s.zap(1),
+    onTracks: () => _openTouchPanel(_TouchPanel.tracks),
+    onToggleMute: _toggleMute,
+    onVolume: (v) {
+      _restartBarTimer();
+      if (_engine.audio.value.muted) unawaited(_engine.setMuted(false));
+      unawaited(_engine.setVolume(v));
+    },
+    onChannelList: () => _drawer ? _closeDrawer() : _openDrawer(),
+    onOptions: _openOptions,
+    onNextStream: s.streamCount > 1 ? s.nextStream : null,
+    lastChannelName: s.previousChannel?.name,
+    onLastChannel: s.previousChannel == null ? null : () => s.openPrevious(),
+  );
+
+  void _toggleMute() => unawaited(_engine.setMuted(!_engine.audio.value.muted));
 
   /// Dizi (TV): ▲ ile bölüm şeridi; çubuk açık kalır.
   bool _episodes = false;
@@ -782,7 +893,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       case PlayerKeyAction.seekForward:
         _keySeek(1);
       case PlayerKeyAction.openDrawer:
-        _openDrawer();
+        _drawer ? _closeDrawer() : _openDrawer();
+      case PlayerKeyAction.toggleMute:
+        _toggleMute();
+      case PlayerKeyAction.openTracks:
+        _openTouchPanel(_TouchPanel.tracks);
       case PlayerKeyAction.nextStream:
         _session.nextStream();
       case PlayerKeyAction.openOptions:
@@ -869,9 +984,14 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
           onKeyEvent: _onKey,
           child: Scaffold(
             backgroundColor: _engine.paintsBehindUi ? Colors.transparent : Theme.of(context).scaffoldBackgroundColor,
-            body: ListenableBuilder(
-              listenable: Listenable.merge([_engine.state, PictureInPicture.active]),
-              builder: (context, _) => _layers(context, _engine.state.value, PictureInPicture.active.value),
+            body: MouseRegion(
+              // Masaüstü: çubuk kapalıyken imleç gizlenir (film izlerken görünmesin).
+              cursor: _desktop && !_bar && !_drawer ? SystemMouseCursors.none : MouseCursor.defer,
+              onHover: _desktop ? (_) => _onMouse() : null,
+              child: ListenableBuilder(
+                listenable: Listenable.merge([_engine.state, PictureInPicture.active]),
+                builder: (context, _) => _layers(context, _engine.state.value, PictureInPicture.active.value),
+              ),
             ),
           ),
         ),
@@ -982,6 +1102,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
             children: [
               if (s.status != PlaybackStatus.playing) PlayerStatus(session: s),
               if (!_keys &&
+                  !_desktop &&
                   _vod &&
                   !e.playing &&
                   s.status == PlaybackStatus.playing &&
@@ -998,7 +1119,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-              if (_bar && !_keys && !_locked) _vod ? _vodTouch(e, s) : _liveTouch(e, s),
+              if (_bar && !_keys && !_locked)
+                _vod
+                    ? (_desktop ? _vodDesktop(e, s) : _vodTouch(e, s))
+                    : _desktop
+                    ? _liveDesktop(e, s)
+                    : _liveTouch(e, s),
               if (_bar && !_keys && _options)
                 TouchOptionsLayer(panel: _optionsPanel(e, s, closable: true), onClose: _closeOptions),
               if (_locked) ScreenLockLayer(showUnlock: _unlockShown, onTouch: _showUnlock, onUnlock: _unlock),
@@ -1053,11 +1179,31 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                 ),
               if (_touchPanel case final panel?) FocusScope(child: _touchPanelView(panel, e, s)),
               // Dokunmatikte listenin dışına dokunmak kapatır.
-              if (_drawer && !_keys)
+              if (_drawer && !_keys && !(_desktop && !_vod))
                 Positioned.fill(
                   child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _closeDrawer),
                 ),
-              if (_drawer)
+              // Masaüstü canlı yayın: liste sağda, çubuğun üstünde yüzer.
+              if (_drawer && _desktop && !_vod)
+                Positioned(
+                  right: DesktopLiveControls.margin,
+                  top: 72,
+                  bottom: DesktopLiveControls.margin + DesktopLiveControls.barHeight + 16,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: FocusScope(
+                      child: ChannelDrawer(
+                        channels: s.channels,
+                        currentIndex: s.index,
+                        onSelect: (i) {
+                          if (i != s.index) s.openAt(i);
+                          _restartBarTimer();
+                        },
+                      ),
+                    ),
+                  ),
+                )
+              else if (_drawer)
                 Positioned(
                   left: 0,
                   top: 0,

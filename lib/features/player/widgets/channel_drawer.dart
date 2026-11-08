@@ -136,6 +136,8 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = channel;
     final radius = BorderRadius.circular(RedoxRadius.md);
+    // InkWell'in kendi odak düğümü (Builder ile içeriden alınır).
+    FocusNode? node;
     return FocusGlow(
       borderRadius: radius,
       scale: 1,
@@ -150,84 +152,96 @@ class _Row extends StatelessWidget {
           side: current && !active ? const BorderSide(color: RedoxRoles.tertiary, width: 1.5) : BorderSide.none,
         ),
         child: InkWell(
-          onTap: onPressed,
+          // Fareyle seçilince odak da o kanala geçer (halka eski kanalda kalmasın).
+          onTap: () {
+            node?.requestFocus();
+            onPressed();
+          },
           autofocus: autofocus,
           borderRadius: radius,
           focusColor: Colors.transparent,
           hoverColor: Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 32,
-                  child: Text(
-                    '${c.number}',
-                    style: RedoxType.labelMd.copyWith(
-                      color: RedoxRoles.tertiary,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: RedoxType.tabular,
-                    ),
-                  ),
-                ),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(RedoxRadius.sm),
-                  child: SizedBox.square(
-                    dimension: 32,
-                    child: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 1, alignment: Alignment.center),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        c.name,
-                        style: RedoxType.labelLg.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        c.programTitle == null
-                            ? '${c.streams.length} akış · ${c.category}'
-                            : [?c.timeRange, c.programTitle!].join(' '),
-                        style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (c.progress case final progress?) ...[
-                        const SizedBox(height: 4),
-                        RedoxProgressBar(value: progress, height: 3),
-                      ],
-                    ],
-                  ),
-                ),
-                if (showNext && c.next != null) ...[
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: 110,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Sonra', style: RedoxType.labelSm.copyWith(color: RedoxRoles.onSurfaceVariant)),
-                        Text(
-                          c.next!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w600),
+          child: Builder(
+            builder: (inner) {
+              node = Focus.maybeOf(inner);
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      child: Text(
+                        '${c.number}',
+                        style: RedoxType.labelMd.copyWith(
+                          color: RedoxRoles.tertiary,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: RedoxType.tabular,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-                if (c.live)
-                  const SizedBox(
-                    height: 14,
-                    child: FittedBox(child: StatusBadge(label: 'CANLI', pulse: true)),
-                  ),
-              ],
-            ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(RedoxRadius.sm),
+                      child: SizedBox.square(
+                        dimension: 32,
+                        child: ChannelLogo(name: c.name, logoUrl: c.logoUrl, size: 1, alignment: Alignment.center),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.name,
+                            style: RedoxType.labelLg.copyWith(color: RedoxRoles.onSurface, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            c.programTitle == null
+                                ? '${c.streams.length} akış · ${c.category}'
+                                : [?c.timeRange, c.programTitle!].join(' '),
+                            style: RedoxType.bodySm.copyWith(color: RedoxRoles.onSurfaceVariant),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (c.progress case final progress?) ...[
+                            const SizedBox(height: 4),
+                            RedoxProgressBar(value: progress, height: 3),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (showNext && c.next != null) ...[
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 110,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Sonra', style: RedoxType.labelSm.copyWith(color: RedoxRoles.onSurfaceVariant)),
+                            Text(
+                              c.next!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: RedoxType.bodySm.copyWith(
+                                color: RedoxRoles.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (c.live)
+                      const SizedBox(
+                        height: 14,
+                        child: FittedBox(child: StatusBadge(label: 'CANLI', pulse: true)),
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),

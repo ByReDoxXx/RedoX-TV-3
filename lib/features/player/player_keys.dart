@@ -23,6 +23,12 @@ enum PlayerKeyAction {
   openDrawer,
   nextStream,
   openOptions,
+
+  /// Masaüstü: M sesi kapatır/açar.
+  toggleMute,
+
+  /// Masaüstü: A ses ve altyazı paneli.
+  openTracks,
 }
 
 /// Tuş anında oynatıcının durumu.
@@ -80,6 +86,13 @@ abstract final class PlayerKeys {
     // kullanıcı: "seçeneklere gelemiyorum"). İlk basış odağı Oynat'a verir.
     if (s.tv && s.bar && !s.hints && !s.options && !s.drawer && s.rootFocused && down) {
       return PlayerKeyAction.focusPlay;
+    }
+    // Masaüstü klavye kısayolları (çubuktaki ipuçlarında yazar); kanal
+    // listesi açıkken de çalışır (L listeyi kapatır).
+    if (s.desktop && !s.options && down) {
+      if (key == LogicalKeyboardKey.keyM) return PlayerKeyAction.toggleMute;
+      if (key == LogicalKeyboardKey.keyA) return PlayerKeyAction.openTracks;
+      if (key == LogicalKeyboardKey.keyL && s.mode != PlayerMode.film) return PlayerKeyAction.openDrawer;
     }
     // Katman açıkken tuşlar odak gezintisine bırakılır (çubuk, menü, liste).
     if (s.options || s.drawer || (s.bar && !s.hints && !s.desktop)) return PlayerKeyAction.ignore;

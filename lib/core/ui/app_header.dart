@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../brand/brand_assets.dart';
+import '../layout/desktop_chrome.dart';
 import '../layout/form_factor.dart';
 import '../theme/redox_colors.dart';
 import '../theme/redox_metrics.dart';
@@ -53,7 +54,8 @@ class AppHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
+    // Masaüstü kabuğunda arama, profil ve saat üst çubuktadır.
+    if (DesktopChrome.of(context)) return const SizedBox.shrink();
     final phone = Theme.of(context).extension<RedoxMetrics>()!.formFactor == FormFactor.phone;
     // Bitmap işaret: SVG her karede ~2300 yolu yeniden çizerdi (kaydırırken
     // zayıf TV GPU'sunda takılma).
@@ -89,64 +91,92 @@ class AppHeader extends StatelessWidget {
         const SizedBox(width: 16),
         const Expanded(child: HeaderSearch()),
         const SizedBox(width: 16),
-        FocusGlow(
+        HeaderProfilePill(name: profileName, kids: kids, onPressed: onProfile),
+        const SizedBox(width: 12),
+        HeaderClock(clock: clock),
+      ],
+    );
+  }
+}
+
+/// Başlıktaki profil hapı: basınca "Kim izliyor?" ekranı.
+class HeaderProfilePill extends StatelessWidget {
+  const HeaderProfilePill({super.key, required this.name, this.kids = false, this.onPressed});
+
+  final String name;
+  final bool kids;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return FocusGlow(
+      borderRadius: BorderRadius.circular(RedoxRadius.full),
+      builder: (context, active) => Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(RedoxRadius.full),
-          builder: (context, active) => Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              onTap: onProfile,
-              borderRadius: BorderRadius.circular(RedoxRadius.full),
-              focusColor: Colors.transparent,
-              hoverColor: Colors.transparent,
-              child: Semantics(
-                button: true,
-                label: 'Profil değiştir',
-                child: _Pill(
-                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(color: RedoxRoles.primaryContainer, shape: BoxShape.circle),
-                        child: Center(
-                          child: RedoxIcon(
-                            kids ? RedoxIcons.kids : RedoxIcons.profile,
-                            filled: true,
-                            color: RedoxRoles.onPrimaryContainer,
-                            size: 20,
-                          ),
-                        ),
+          focusColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          child: Semantics(
+            button: true,
+            label: 'Profil değiştir',
+            child: _Pill(
+              padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(color: RedoxRoles.primaryContainer, shape: BoxShape.circle),
+                    child: Center(
+                      child: RedoxIcon(
+                        kids ? RedoxIcons.kids : RedoxIcons.profile,
+                        filled: true,
+                        color: RedoxRoles.onPrimaryContainer,
+                        size: 20,
                       ),
-                      const SizedBox(width: 10),
-                      Text(profileName, style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Text(name, style: t.titleMedium!.copyWith(color: RedoxRoles.onSurface)),
+                ],
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        _Pill(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const RedoxIcon(RedoxIcons.clock, color: RedoxRoles.tertiary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                clock,
-                style: t.titleMedium!.copyWith(
-                  color: RedoxRoles.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: RedoxType.tabular,
-                ),
-              ),
-            ],
+      ),
+    );
+  }
+}
+
+/// Başlıktaki saat hapı.
+class HeaderClock extends StatelessWidget {
+  const HeaderClock({super.key, required this.clock});
+
+  final String clock;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return _Pill(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const RedoxIcon(RedoxIcons.clock, color: RedoxRoles.tertiary, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            clock,
+            style: t.titleMedium!.copyWith(
+              color: RedoxRoles.onSurface,
+              fontWeight: FontWeight.w700,
+              fontFeatures: RedoxType.tabular,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

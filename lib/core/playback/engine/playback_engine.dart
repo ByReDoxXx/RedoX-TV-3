@@ -117,6 +117,24 @@ class EngineState {
   );
 }
 
+/// Ses: düzey (0–1) ve sessiz durumu. Sessizken düzey korunur.
+@immutable
+class AudioLevel {
+  const AudioLevel({this.level = 1, this.muted = false});
+
+  final double level;
+  final bool muted;
+
+  /// Duyulmuyor (sessiz ya da düzey 0).
+  bool get silent => muted || level <= 0;
+
+  @override
+  bool operator ==(Object other) => other is AudioLevel && other.level == level && other.muted == muted;
+
+  @override
+  int get hashCode => Object.hash(level, muted);
+}
+
 /// Yayın bilgisi paneli (Seçenekler › Yayın bilgisi): motorun ölçtükleri;
 /// bilinmeyen değer null.
 @immutable
@@ -176,6 +194,12 @@ abstract class PlaybackEngine {
 
   /// Sesi kapatır/açar (Bölünmüş Ekran: yalnız odaktaki karo duyulur).
   Future<void> setMuted(bool muted);
+
+  /// Ses düzeyi ve sessiz durumu (masaüstü ses kaydırıcısı).
+  ValueListenable<AudioLevel> get audio;
+
+  /// Ses düzeyi (0–1); sessiz durumu değişmez.
+  Future<void> setVolume(double level);
 
   Future<void> selectVideoTrack(String id);
   Future<void> selectAudioTrack(String id);
